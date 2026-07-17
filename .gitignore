@@ -24,6 +24,9 @@ target/
 .DS_Store
 Thumbs.db
 
+# TypeScript build info
+*.tsbuildinfo
+
 # Logs
 *.log
 logs/
