@@ -289,49 +289,49 @@ Read: 06-workflow-engine/scheduler, 02-runtime/readme, 14-architecture-decisions
 
 Tasks:
   - [P05-SCHED-QUEUE] Queue (base job queue)
-    status: todo
+    status: completed
     docs: 02-runtime/scheduler
   - [P05-SCH-PQUEUE] Priority Queue
-    status: todo
+    status: completed
     docs: 02-runtime/scheduler
   - [P05-SCH-FIFO] FIFO scheduling
-    status: todo
+    status: completed
     docs: 02-runtime/scheduler
   - [P05-SCH-PARALLEL] Parallel Queue
-    status: todo
+    status: completed
     docs: 02-runtime/scheduler
   - [P05-SCH-DELAYED] Delayed Jobs
-    status: todo
+    status: completed
     docs: 02-runtime/scheduler
   - [P05-SCH-CRON] Cron Jobs
-    status: todo
+    status: completed
     docs: 02-runtime/scheduler
   - [P05-SCH-RETRY] Retry Queue
-    status: todo
+    status: completed
     docs: 06-workflow-engine/workflowengine
   - [P05-SCH-DEAD] Dead Queue
-    status: todo
+    status: completed
     docs: 02-runtime/scheduler
   - [P05-SCH-POLICIES] Scheduling Policies
-    status: todo
+    status: completed
     docs: 02-runtime/scheduler
   - [P05-SCH-ALLOC] Resource Allocation (CPU/mem reservation)
-    status: todo
+    status: completed
     docs: 10-ai-system/costoptimization
   - [P05-SCH-CONCUR] Concurrency control
-    status: todo
+    status: completed
     docs: 02-runtime/scheduler
   - [P05-SCH-FAIR] Fair Scheduling
-    status: todo
+    status: completed
     docs: 02-runtime/scheduler
   - [P05-SCH-RATELIMIT] Rate Limiting
-    status: todo
+    status: completed
     docs: 10-ai-system/costoptimization
   - [P05-SCH-BACKPRESS] Backpressure
-    status: todo
+    status: completed
     docs: 02-runtime/scheduler
   - [P05-SCH-CANCEL] Cancellation
-    status: todo
+    status: completed
     docs: 02-runtime/scheduler
 
 D Deliverable: Runtime now knows WHEN work executes.
