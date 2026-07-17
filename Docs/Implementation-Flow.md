@@ -251,31 +251,31 @@ Read: 04-memory/readme, 04-memory/memorymanager, 08-database/runstatepersistence
 
 Tasks:
   - [P04-STATE-RUNTIME] Runtime State persistence
-    status: todo
+    status: completed
     docs: 04-memory/memoryarchitecture
   - [P04-STATE-WORKER] Worker State persistence
-    status: todo
+    status: completed
     docs: 01-core-concepts/worker
   - [P04-STATE-SESSION] Session State persistence
-    status: todo
+    status: completed
     docs: 01-core-concepts/session
   - [P04-STATE-WORKFLOW] Workflow State persistence
-    status: todo
+    status: completed
     docs: 06-workflow-engine/workflowengine
   - [P04-STATE-ARTIFACT] Artifact State persistence
-    status: todo
+    status: completed
     docs: 05-artifacts/artifactarchitecture
   - [P04-STATE-TASK] Task State persistence
-    status: todo
+    status: completed
     docs: 01-core-concepts/task
   - [P04-STATE-PERSIST] Persistence layer (store/load)
-    status: todo
+    status: completed
     docs: 08-database/runstatepersistence
   - [P04-STATE-SNAPSHOT] Snapshots (point-in-time)
-    status: todo
+    status: completed
     docs: 08-database/backuprestore
   - [P04-STATE-RECOVERY] Recovery (restore from snapshot)
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
 
 D Deliverable: Everything now has persistent, restorable state.
