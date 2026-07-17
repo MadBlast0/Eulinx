@@ -1,4 +1,4 @@
-﻿KEY IMPLEMENTATION MASTER FLOW (Construction Blueprint - Dependency Driven)
+KEY IMPLEMENTATION MASTER FLOW (Construction Blueprint - Dependency Driven)
 
 HOW TO USE THIS FILE (AI + HUMAN WORKFLOW)
 This file is the single control panel for building Eulinx. Every phase below lists discrete TASKS.
@@ -89,61 +89,61 @@ Read: 12-development/codingstandards, 01-core-concepts/readme, 14-architecture-d
 
 Tasks:
   - [P01-CORE-TYPES] Core Types (primitives, branded types)
-    status: todo
+    status: completed
     docs: 01-core-concepts/readme
   - [P01-CORE-INTERFACES] Interfaces (service contracts)
-    status: todo
+    status: completed
     docs: 15-api/serviceapi
   - [P01-CORE-ENUMS] Enums (shared enumerations)
-    status: todo
+    status: completed
     docs: 01-core-concepts/readme
   - [P01-CORE-CONSTANTS] Constants (global constants)
-    status: todo
+    status: completed
     docs: 01-core-concepts/readme
   - [P01-CORE-UTILS] Utility Functions (pure helpers)
-    status: todo
+    status: completed
     docs: 12-development/codingstandards
   - [P01-CORE-VALIDATION] Validation (schemas, runtime checks)
-    status: todo
+    status: completed
     docs: 12-development/codingstandards
   - [P01-CORE-UUID] UUID generation
-    status: todo
+    status: completed
     docs: 01-core-concepts/readme
   - [P01-CORE-ERROR] Error System (typed errors)
-    status: todo
+    status: completed
     docs: 12-development/codingstandards
   - [P01-CORE-LOGGER] Logger (structured logging)
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P01-CORE-CONFIG] Configuration (typed config loader)
-    status: todo
+    status: completed
     docs: 02-runtime/runtimerules
   - [P01-CORE-ENV] Environment (env access)
-    status: todo
+    status: completed
     docs: 02-runtime/runtimerules
   - [P01-CORE-DI] Dependency Injection container
-    status: todo
+    status: completed
     docs: 12-development/architecturerules
   - [P01-CORE-SERIALIZE] Serialization (JSON/msgpack)
-    status: todo
+    status: completed
     docs: 15-api/contracts
   - [P01-CORE-FILEUTIL] File Utilities
-    status: todo
+    status: completed
     docs: 09-plugin-system/ToolPlugins
   - [P01-CORE-ASYNC] Async Utilities (promises, streams)
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P01-CORE-RETRY] Retry Helpers (backoff)
-    status: todo
+    status: completed
     docs: 06-workflow-engine/workflowengine
   - [P01-CORE-RESULT] Result Pattern (Ok/Err)
-    status: todo
+    status: completed
     docs: 12-development/codingstandards
   - [P01-CORE-BASE] Base Classes (abstract bases)
-    status: todo
+    status: completed
     docs: 12-development/architecturerules
   - [P01-CORE-MODELS] Shared Models (cross-cutting DTOs)
-    status: todo
+    status: completed
     docs: 15-api/contracts
 
 D Deliverable: Foundation Package (typed, unit-tested). Everything below depends on this.
