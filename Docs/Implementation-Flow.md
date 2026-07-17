@@ -204,40 +204,40 @@ Read: 07-ui-ux/eventbus, 15-api/eventapi, 02-runtime/readme
 
 Tasks:
   - [P03-EVENT-BUS] Event Bus (publish/subscribe core)
-    status: todo
+    status: completed
     docs: 02-runtime/eventbus
   - [P03-EVENT-DISPATCH] Dispatcher (routing)
-    status: todo
+    status: completed
     docs: 02-runtime/eventbus
   - [P03-EVENT-SUBSCRIBERS] Subscribers (handler registry)
-    status: todo
+    status: completed
     docs: 15-api/eventapi
   - [P03-EVENT-PUBLISHERS] Publishers (emit helpers)
-    status: todo
+    status: completed
     docs: 15-api/eventapi
   - [P03-EVENT-QUEUE] Event Queue (async buffering)
-    status: todo
+    status: completed
     docs: 02-runtime/eventbus
   - [P03-EVENT-REPLAY] Replay (replay history)
-    status: todo
+    status: completed
     docs: 02-runtime/processlifecycle
   - [P03-EVENT-HISTORY] History (event log)
-    status: todo
+    status: completed
     docs: 08-database/historytables
   - [P03-EVENT-DLQ] Dead Letter Queue (failed events)
-    status: todo
+    status: completed
     docs: 02-runtime/eventbus
   - [P03-EVENT-MIDDLEWARE] Middleware (interceptors)
-    status: todo
+    status: completed
     docs: 02-runtime/eventbus
   - [P03-EVENT-PRIORITY] Priorities (ordering)
-    status: todo
+    status: completed
     docs: 02-runtime/eventbus
   - [P03-EVENT-ASYNC] Async Events (non-blocking)
-    status: todo
+    status: completed
     docs: 02-runtime/eventbus
   - [P03-EVENT-REGISTRY] Event Registry (schema catalog)
-    status: todo
+    status: completed
     docs: 15-api/eventapi
 
 D Deliverable: Acceptance: Every subsystem communicates ONLY through events.
