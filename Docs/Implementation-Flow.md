@@ -157,40 +157,40 @@ Read: 02-runtime/runtimemanager, 14-architecture-decisions/adr-002
 
 Tasks:
   - [P02-RUNTIME-MANAGER] Runtime Manager (orchestrates services)
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P02-RUNTIME-LIFECYCLE] Runtime Lifecycle (start/stop/reload)
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P02-RUNTIME-BOOTSTRAP] Runtime Bootstrap (wire services)
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P02-RUNTIME-SHUTDOWN] Runtime Shutdown (graceful)
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P02-RUNTIME-REGISTRY] Runtime Registry (service catalog)
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P02-RUNTIME-CONFIG] Runtime Configuration
-    status: todo
+    status: completed
     docs: 02-runtime/runtimerules
   - [P02-RUNTIME-STATE] Runtime State (process state machine)
-    status: todo
+    status: completed
     docs: 08-database/runstatepersistence
   - [P02-RUNTIME-CONTEXT] Runtime Context (request scope)
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P02-RUNTIME-DIAG] Runtime Diagnostics
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P02-RUNTIME-HEALTH] Runtime Health (liveness/readiness)
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P02-RUNTIME-RECOVERY] Runtime Recovery (crash recovery)
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P02-RUNTIME-APIS] Runtime Public APIs (invoke surface)
-    status: todo
+    status: completed
     docs: 15-api/rustapi
 
 D Deliverable: Runtime starts, stops, reloads deterministically. Acceptance: starts, stops, reloads.
