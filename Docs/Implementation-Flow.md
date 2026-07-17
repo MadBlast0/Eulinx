@@ -345,49 +345,49 @@ Read: 03-worker-system/workerspawner, 02-runtime/runtimebootstrap, 03-worker-sys
 
 Tasks:
   - [P06-SPAWN-MANAGER] Spawn Manager
-    status: todo
+    status: completed
     docs: 02-runtime/workerspawner
   - [P06-SPAWN-QUEUE] Spawn Queue
-    status: todo
+    status: completed
     docs: 02-runtime/workerspawner
   - [P06-SPAWN-POLICIES] Spawn Policies
-    status: todo
+    status: completed
     docs: 02-runtime/workerspawner
   - [P06-SPAWN-WFACTORY] Worker Factory
-    status: todo
+    status: completed
     docs: 03-worker-system/workercreation
   - [P06-SPAWN-TFACTORY] Task Factory
-    status: todo
+    status: completed
     docs: 01-core-concepts/task
   - [P06-SPAWN-SFACTORY] Session Factory
-    status: todo
+    status: completed
     docs: 01-core-concepts/session
   - [P06-SPAWN-DEPS] Dependency Resolution
-    status: todo
+    status: completed
     docs: 06-workflow-engine/nodearchitecture
   - [P06-SPAWN-VALIDATE] Validation
-    status: todo
+    status: completed
     docs: 03-worker-system/workercreation
   - [P06-SPAWN-INIT] Initialization
-    status: todo
+    status: completed
     docs: 03-worker-system/workercreation
   - [P06-SPAWN-BOOT] Boot Pipeline
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P06-SPAWN-RESERVE] Resource Reservation
-    status: todo
+    status: completed
     docs: 10-ai-system/costoptimization
   - [P06-SPAWN-CLEANUP] Cleanup
-    status: todo
+    status: completed
     docs: 03-worker-system/workerlifecycle
   - [P06-SPAWN-DESTROY] Destruction
-    status: todo
+    status: completed
     docs: 03-worker-system/workerlifecycle
   - [P06-SPAWN-RESTART] Restart
-    status: todo
+    status: completed
     docs: 03-worker-system/workerlifecycle
   - [P06-SPAWN-RECOVERY] Recovery
-    status: todo
+    status: completed
     docs: 03-worker-system/workerlifecycle
 
 D Deliverable: Runtime now knows HOW things are created.
