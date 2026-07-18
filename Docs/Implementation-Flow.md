@@ -824,34 +824,34 @@ Read: 06-workflow-engine/readme, 06-workflow-engine/workflow, 06-workflow-engine
 
 Tasks:
   - [P16-WF-MANAGER] Workflow Manager
-    status: todo
+    status: completed
     docs: 06-workflow-engine/WorkflowEngine
   - [P16-WF-DAG] DAG (nodes/edges)
-    status: todo
+    status: completed
     docs: 06-workflow-engine/nodearchitecture
   - [P16-WF-DEPS] Dependencies (edge resolution)
-    status: todo
+    status: completed
     docs: 06-workflow-engine/nodearchitecture
   - [P16-WF-BRANCH] Branches
-    status: todo
+    status: completed
     docs: 06-workflow-engine/workflowengine
   - [P16-WF-PARALLEL] Parallelism
-    status: todo
+    status: completed
     docs: 06-workflow-engine/executionflow
   - [P16-WF-APPROVAL] Human Approval
-    status: todo
+    status: completed
     docs: 06-workflow-engine/workflowengine
   - [P16-WF-RETRY] Retry
-    status: todo
+    status: completed
     docs: 06-workflow-engine/workflowengine
   - [P16-WF-RESUME] Resume
-    status: todo
+    status: completed
     docs: 06-workflow-engine/workflowengine
   - [P16-WF-CHECKPOINT] Checkpoints
-    status: todo
+    status: completed
     docs: 06-workflow-engine/workflowengine
   - [P16-WF-TEMPLATES] Templates
-    status: todo
+    status: completed
     docs: 06-workflow-engine/workflowengine
 
 ================================================================================
