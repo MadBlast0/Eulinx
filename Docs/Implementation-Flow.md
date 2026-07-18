@@ -965,31 +965,31 @@ Read: 02-runtime/runtimediagnostics, 02-runtime/runtimehealth
 
 Tasks:
   - [P19-OBS-METRICS] Metrics
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P19-OBS-TRACING] Tracing
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P19-OBS-PROFILE] Profiling
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P19-OBS-HEALTH] Health Checks
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P19-OBS-ALERTS] Alerts
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P19-OBS-ANALYTICS] Analytics
-    status: todo
+    status: completed
     docs: 10-ai-system/costoptimization
   - [P19-OBS-USAGE] Usage
-    status: todo
+    status: completed
     docs: 10-ai-system/costoptimization
   - [P19-OBS-COST] Cost Tracking
-    status: todo
+    status: completed
     docs: 10-ai-system/costoptimization
   - [P19-OBS-PERF] Performance
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
 
 ================================================================================
