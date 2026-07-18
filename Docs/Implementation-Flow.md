@@ -485,40 +485,40 @@ Read: 03-worker-system/readme, 01-core-concepts/worker, 03-worker-system/workerl
 
 Tasks:
   - [P08-WORKER-BASE] Worker Base (abstract)
-    status: todo
+    status: completed
     docs: 01-core-concepts/worker
   - [P08-WORKER-MANAGER] Worker Manager
-    status: todo
+    status: completed
     docs: 03-worker-system/workerhierarchy
   - [P08-WORKER-REGISTRY] Registry
-    status: todo
+    status: completed
     docs: 03-worker-system/workerhierarchy
   - [P08-WORKER-LIFECYCLE] Lifecycle (state machine)
-    status: todo
+    status: completed
     docs: 03-worker-system/workerlifecycle
   - [P08-WORKER-MSG] Messaging (over EventBus)
-    status: todo
+    status: completed
     docs: 03-worker-system/workercommunication
   - [P08-WORKER-CTX] Worker Context
-    status: todo
+    status: completed
     docs: 01-core-concepts/worker
   - [P08-WORKER-HEALTH] Health
-    status: todo
+    status: completed
     docs: 03-worker-system/workermonitoring
   - [P08-WORKER-RECOVERY] Recovery
-    status: todo
+    status: completed
     docs: 03-worker-system/workerlifecycle
   - [P08-WORKER-SCALING] Scaling
-    status: todo
+    status: completed
     docs: 03-worker-system/workermetrics
   - [P08-WORKER-POOLS] Pools
-    status: todo
+    status: completed
     docs: 03-worker-system/workerhierarchy
   - [P08-WORKER-CAPS] Capabilities
-    status: todo
+    status: completed
     docs: 03-worker-system/workerhierarchy
   - [P08-WORKER-COORD] Coordination
-    status: todo
+    status: completed
     docs: 03-worker-system/workerhierarchy
 
 ================================================================================
