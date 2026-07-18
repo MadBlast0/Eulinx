@@ -863,52 +863,52 @@ Read: 12-development/releaseprocess, 15-api/rustapi
 
 Tasks:
   - [P17-CLI-INIT] init
-    status: todo
+    status: completed
     docs: 12-development/folderstructure
   - [P17-CLI-DOCTOR] doctor
-    status: todo
+    status: completed
     docs: 16-testing/testingstrategy
   - [P17-CLI-RUNTIME] runtime
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P17-CLI-SCHED] scheduler
-    status: todo
+    status: completed
     docs: 02-runtime/scheduler
   - [P17-CLI-SPAWN] spawn
-    status: todo
+    status: completed
     docs: 02-runtime/workerspawner
   - [P17-CLI-WORKER] worker
-    status: todo
+    status: completed
     docs: 03-worker-system/workerhierarchy
   - [P17-CLI-SESSION] session
-    status: todo
+    status: completed
     docs: 01-core-concepts/session
   - [P17-CLI-MEMORY] memory
-    status: todo
+    status: completed
     docs: 04-memory/memoryarchitecture
   - [P17-CLI-ARTIFACT] artifact
-    status: todo
+    status: completed
     docs: 02-runtime/artifactmanager
   - [P17-CLI-PROVIDER] provider
-    status: todo
+    status: completed
     docs: 10-ai-system/modelprofiles
   - [P17-CLI-WORKFLOW] workflow
-    status: todo
+    status: completed
     docs: 06-workflow-engine/WorkflowEngine
   - [P17-CLI-PROMPT] prompt
-    status: todo
+    status: completed
     docs: 10-ai-system/promptoptimization
   - [P17-CLI-TOOL] tool
-    status: todo
+    status: completed
     docs: 09-plugin-system/ToolPlugins
   - [P17-CLI-CONFIG] config
-    status: todo
+    status: completed
     docs: 02-runtime/runtimerules
   - [P17-CLI-PLUGIN] plugin
-    status: todo
+    status: completed
     docs: 09-plugin-system/pluginlifecycle
   - [P17-CLI-UPDATE] update
-    status: todo
+    status: completed
     docs: 12-development/releaseprocess
 
 ================================================================================
