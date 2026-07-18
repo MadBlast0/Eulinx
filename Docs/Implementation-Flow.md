@@ -530,40 +530,40 @@ Read: 04-memory/readme, 04-memory/memorymanager, 04-memory/contextmanager
 
 Tasks:
   - [P09-MEM-STM] STM (short-term)
-    status: todo
+    status: completed
     docs: 04-memory/temporarymemory
   - [P09-MEM-LTM] LTM (long-term)
-    status: todo
+    status: completed
     docs: 04-memory/longtermmemory
   - [P09-MEM-EPISODIC] Episodic
-    status: todo
+    status: completed
     docs: 04-memory/longtermmemory
   - [P09-MEM-SEMANTIC] Semantic
-    status: todo
+    status: completed
     docs: 04-memory/longtermmemory
   - [P09-MEM-WORKING] Working Memory
-    status: todo
+    status: completed
     docs: 04-memory/temporarymemory
   - [P09-MEM-EMBED] Embeddings
-    status: todo
+    status: completed
     docs: 04-memory/vectormemory
   - [P09-MEM-SEARCH] Search
-    status: todo
+    status: completed
     docs: 08-database/searchindex
   - [P09-MEM-SUMMARY] Summaries
-    status: todo
+    status: completed
     docs: 04-memory/longtermmemory
   - [P09-MEM-COMPRESS] Compression
-    status: todo
+    status: completed
     docs: 04-memory/memoryrules
   - [P09-MEM-PRUNE] Pruning
-    status: todo
+    status: completed
     docs: 04-memory/memoryrules
   - [P09-MEM-POLICIES] Memory Policies
-    status: todo
+    status: completed
     docs: 04-memory/memoryrules
   - [P09-MEM-MANAGER] Memory Manager
-    status: todo
+    status: completed
     docs: 04-memory/memoryarchitecture
 
 ================================================================================
