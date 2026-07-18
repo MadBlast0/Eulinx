@@ -785,34 +785,34 @@ Read: 10-ai-system/readme, 10-ai-system/refinementloop, 10-ai-system/builder
 
 Tasks:
   - [P15-ORCH-PLANNER] Planner
-    status: todo
+    status: completed
     docs: 10-ai-system/planning
   - [P15-ORCH-ARCHITECT] Architect
-    status: todo
+    status: completed
     docs: 10-ai-system/aiarchitecture
   - [P15-ORCH-RESEARCHER] Researcher
-    status: todo
+    status: completed
     docs: 10-ai-system/refinementloop
   - [P15-ORCH-PROGRAMMER] Programmer (Builder)
-    status: todo
+    status: completed
     docs: 10-ai-system/builder
   - [P15-ORCH-REVIEWER] Reviewer (Critic/Judge)
-    status: todo
+    status: completed
     docs: 10-ai-system/critic
   - [P15-ORCH-DEBUGGER] Debugger
-    status: todo
+    status: completed
     docs: 10-ai-system/refinementloop
   - [P15-ORCH-DOCS] Documentation
-    status: todo
+    status: completed
     docs: 10-ai-system/refinementloop
   - [P15-ORCH-QA] QA
-    status: todo
+    status: completed
     docs: 10-ai-system/judge
   - [P15-ORCH-RELEASE] Release
-    status: todo
+    status: completed
     docs: 10-ai-system/refinementloop
   - [P15-ORCH-COORD] Coordinator
-    status: todo
+    status: completed
     docs: 10-ai-system/aiarchitecture
 
 ================================================================================
