@@ -1,306 +1,697 @@
 /**
- * P18-UI-DASH — Workspace Layout Shell
+ * P18-UI-DASH — Workspace Layout Shell (WorkspaceLayout-Part01 .. Part06).
  *
- * The top-level window shell: region model, resizable panes, focus model.
- * Every surface mounts inside this shell.
- * From WorkspaceLayout-Part01 through Part06.
+ * The top-level window shell: the six-region grid solver, resizable/collapsible
+ * panes, custom Tauri title bar, multi-tab canvas, focus model, and the tenant
+ * integration points. Every surface mounts inside this shell and is handed its
+ * box via props — no surface measures the window.
+ *
+ * The shell is the single owner of geometry. All sizes are derived by the
+ * solver (see `region-solver.ts`) and clamped to `REGION_CONSTRAINTS`.
  */
 
-import { useEffect, type ReactNode } from "react"
-import { useLayoutStore, REGION_CONSTRAINTS, type RegionId, type SizableRegionId } from "@/stores/layout-store"
-import { layout as layoutTokens } from "@/ui/tokens/design-tokens"
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react"
+import {
+  useLayoutStore,
+  REGION_CONSTRAINTS,
+  type CanvasTab,
+  type LayoutState,
+  type RegionId,
+  type SizableRegionId,
+} from "@/stores/layout-store"
+import { token } from "@/ui/tokens"
+import { Icon } from "@/ui/icons"
+import { useAnnouncer } from "@/a11y/live-region"
+import { usePrefersReducedMotion } from "@/ui/responsive/use-breakpoint"
+import { keymapRegistry } from "@/ui/keyboard/keymap-registry"
+import type { CommandId } from "@/ui/keyboard/keymap-types"
+import { computeCollapsePlan } from "@/ui/responsive/collapse-orchestrator"
+import { TitleBar } from "./title-bar"
+import { ResizeHandle, type SizeMap, type SizableId } from "./resize-handle"
+import { WorkspaceTabs } from "./workspace-tabs"
+import { useRegionFocus } from "./use-region-focus"
+import { solveLayout, clamp, type ContainerSize } from "./region-solver"
+import {
+  flush as flushPersist,
+  schedulePersist,
+  loadLayout,
+} from "./layout-store-adapter"
 
-interface WorkspaceLayoutProps {
-  readonly titleBar?: ReactNode
-  readonly sidebar?: ReactNode
-  readonly canvas?: ReactNode
-  readonly inspector?: ReactNode
-  readonly panel?: ReactNode
-  readonly statusBar?: ReactNode
+// ---------------------------------------------------------------------------
+// Public surface props
+// ---------------------------------------------------------------------------
+
+export interface WorkspaceLayoutProps {
+  readonly children?: ReactNode
+  /** Override the title bar workspace name. */
+  readonly workspaceName?: string
+  readonly sessionName?: string
+  /** A fixed window size for non-Tauri / test contexts. Omit to read the window. */
+  readonly initialWindowSize?: ContainerSize
+  /** Called when the workspace tabs request a new tab. */
+  readonly onAddTab?: () => void
 }
 
-export function WorkspaceLayout({
-  titleBar,
-  sidebar,
-  canvas,
-  inspector,
-  panel,
-  statusBar,
-}: WorkspaceLayoutProps) {
-  const { layout, isLoading, setLayout, updateRegion, setFocusedRegion } = useLayoutStore()
+export interface WorkspaceLayoutApi {
+  readonly containerSize: ContainerSize
+  readonly sizes: Record<RegionId, number>
+  readonly visible: Record<RegionId, boolean>
+  readonly focusedRegion: RegionId
+  readonly focusVisible: boolean
+  readonly tabs: readonly CanvasTab[]
+  readonly activeTabId: string
+  toggleRegion: (id: SizableRegionId) => void
+  collapseRegion: (id: SizableRegionId) => void
+  expandRegion: (id: SizableRegionId) => void
+  focusRegion: (id: RegionId, viaKeyboard?: boolean) => void
+  cycleFocusNext: () => void
+  cycleFocusPrev: () => void
+  selectTab: (tabId: string) => void
+  closeTab: (tabId: string) => void
+  addTab: () => void
+  resetLayout: () => void
+  persistNow: () => void
+}
 
-  // Initialize layout on mount
+const WorkspaceLayoutContext = createContext<WorkspaceLayoutApi | null>(null)
+
+/** Access the live layout API. Must be used within `<WorkspaceLayoutProvider>`. */
+export function useWorkspaceLayout(): WorkspaceLayoutApi {
+  const ctx = useContext(WorkspaceLayoutContext)
+  if (ctx === null) {
+    throw new Error("useWorkspaceLayout must be used within <WorkspaceLayoutProvider>.")
+  }
+  return ctx
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Build a RequestedRegions object from a live LayoutState for the orchestrator. */
+function requestedRegions(layout: LayoutState) {
+  const r = layout.regions
+  return {
+    sidebar: { visible: r.sidebar.visible || r.sidebar.collapsed, size: r.sidebar.restoreSize || r.sidebar.size },
+    inspector: { visible: r.inspector.visible || r.inspector.collapsed, size: r.inspector.restoreSize || r.inspector.size },
+    panel: { visible: r.panel.visible || r.panel.collapsed, size: r.panel.restoreSize || r.panel.size },
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Tauri window size reader (guarded)
+// ---------------------------------------------------------------------------
+
+function readWindowSize(fallback: ContainerSize): ContainerSize {
+  if (typeof window === "undefined") return fallback
+  const width = typeof window.innerWidth === "number" ? window.innerWidth : fallback.width
+  const height = typeof window.innerHeight === "number" ? window.innerHeight : fallback.height
+  return { width, height }
+}
+
+// ---------------------------------------------------------------------------
+// Provider: owns the store hydration, window size, focus model, and API.
+// ---------------------------------------------------------------------------
+
+export interface WorkspaceLayoutProviderProps {
+  readonly workspaceId?: string
+  readonly children: ReactNode
+  readonly initialWindowSize?: ContainerSize
+  readonly onAddTab?: () => void
+}
+
+export function WorkspaceLayoutProvider({
+  workspaceId = "default",
+  children,
+  initialWindowSize,
+  onAddTab,
+}: WorkspaceLayoutProviderProps): ReactNode {
+  const { layout, isLoading, setLayout, collapseRegion, expandRegion, setFocusedRegion, setActiveTab, removeTab, resetLayout } =
+    useLayoutStore()
+
+  const [containerSize, setContainerSize] = useState<ContainerSize>(
+    () => initialWindowSize ?? readWindowSize({ width: 1280, height: 720 }),
+  )
+  const sizeRef = useRef(containerSize)
+  sizeRef.current = containerSize
+
+  const announcer = useAnnouncerSafe()
+
+  // Hydrate the layout from persistence on mount.
   useEffect(() => {
-    if (!layout) {
-      setLayout(createDefaultLayout("default"))
+    let cancelled = false
+    void (async () => {
+      const size = sizeRef.current
+      const loaded = await loadLayout(workspaceId, size)
+      if (cancelled) return
+      // Only apply the hydrated layout if nothing has taken over yet
+      // (a test or parent may have already supplied a layout via resetLayout).
+      const current = useLayoutStore.getState()
+      if (current.layout && !current.isLoading) return
+      setLayout(loaded)
+    })()
+    return () => {
+      cancelled = true
     }
-  }, [layout, setLayout])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceId])
 
+  // Track window size (browser dev only; Tauri uses Eulinx://window/resized).
+  useEffect(() => {
+    if (initialWindowSize) return
+    const onResize = () => setContainerSize(readWindowSize(sizeRef.current))
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [initialWindowSize])
+
+  // Persist on layout change (debounced).
+  useEffect(() => {
+    if (layout && !isLoading) schedulePersist(layout)
+  }, [layout, isLoading])
+
+  // Responsive collapse: when the breakpoint drops, auto-collapse in order.
+  // We only ever collapse under width pressure — never auto-expand a region the
+  // user explicitly toggled off. Expansion on widen is left to the user.
+  useEffect(() => {
+    if (!layout) return
+    const size = sizeRef.current
+    const plan = computeCollapsePlan(size, requestedRegions(layout))
+    if (plan.tooSmall) return
+    const { collapseRegion: cr } = useLayoutStore.getState()
+    if (plan.sidebar === "rail") cr("sidebar")
+    if (plan.inspector === "hidden") cr("inspector")
+    if (plan.panel === "hidden") cr("panel")
+  }, [containerSize.width, layout])
+
+  // Focus model wired to live region visibility.
+  const isVisible = useCallback(
+    (id: RegionId): boolean => {
+      if (id === "canvas") return true
+      if (id === "sidebar" || id === "inspector" || id === "panel") {
+        const r = layout?.regions[id]
+        return r ? r.visible && !r.collapsed : true
+      }
+      // titleBar / statusBar are display surfaces, not focus targets.
+      return false
+    },
+    [layout],
+  )
+
+  const focus = useRegionFocus({
+    isVisible,
+    initial: "canvas",
+    keyboardModality: false,
+  })
+
+  // Keep the store's focus in sync with the focus controller.
+  useEffect(() => {
+    setFocusedRegion(focus.focusedRegion)
+  }, [focus.focusedRegion, setFocusedRegion])
+
+  // Announce region toggle / focus changes.
+  const lastAnnounced = useRef<string>("")
+  useEffect(() => {
+    const msg = `Focused ${focus.focusedRegion}`
+    if (msg !== lastAnnounced.current && announcer) {
+      lastAnnounced.current = msg
+      announcer.announce("async_load", msg)
+    }
+  }, [focus.focusedRegion, announcer])
+
+  const api = useMemo<WorkspaceLayoutApi>(() => {
+    if (!layout) {
+      return {
+        containerSize,
+        sizes: emptySizes(),
+        visible: emptyVisible(),
+        focusedRegion: "canvas",
+        focusVisible: false,
+        tabs: [],
+        activeTabId: "",
+        toggleRegion: () => {},
+        collapseRegion: () => {},
+        expandRegion: () => {},
+        focusRegion: () => {},
+        cycleFocusNext: () => {},
+        cycleFocusPrev: () => {},
+        selectTab: () => {},
+        closeTab: () => {},
+        addTab: () => {},
+        resetLayout: () => {},
+        persistNow: () => {},
+      }
+    }
+
+    const solved = solveLayout(containerSize, layout.regions)
+    const visible: Record<RegionId, boolean> = {
+      titleBar: layout.regions.titleBar.visible,
+      sidebar: layout.regions.sidebar.visible && !layout.regions.sidebar.collapsed,
+      canvas: true,
+      inspector: layout.regions.inspector.visible && !layout.regions.inspector.collapsed,
+      panel: layout.regions.panel.visible && !layout.regions.panel.collapsed,
+      statusBar: layout.regions.statusBar.visible,
+    }
+
+    const toggleRegion = (id: SizableRegionId) => {
+      const r = layout.regions[id]
+      if (r.collapsed || !r.visible) {
+        expandRegion(id)
+        announcer?.announce("async_load", `${id} shown`)
+      } else {
+        collapseRegion(id)
+        announcer?.announce("async_load", `${id} hidden`)
+      }
+    }
+
+    return {
+      containerSize,
+      sizes: solved.sizes,
+      visible,
+      focusedRegion: focus.focusedRegion,
+      focusVisible: focus.focusVisible,
+      tabs: layout.canvasTabs.tabs,
+      activeTabId: layout.canvasTabs.activeTabId,
+      toggleRegion,
+      collapseRegion,
+      expandRegion,
+      focusRegion: (id, viaKeyboard) => focus.focusRegion(id, viaKeyboard),
+      cycleFocusNext: focus.cycleNext,
+      cycleFocusPrev: focus.cyclePrev,
+      selectTab: setActiveTab,
+      closeTab: removeTab,
+      addTab: () => onAddTab?.(),
+      resetLayout: () => resetLayout(workspaceId),
+      persistNow: () => void flushPersist(layout),
+    }
+  }, [layout, containerSize, focus, collapseRegion, expandRegion, setActiveTab, removeTab, resetLayout, workspaceId, onAddTab, announcer])
+
+  return <WorkspaceLayoutContext.Provider value={api}>{children}</WorkspaceLayoutContext.Provider>
+}
+
+// ---------------------------------------------------------------------------
+// Shell component
+// ---------------------------------------------------------------------------
+
+export function WorkspaceLayout({
+  children,
+  workspaceName,
+  sessionName,
+  initialWindowSize,
+  onAddTab,
+}: WorkspaceLayoutProps): ReactNode {
+  return (
+    <WorkspaceLayoutProvider initialWindowSize={initialWindowSize} onAddTab={onAddTab}>
+      <Shell workspaceName={workspaceName} sessionName={sessionName}>
+        {children}
+      </Shell>
+    </WorkspaceLayoutProvider>
+  )
+}
+
+interface ShellProps {
+  readonly workspaceName?: string
+  readonly sessionName?: string
+  readonly children?: ReactNode
+}
+
+function Shell({ children, workspaceName, sessionName }: ShellProps): ReactNode {
+  const { layout, isLoading, updateRegion } = useLayoutStore()
+  const api = useWorkspaceLayout()
+  const announcer = useAnnouncerSafe()
+  const reducedMotion = usePrefersReducedMotion()
+
+  // Keep the live API ref fresh for the registered keyboard commands.
+  liveApi.current = api
+
+  // Keyboard commands (layout-scoped). Registered once.
+  useEffect(() => {
+    registerLayoutCommands()
+  }, [])
+
+  // Loading gate: tenants MUST NOT mount before ready (Part01/Part02).
   if (isLoading || !layout) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="text-muted-foreground">Loading workspace...</div>
+      <div
+        className="flex h-screen w-screen items-center justify-center"
+        style={{ background: token("--Eulinx-color-surface") }}
+      >
+        <span className="text-role-caption" style={{ color: token("--Eulinx-color-text-muted") }}>
+          Loading workspace…
+        </span>
       </div>
     )
   }
 
-  const { regions } = layout
-  const containerWidth = typeof window !== "undefined" ? window.innerWidth : 1280
+  const { sizes, visible, focusedRegion, focusVisible, tabs, activeTabId } = api
+  const regions = layout.regions
+  const solved = solveLayout(api.containerSize, layout.regions)
+  const tooSmall = solved.tooSmall
 
-  // Compute derived canvas size
-  const sidebarWidth = regions.sidebar.collapsed
-    ? REGION_CONSTRAINTS.sidebar.railSize
-    : regions.sidebar.size
-  const inspectorWidth = regions.inspector.collapsed ? 0 : regions.inspector.size
-  const splitterCount = (regions.sidebar.visible ? 1 : 0) + (regions.inspector.visible ? 1 : 0) + (regions.panel.visible ? 1 : 0)
-  const splitterTotal = splitterCount * layoutTokens.splitter.size
-
-  const canvasWidth = Math.max(
-    REGION_CONSTRAINTS.canvas.minSize,
-    containerWidth - sidebarWidth - inspectorWidth - splitterTotal,
-  )
-
-  const handleRegionClick = (id: RegionId) => {
-    setFocusedRegion(id)
+  const announceResize = (id: SizableId) => {
+    announcer?.announce("async_load", `${id} resized to ${Math.round(sizes[id])} pixels`)
   }
 
-  const handleSplitterDrag = (regionId: SizableRegionId, delta: number) => {
-    const region = regions[regionId]
-    const constraints = REGION_CONSTRAINTS[regionId]
-    const axis = constraints.axis
-    const deltaValue = axis === "width" ? delta : delta
-    const newSize = Math.max(constraints.minSize, Math.min(constraints.maxSize, region.size + deltaValue))
-    updateRegion(regionId, { size: newSize })
+  const previewSize = (id: SizableId, value: number) => {
+    updateRegion(id, { size: clamp(value, REGION_CONSTRAINTS[id].minSize, REGION_CONSTRAINTS[id].maxSize) })
+  }
+  const commitSize = (id: SizableId, value: number) => {
+    updateRegion(id, { size: clamp(value, REGION_CONSTRAINTS[id].minSize, REGION_CONSTRAINTS[id].maxSize) })
+    announceResize(id)
   }
 
-  return (
-    <div className="flex h-screen w-screen flex-col overflow-hidden bg-background text-foreground">
-      {/* Title Bar */}
-      <div
-        className="flex shrink-0 items-center border-b"
-        style={{ height: layoutTokens.titleBar.height }}
-        onClick={() => handleRegionClick("titleBar")}
-      >
-        {titleBar ?? <DefaultTitleBar />}
-      </div>
-
-      {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        {regions.sidebar.visible && !regions.sidebar.collapsed && (
-          <>
-            <div
-              className="shrink-0 overflow-y-auto border-r"
-              style={{ width: regions.sidebar.size }}
-              onClick={() => handleRegionClick("sidebar")}
-            >
-              {sidebar ?? <DefaultSidebar />}
-            </div>
-            <Splitter
-              direction="horizontal"
-              onDrag={(delta) => handleSplitterDrag("sidebar", delta)}
-            />
-          </>
-        )}
-
-        {/* Rail (collapsed sidebar) */}
-        {regions.sidebar.visible && regions.sidebar.collapsed && (
-          <div
-            className="flex shrink-0 flex-col items-center border-r py-2"
-            style={{ width: REGION_CONSTRAINTS.sidebar.railSize }}
-          >
-            <button
-              className="flex h-8 w-8 items-center justify-center rounded hover:bg-accent"
-              onClick={() => useLayoutStore.getState().expandRegion("sidebar")}
-              title="Expand sidebar"
-            >
-              <span className="text-xs">▶</span>
-            </button>
-          </div>
-        )}
-
-        {/* Canvas */}
-        <div
-          className="flex flex-1 flex-col overflow-hidden"
-          style={{ width: canvasWidth }}
-          onClick={() => handleRegionClick("canvas")}
-        >
-          {/* Tab strip */}
-          <div className="flex h-8 shrink-0 items-center gap-1 border-b px-2">
-            {layout.canvasTabs.tabs.map((tab) => (
-              <button
-                key={tab.tabId}
-                className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
-                  tab.tabId === layout.canvasTabs.activeTabId
-                    ? "bg-accent text-accent-foreground"
-                    : "text-muted-foreground hover:bg-accent/50"
-                }`}
-                onClick={() => useLayoutStore.getState().setActiveTab(tab.tabId)}
-              >
-                {tab.title}
-                {!tab.pinned && (
-                  <span
-                    className="ml-1 text-muted-foreground hover:text-foreground"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      useLayoutStore.getState().removeTab(tab.tabId)
-                    }}
-                  >
-                    ×
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-          {/* Tab content */}
-          <div className="flex-1 overflow-hidden">
-            {canvas}
-          </div>
-        </div>
-
-        {/* Inspector */}
-        {regions.inspector.visible && !regions.inspector.collapsed && (
-          <>
-            <Splitter
-              direction="horizontal"
-              onDrag={(delta) => handleSplitterDrag("inspector", -delta)}
-            />
-            <div
-              className="shrink-0 overflow-y-auto border-l"
-              style={{ width: regions.inspector.size }}
-              onClick={() => handleRegionClick("inspector")}
-            >
-              {inspector ?? <DefaultInspector />}
-            </div>
-          </>
-        )}
-
-        {/* Panel (bottom) */}
-        {regions.panel.visible && !regions.panel.collapsed && (
-          <div className="absolute bottom-6 left-0 right-0 border-t" style={{ height: regions.panel.size }}>
-            <Splitter
-              direction="vertical"
-              onDrag={(delta) => handleSplitterDrag("panel", -delta)}
-            />
-            <div
-              className="h-full overflow-y-auto"
-              onClick={() => handleRegionClick("panel")}
-            >
-              {panel ?? <DefaultPanel />}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Status Bar */}
-      <div
-        className="flex shrink-0 items-center border-t px-3"
-        style={{ height: layoutTokens.statusBar.height }}
-        onClick={() => handleRegionClick("statusBar")}
-      >
-        {statusBar ?? <DefaultStatusBar />}
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Default Region Content
-// ---------------------------------------------------------------------------
-
-function DefaultTitleBar() {
-  return (
-    <div className="flex h-full items-center justify-between px-4">
-      <span className="text-sm font-semibold">Eulinx</span>
-      <span className="text-xs text-muted-foreground">Workspace</span>
-    </div>
-  )
-}
-
-function DefaultSidebar() {
-  return <div className="p-3 text-sm text-muted-foreground">Sidebar</div>
-}
-
-function DefaultInspector() {
-  return <div className="p-3 text-sm text-muted-foreground">Inspector</div>
-}
-
-function DefaultPanel() {
-  return <div className="p-3 text-sm text-muted-foreground">Panel</div>
-}
-
-function DefaultStatusBar() {
-  return (
-    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-      <span>0 workers</span>
-      <span>0 sessions</span>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Splitter
-// ---------------------------------------------------------------------------
-
-function Splitter({
-  direction,
-  onDrag,
-}: {
-  readonly direction: "horizontal" | "vertical"
-  readonly onDrag: (delta: number) => void
-}) {
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault()
-    const startPos = direction === "horizontal" ? e.clientX : e.clientY
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const currentPos = direction === "horizontal" ? e.clientX : e.clientY
-      onDrag(currentPos - startPos)
+  const onPreview = (pending: SizeMap) => {
+    for (const id of Object.keys(pending) as SizableId[]) {
+      const v = pending[id]
+      if (v !== undefined) previewSize(id, v)
     }
-
-    const handleMouseUp = () => {
-      document.removeEventListener("mousemove", handleMouseMove)
-      document.removeEventListener("mouseup", handleMouseUp)
+  }
+  const onCommit = (pending: SizeMap) => {
+    for (const id of Object.keys(pending) as SizableId[]) {
+      const v = pending[id]
+      if (v !== undefined) commitSize(id, v)
     }
-
-    document.addEventListener("mousemove", handleMouseMove)
-    document.addEventListener("mouseup", handleMouseUp)
+    void flushPersist(useLayoutStore.getState().layout as NonNullable<typeof layout>)
   }
 
   return (
     <div
-      className={`shrink-0 cursor-col-resize bg-border/50 hover:bg-border transition-colors ${
-        direction === "horizontal" ? "w-1" : "h-1"
-      }`}
-      onMouseDown={handleMouseDown}
-    />
+      className="flex h-screen w-screen flex-col overflow-hidden"
+      style={{ background: token("--Eulinx-color-surface"), color: token("--Eulinx-color-text-primary") }}
+    >
+      {/* Title bar (fixed height, always present) */}
+      <TitleBar
+        workspaceName={workspaceName ?? layout.workspaceId}
+        sessionName={sessionName}
+        onBeforeClose={() => flushPersist(useLayoutStore.getState().layout as NonNullable<typeof layout>)}
+        onFocusRegion={(id) => api.focusRegion(id)}
+      />
+
+      {/* Main content row */}
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        {/* Sidebar */}
+        {visible.sidebar &&
+          renderRegion("sidebar", focusedRegion, focusVisible, () => (
+            <>
+              <div style={{ width: sizes.sidebar, minWidth: 0 }}>
+                <SidebarSlot>
+                  <RegionPlaceholder region="sidebar" />
+                </SidebarSlot>
+              </div>
+              <ResizeHandle
+                axis="width"
+                regionId="sidebar"
+                otherId="inspector"
+                label="Resize sidebar"
+                currentSize={sizes.sidebar}
+                otherSize={sizes.inspector}
+                min={REGION_CONSTRAINTS.sidebar.minSize}
+                max={REGION_CONSTRAINTS.sidebar.maxSize}
+                onPreview={onPreview}
+                onCommit={onCommit}
+              />
+            </>
+          ))}
+
+        {/* Rail (collapsed sidebar) */}
+        {regions.sidebar.collapsed && regions.sidebar.visible && (
+          <button
+            type="button"
+            aria-label="Expand sidebar"
+            onClick={() => api.expandRegion("sidebar")}
+            className="flex shrink-0 flex-col items-center gap-2 border-r py-2 outline-none"
+            style={{
+              width: REGION_CONSTRAINTS.sidebar.railSize,
+              borderColor: token("--Eulinx-color-border"),
+              background: token("--Eulinx-color-elevated"),
+              transition: reducedMotion ? "none" : `background-color ${token("--Eulinx-duration-fast")} var(--Eulinx-ease-standard)`,
+            }}
+          >
+            <RailButton icon="domain.panel.left" label="Expand sidebar" />
+          </button>
+        )}
+
+        {/* Canvas (flex region) */}
+        <div
+          className="flex min-w-0 flex-1 flex-col overflow-hidden"
+          data-eulinx-focus={focusedRegion === "canvas" && focusVisible ? "true" : undefined}
+          onClick={() => api.focusRegion("canvas")}
+          style={{ width: sizes.canvas }}
+        >
+          <WorkspaceTabs
+            tabs={tabs}
+            activeTabId={activeTabId}
+            onSelect={api.selectTab}
+            onClose={api.closeTab}
+            onAdd={api.addTab}
+            focusVisible={focusedRegion === "canvas" && focusVisible}
+          />
+          <div className="relative min-h-0 flex-1 overflow-hidden">{children}</div>
+        </div>
+
+        {/* Inspector */}
+        {visible.inspector &&
+          renderRegion("inspector", focusedRegion, focusVisible, () => (
+            <>
+              <ResizeHandle
+                axis="width"
+                regionId="inspector"
+                otherId="sidebar"
+                label="Resize inspector"
+                currentSize={sizes.inspector}
+                otherSize={sizes.sidebar}
+                min={REGION_CONSTRAINTS.inspector.minSize}
+                max={REGION_CONSTRAINTS.inspector.maxSize}
+                onPreview={onPreview}
+                onCommit={onCommit}
+              />
+              <div style={{ width: sizes.inspector, minWidth: 0 }}>
+                <InspectorSlot>
+                  <RegionPlaceholder region="inspector" />
+                </InspectorSlot>
+              </div>
+            </>
+          ))}
+      </div>
+
+      {/* Panel (bottom) */}
+      {visible.panel &&
+        renderRegion("panel", focusedRegion, focusVisible, () => (
+          <div
+            className="relative flex shrink-0 flex-col overflow-hidden border-t"
+            data-eulinx-focus={focusedRegion === "panel" && focusVisible ? "true" : undefined}
+            onClick={() => api.focusRegion("panel")}
+            style={{
+              height: sizes.panel,
+              borderColor: token("--Eulinx-color-border"),
+              background: token("--Eulinx-color-elevated"),
+              transition: reducedMotion
+                ? "none"
+                : `height ${token("--Eulinx-duration-base")} var(--Eulinx-ease-standard)`,
+            }}
+          >
+            <ResizeHandle
+              axis="height"
+              regionId="panel"
+              label="Resize panel"
+              currentSize={sizes.panel}
+              min={REGION_CONSTRAINTS.panel.minSize}
+              max={REGION_CONSTRAINTS.panel.maxSize}
+              onPreview={onPreview}
+              onCommit={onCommit}
+            />
+            <div className="min-h-0 flex-1 overflow-hidden">
+              <PanelSlot>
+                <RegionPlaceholder region="panel" />
+              </PanelSlot>
+            </div>
+          </div>
+        ))}
+
+      {/* Status bar (fixed height, always present) */}
+      <div
+        className="flex shrink-0 items-center gap-4 px-3 text-role-caption"
+        style={{
+          height: sizes.statusBar,
+          background: token("--Eulinx-color-surface"),
+          borderTop: `var(--Eulinx-border-thin) solid ${token("--Eulinx-color-border")}`,
+          color: token("--Eulinx-color-text-muted"),
+        }}
+      >
+        <span>{tabs.length} tabs</span>
+        <span>ws: {layout.workspaceId}</span>
+      </div>
+
+      {tooSmall && <WindowTooSmallOverlay size={api.containerSize} />}
+    </div>
+  )
+}
+
+/** Overlay shown when the container drops below MIN_WINDOW_SIZE (Part01/Part03). */
+function WindowTooSmallOverlay({ size }: { size: ContainerSize }): ReactNode {
+  return (
+    <div
+      role="alertdialog"
+      aria-label="Window too small"
+      className="absolute inset-0 flex flex-col items-center justify-center gap-2"
+      style={{ background: token("--Eulinx-color-surface"), color: token("--Eulinx-color-text-primary") }}
+    >
+      <Icon name="status.warning" size="xl" aria-hidden />
+      <span className="text-role-body">Window too small</span>
+      <span className="text-role-caption" style={{ color: token("--Eulinx-color-text-muted") }}>
+        Resize to at least 940 × 560 px. Current: {Math.round(size.width)} × {Math.round(size.height)}.
+      </span>
+    </div>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Default Layout Factory
+// Region wrappers that paint the focus ring when keyboard-focused.
 // ---------------------------------------------------------------------------
 
-function createDefaultLayout(workspaceId: string) {
-  const now = new Date().toISOString()
-  return {
-    schemaVersion: 1,
-    workspaceId,
-    regions: {
-      titleBar: { id: "titleBar" as const, visible: true, collapsed: false, size: 36, restoreSize: 36 },
-      sidebar: { id: "sidebar" as const, visible: true, collapsed: false, size: 240, restoreSize: 240 },
-      canvas: { id: "canvas" as const, visible: true, collapsed: false, size: 0, restoreSize: 0 },
-      inspector: { id: "inspector" as const, visible: true, collapsed: false, size: 320, restoreSize: 320 },
-      panel: { id: "panel" as const, visible: true, collapsed: false, size: 220, restoreSize: 220 },
-      statusBar: { id: "statusBar" as const, visible: true, collapsed: false, size: 24, restoreSize: 24 },
-    },
-    canvasTabs: {
-      tabs: [{ tabId: "graph", kind: "graph" as const, title: "Graph", subjectId: null, pinned: true }],
-      activeTabId: "graph",
-      mruOrder: ["graph"],
-    },
-    focus: { focusedRegion: "canvas" as const, previousRegion: null, focusVisible: false },
-    lastWindowSize: { width: 1280, height: 720 },
-    updatedAt: now,
+function renderRegion(
+  id: RegionId,
+  focused: RegionId,
+  focusVisible: boolean,
+  content: () => ReactNode,
+): ReactNode {
+  const isFocused = focused === id && focusVisible
+  return (
+    <div
+      className="flex shrink-0"
+      data-eulinx-region={id}
+      data-eulinx-focus={isFocused ? "true" : undefined}
+      onClick={(e) => {
+        // Stop the canvas handler from stealing focus, then focus this region.
+        e.stopPropagation()
+        liveApi.current?.focusRegion(id)
+      }}
+      style={{
+        outline: isFocused ? "2px solid var(--Eulinx-focus-ring, hsl(var(--ring)))" : "none",
+        outlineOffset: isFocused ? "2px" : undefined,
+      }}
+    >
+      {content()}
+    </div>
+  )
+}
+
+/** Tenant slots: the shell hands each tenant its box via props. */
+export function SidebarSlot({ children }: { children: ReactNode }): ReactNode {
+  return (
+    <div
+      data-eulinx-surface="sidebar"
+      className="h-full overflow-y-auto"
+      style={{ background: token("--Eulinx-color-sidebar-bg") ?? token("--Eulinx-color-elevated") }}
+    >
+      {children}
+    </div>
+  )
+}
+export function InspectorSlot({ children }: { children: ReactNode }): ReactNode {
+  return (
+    <div
+      data-eulinx-surface="inspector"
+      className="h-full overflow-y-auto border-l"
+      style={{ borderColor: token("--Eulinx-color-border"), background: token("--Eulinx-color-surface") }}
+    >
+      {children}
+    </div>
+  )
+}
+export function PanelSlot({ children }: { children: ReactNode }): ReactNode {
+  return (
+    <div data-eulinx-surface="panel" className="h-full overflow-hidden">
+      {children}
+    </div>
+  )
+}
+/** The center host for the active tab content (NodeGraph / TerminalView). */
+export function CanvasSurface({ children }: { children: ReactNode }): ReactNode {
+  return (
+    <div data-eulinx-surface="graph" className="h-full w-full overflow-hidden">
+      {children}
+    </div>
+  )
+}
+
+/** Default placeholder shown until a tenant mounts a region's content. */
+function RegionPlaceholder({ region }: { region: RegionId }): ReactNode {
+  return (
+    <div className="flex h-full items-center justify-center p-3 text-role-caption" style={{ color: token("--Eulinx-color-text-muted") }}>
+      {region}
+    </div>
+  )
+}
+
+function RailButton({ icon, label }: { icon: string; label: string }): ReactNode {
+  return (
+    <span className="flex h-8 w-8 items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-elevated-2)]" aria-hidden>
+      <Icon name={icon} size="md" aria-label={label} />
+    </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Helpers: safe announcer access + command registration
+// ---------------------------------------------------------------------------
+
+function useAnnouncerSafe(): ReturnType<typeof useAnnouncer> | null {
+  try {
+    return useAnnouncer()
+  } catch {
+    return null
   }
+}
+
+/** Live reference to the current API, so registered commands never go stale. */
+const liveApi: { current: WorkspaceLayoutApi | null } = { current: null }
+
+function registerLayoutCommands(): void {
+  const entries: Array<{ id: CommandId; run: () => void }> = [
+    { id: "layout.toggleSidebar", run: () => liveApi.current?.toggleRegion("sidebar") },
+    { id: "layout.toggleInspector", run: () => liveApi.current?.toggleRegion("inspector") },
+    { id: "layout.togglePanel", run: () => liveApi.current?.toggleRegion("panel") },
+    { id: "layout.cycleRegionFocus", run: () => liveApi.current?.cycleFocusNext() },
+    { id: "workspace.switchNext", run: () => liveApi.current?.cycleFocusNext() },
+    { id: "workspace.switchPrev", run: () => liveApi.current?.cycleFocusPrev() },
+  ]
+  for (const { id, run } of entries) {
+    if (keymapRegistry.getCommand(id)) continue
+    keymapRegistry.registerCommand({
+      id,
+      title: id,
+      category: "View",
+      description: id,
+      palette: true,
+      run,
+    })
+    keymapRegistry.registerBinding({
+      commandId: id,
+      chords: [],
+      scope: "global",
+      when: "appFocused",
+      source: "default",
+      enabled: true,
+    })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Empty defaults (loading state)
+// ---------------------------------------------------------------------------
+
+function emptySizes(): Record<RegionId, number> {
+  return { titleBar: 36, sidebar: 240, canvas: 480, inspector: 320, panel: 220, statusBar: 24 }
+}
+function emptyVisible(): Record<RegionId, boolean> {
+  return { titleBar: true, sidebar: true, canvas: true, inspector: true, panel: true, statusBar: true }
 }
