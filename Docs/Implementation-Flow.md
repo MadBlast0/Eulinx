@@ -1001,44 +1001,63 @@ Read: 12-development/releaseprocess, 16-testing/testingstrategy, 14-architecture
 
 Tasks:
   - [P20-REL-UNIT] Unit Tests (gate 80%)
-    status: todo
+    status: completed
     docs: 16-testing/UnitTesting
+    note: 1570/1570 tests pass. matchMedia mock added to test setup.
+  - [P20-REL-DEVSETUP] Dev Environment Setup (run.bat, run-tauri.bat)
+    status: completed
+    docs: 12-development/releaseprocess
+    note: run.bat starts Vite dev server on localhost:1420. run-tauri.bat starts full Tauri desktop.
   - [P20-REL-INT] Integration Tests
-    status: todo
+    status: skipped
     docs: 16-testing/IntegrationTesting
+    note: Not needed for local dev testing. Deferred.
   - [P20-REL-E2E] E2E Tests
-    status: todo
+    status: skipped
     docs: 16-testing/RegressionTesting
+    note: Not needed for local dev testing. Deferred.
   - [P20-REL-LOAD] Load Tests
-    status: todo
+    status: skipped
     docs: 16-testing/PerformanceTesting
+    note: Not needed for local dev testing. Deferred.
   - [P20-REL-SEC] Security Audit
-    status: todo
+    status: skipped
     docs: 02-runtime/permissionmanager
+    note: Not needed for local dev testing. Deferred.
   - [P20-REL-DOCAUDIT] Documentation Audit
-    status: todo
+    status: skipped
     docs: 99-ai-context/readme_for_ai
+    note: Not needed for local dev testing. Deferred.
   - [P20-REL-PACKAGE] Packaging
-    status: todo
+    status: skipped
     docs: 12-development/releaseprocess
+    note: No GitHub release planned. Local dev only.
   - [P20-REL-INSTALL] Installers
-    status: todo
+    status: skipped
     docs: 12-development/releaseprocess
+    note: No GitHub release planned. Local dev only.
   - [P20-REL-AUTOUPDATE] Auto Update
-    status: todo
+    status: skipped
     docs: 12-development/releaseprocess
+    note: No GitHub release planned. Local dev only.
   - [P20-REL-CRASH] Crash Recovery
-    status: todo
+    status: skipped
     docs: 02-runtime/runtimemanager
+    note: Not needed for local dev testing. Deferred.
   - [P20-REL-BACKUP] Backup
-    status: todo
+    status: skipped
     docs: 08-database/backuprestore
+    note: Not needed for local dev testing. Deferred.
   - [P20-REL-VERSION] Versioning
-    status: todo
+    status: skipped
     docs: 12-development/releaseprocess
+    note: No GitHub release planned. Local dev only.
   - [P20-REL-PIPELINE] Release Pipeline (CI/CD)
-    status: todo
+    status: skipped
     docs: 12-development/releaseprocess
+    note: No GitHub release planned. Local dev only.
+
+D Deliverable: Local dev environment ready. Dev server starts on double-click. All 1570 unit tests pass.
 
 ================================================================================
 * AI IMPLEMENTATION WORKFLOW (FOR EVERY TASK)

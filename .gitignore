@@ -2,6 +2,7 @@
 node_modules/
 .pnp
 .pnp.js
+package-lock.json
 
 # Build output
 dist/
@@ -12,9 +13,13 @@ target/
 .env
 .env.local
 .env.*.local
+.env.development
+.env.production
 
 # IDE
 .vscode/settings.json
+.vscode/launch.json
+.vscode/tasks.json
 .idea/
 *.swp
 *.swo
@@ -23,6 +28,7 @@ target/
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # TypeScript build info
 *.tsbuildinfo
@@ -33,10 +39,18 @@ logs/
 
 # Rust
 src-tauri/target/
+src-tauri/gen/
 
 # Coverage
 coverage/
+.nyc_output/
 
 # Temp
 tmp/
 temp/
+
+# Eulinx local data
+.eulinx/
+
+# MiMoCode session data
+.mimocode/
