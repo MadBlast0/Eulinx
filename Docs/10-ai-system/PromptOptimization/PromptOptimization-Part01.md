@@ -1,10 +1,11 @@
-﻿---
+---
 title: PromptOptimization Specification - Part 01
 status: draft
 version: 1.0
 tags:
   - ai-system
   - prompt-optimization
+  - flow:P12-PROMPT-MANAGER
 related:
   - "[[10-ai-system/README]]"
   - "[[PromptOptimization-Part02]]"

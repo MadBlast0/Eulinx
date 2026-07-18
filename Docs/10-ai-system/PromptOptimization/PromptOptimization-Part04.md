@@ -6,6 +6,7 @@ tags:
   - ai-system
   - prompt-optimization
   - implementation
+  - flow:P12-PROMPT-MANAGER
 related:
   - "[[PromptOptimization-Part03]]"
 ---

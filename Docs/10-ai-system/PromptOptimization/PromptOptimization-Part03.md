@@ -6,6 +6,7 @@ tags:
   - ai-system
   - prompt-optimization
   - inheritance
+  - flow:P12-PROMPT-BUILDER
 related:
   - "[[PromptOptimization-Part02]]"
   - "[[PromptOptimization-Part04]]"

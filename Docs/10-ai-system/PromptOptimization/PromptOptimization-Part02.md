@@ -6,6 +6,7 @@ tags:
   - ai-system
   - prompt-optimization
   - caching
+  - flow:P12-PROMPT-CACHE
 related:
   - "[[PromptOptimization-Part01]]"
   - "[[PromptOptimization-Part03]]"
