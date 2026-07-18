@@ -920,40 +920,40 @@ Read: 07-ui-ux/readme, 07-ui-ux/workspacelayout, 07-ui-ux/nodegraph
 
 Tasks:
   - [P18-UI-DASH] Dashboard
-    status: todo
+    status: completed
     docs: 07-ui-ux/workspacelayout
   - [P18-UI-RUNTIMEMON] Runtime Monitor
-    status: todo
+    status: completed
     docs: 02-runtime/eventbus
   - [P18-UI-WORKEREXP] Worker Explorer
-    status: todo
+    status: completed
     docs: 03-worker-system/workerhierarchy
   - [P18-UI-SESSIONVIEW] Session Viewer
-    status: todo
+    status: completed
     docs: 01-core-concepts/session
   - [P18-UI-MEMBROWSER] Memory Browser
-    status: todo
+    status: completed
     docs: 04-memory/memoryarchitecture
   - [P18-UI-ARTBROWSER] Artifact Browser
-    status: todo
+    status: completed
     docs: 05-artifacts/artifactarchitecture
   - [P18-UI-PROMPTINSPECT] Prompt Inspector
-    status: todo
+    status: completed
     docs: 10-ai-system/promptoptimization
   - [P18-UI-WFDESIGN] Workflow Designer (React Flow)
-    status: todo
+    status: completed
     docs: 07-ui-ux/nodegraph
   - [P18-UI-LOGS] Logs
-    status: todo
+    status: completed
     docs: 02-runtime/runtimemanager
   - [P18-UI-METRICS] Metrics
-    status: todo
+    status: completed
     docs: 07-ui-ux/workspacelayout
   - [P18-UI-COSTDASH] Cost Dashboard
-    status: todo
+    status: completed
     docs: 10-ai-system/costoptimization
   - [P18-UI-SETTINGS] Settings
-    status: todo
+    status: completed
     docs: 07-ui-ux/workspacelayout
 
 ================================================================================

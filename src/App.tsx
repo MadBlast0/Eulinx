@@ -1,9 +1,17 @@
+import { ThemeProvider } from "@/ui/tokens/theme-provider"
+import { WorkspaceLayout } from "@/ui/layout/workspace-layout"
+import { Dashboard } from "@/ui/surface/dashboard"
+import { Logs } from "@/ui/surface/logs"
+
 function App() {
   return (
-    <div className="flex h-screen items-center justify-center bg-background text-foreground">
-      <h1 className="text-2xl font-bold">Eulinx</h1>
-    </div>
-  );
+    <ThemeProvider>
+      <WorkspaceLayout
+        canvas={<Dashboard />}
+        panel={<Logs />}
+      />
+    </ThemeProvider>
+  )
 }
 
-export default App;
+export default App
