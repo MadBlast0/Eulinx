@@ -9,8 +9,17 @@ import { useTheme } from "@/ui/tokens/theme-provider"
 import { useLayoutStore } from "@/stores/layout-store"
 
 export function Settings() {
-  const { theme, setTheme } = useTheme()
+  const { active, setPreference } = useTheme()
   const { resetLayout } = useLayoutStore()
+
+  const theme = active.appearance
+  const setTheme = (value: "light" | "dark" | "system") => {
+    if (value === "system") {
+      setPreference({ mode: "system", darkThemeId: "Eulinx-dark", lightThemeId: "Eulinx-light" })
+    } else {
+      setPreference({ mode: "explicit", themeId: value === "dark" ? "Eulinx-dark" : "Eulinx-light" })
+    }
+  }
 
   return (
     <div className="flex h-full flex-col gap-6 p-4 overflow-y-auto">

@@ -5,4 +5,4 @@
  * tokens folder directly.
  */
 
-export { useTheme, type UseThemeValue } from "@/ui/tokens/theme-provider"
+export { useTheme, type UseThemeValue, type Theme } from "@/ui/tokens/theme-provider"

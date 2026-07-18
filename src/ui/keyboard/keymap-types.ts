@@ -28,6 +28,9 @@ export const COMMAND_NAMESPACES = [
   "search",
   "merge",
   "chord",
+  "layout",
+  "workspace",
+  "cards",
 ] as const
 
 export type CommandNamespace = (typeof COMMAND_NAMESPACES)[number]
