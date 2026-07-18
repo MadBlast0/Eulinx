@@ -1,0 +1,349 @@
+{
+  "generatedAt": "2026-07-18T18:04:38.727Z",
+  "tokenSetVersion": "1.0.0",
+  "themes": [
+    "Eulinx-dark",
+    "Eulinx-light"
+  ],
+  "aaFloors": {
+    "text": 4.5,
+    "ui": 3
+  },
+  "rows": [
+    {
+      "token": "--Eulinx-color-border",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 3.1,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 3.2,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-border-strong",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 3.5,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 3.4,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-text-primary",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "text-4.5",
+      "dark": {
+        "ratio": 15,
+        "passes": true,
+        "grade": "AAA"
+      },
+      "light": {
+        "ratio": 14.8,
+        "passes": true,
+        "grade": "AAA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-text-muted",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "text-4.5",
+      "dark": {
+        "ratio": 7.2,
+        "passes": true,
+        "grade": "AAA"
+      },
+      "light": {
+        "ratio": 5.6,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-accent",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 4.6,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 4.8,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-success",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 4.1,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 4.3,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-warning",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 4.3,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 4.6,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-danger",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 4.5,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 4.7,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-info",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 4,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 4.5,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-state-requested",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 3.4,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 3.3,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-state-queued",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 3.6,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 3.8,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-state-spawning",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 4,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 4.4,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-state-initializing",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 4,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 4.4,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-state-idle",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 3.2,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 3.3,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-state-working",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 4.1,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 4.3,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-state-waiting",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 3.8,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 4,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-state-blocked",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 3.7,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 3.9,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-state-paused",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 4.3,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 4.6,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-state-failing",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 4.5,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 4.7,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-state-terminating",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 3.7,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 3.9,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-state-terminated",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 3.5,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 3.6,
+        "passes": true,
+        "grade": "AA"
+      }
+    },
+    {
+      "token": "--Eulinx-color-state-zombie",
+      "onSurface": "--Eulinx-color-surface",
+      "requirement": "ui-3.0",
+      "dark": {
+        "ratio": 3.2,
+        "passes": true,
+        "grade": "AA"
+      },
+      "light": {
+        "ratio": 3.4,
+        "passes": true,
+        "grade": "AA"
+      }
+    }
+  ],
+  "summary": {
+    "total": 22,
+    "passed": 22,
+    "failed": 0
+  }
+}
