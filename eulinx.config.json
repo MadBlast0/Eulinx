@@ -1,0 +1,11 @@
+{
+  "name": "eulinx-workspace",
+  "version": "0.0.1",
+  "runtime": {
+    "maxWorkers": 4,
+    "tickIntervalMs": 5000,
+    "schedulerTimeoutMs": 30000
+  },
+  "providers": {},
+  "plugins": []
+}
