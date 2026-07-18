@@ -1,0 +1,160 @@
+/**
+ * Eulinx Animations — keyframe definitions + helper classes.
+ *
+ * Only transform/opacity are animated (Part 01 §Definition, Part 02 §rule).
+ * Durations/easings are consumed EXCLUSIVELY as the `--Eulinx-duration-<t>`
+ * / `--Eulinx-ease-<t>` custom properties produced by the DesignTokens agent.
+ *
+ * This file is the ONLY place keyframes are declared. Components never write
+ * ad-hoc keyframes at call sites (Part 01 "not a general animation library").
+ */
+
+/* ---- Keyframe definitions (only the keyframe-based catalog entries) -------- */
+
+/* edge.flowPulse: liveness signal. Pure opacity loop so the edge "breathes"
+   without triggering layout. Status is ALSO carried by edge color. */
+@keyframes eulinx-edge-flowPulse {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* skeleton.shimmer: loading placeholder. Opacity-only loop. */
+@keyframes eulinx-skeleton-shimmer {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 0.8;
+  }
+}
+
+/* spinner.rotate: indeterminate indicator. transform-only loop. */
+@keyframes eulinx-spinner-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* opacity_fade_120ms: the reduced-motion substitute for edge.flowPulse
+   (Part 01 ReducedMotionStrategy.substitute). A single non-looping 120ms
+   fade preserves the "this edge just activated" fact without a continuous loop. */
+@keyframes eulinx-opacity-fade {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---- Helper classes ------------------------------------------------------- */
+
+/* Keyframe-driven entries. Each references its keyframe + token vars.
+   `will-change` is NOT set here (Part 01 AI Notes: never on a shared class) —
+   it is armed imperatively by use-animation.ts one frame before start. */
+.eulinx-anim-edge-flowPulse {
+  animation-name: eulinx-edge-flowPulse;
+  animation-duration: var(--Eulinx-duration-slow);
+  animation-timing-function: var(--Eulinx-ease-linear);
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+.eulinx-anim-skeleton-shimmer {
+  animation-name: eulinx-skeleton-shimmer;
+  animation-duration: var(--Eulinx-duration-slower);
+  animation-timing-function: var(--Eulinx-ease-inOut);
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+.eulinx-anim-spinner-rotate {
+  animation-name: eulinx-spinner-rotate;
+  animation-duration: var(--Eulinx-duration-slow);
+  animation-timing-function: var(--Eulinx-ease-linear);
+  animation-iteration-count: infinite;
+}
+
+/* The reduced-motion substitute for edge.flowPulse. */
+.eulinx-anim-opacity-fade_120ms {
+  animation-name: eulinx-opacity-fade;
+  animation-duration: var(--Eulinx-duration-fast);
+  animation-timing-function: var(--Eulinx-ease-linear);
+  animation-iteration-count: 1;
+}
+
+/* Transition-driven entries get a base transition declaration. The from/to
+   values are applied by the component via state classes; the transition only
+   needs to be declared once. Reversibility (Part 01 interrupted state) falls
+   out of CSS transitions natively. */
+.eulinx-anim-transition {
+  transition-property: transform, opacity;
+  transition-duration: var(--Eulinx-duration-base);
+  transition-timing-function: var(--Eulinx-ease-standard);
+  transition-delay: 0ms;
+}
+
+/* Per-animation transition timing overrides (kept token-driven). */
+.eulinx-anim-panel-open,
+.eulinx-anim-panel-close {
+  transition-duration: var(--Eulinx-duration-base);
+  transition-timing-function: var(--Eulinx-ease-standard);
+}
+.eulinx-anim-node-statusChange {
+  transition-duration: var(--Eulinx-duration-fast);
+  transition-timing-function: var(--Eulinx-ease-standard);
+}
+.eulinx-anim-node-appear {
+  transition-duration: var(--Eulinx-duration-fast);
+  transition-timing-function: var(--Eulinx-ease-out);
+}
+.eulinx-anim-card-expand {
+  transition-duration: var(--Eulinx-duration-base);
+  transition-timing-function: var(--Eulinx-ease-standard);
+}
+.eulinx-anim-toast-in {
+  transition-duration: var(--Eulinx-duration-base);
+  transition-timing-function: var(--Eulinx-ease-emphasized);
+}
+.eulinx-anim-toast-out {
+  transition-duration: var(--Eulinx-duration-fast);
+  transition-timing-function: var(--Eulinx-ease-standard);
+}
+
+/* ---- Reduced motion: neutralize everything in place ----------------------- */
+/* Under reduced motion the DesignTokens override collapses every
+   --Eulinx-duration-* to 0ms (tokens.css), so transitions/loops already
+   resolve to instant. This block is a belt-and-suspenders guarantee that no
+   continuous motion survives and that loops fall to a single static frame. */
+@media (prefers-reduced-motion: reduce) {
+  .eulinx-anim-edge-flowPulse,
+  .eulinx-anim-skeleton-shimmer,
+  .eulinx-anim-spinner-rotate,
+  .eulinx-anim-opacity-fade_120ms {
+    animation: none !important;
+  }
+  .eulinx-anim-transition,
+  .eulinx-anim-panel-open,
+  .eulinx-anim-panel-close,
+  .eulinx-anim-node-statusChange,
+  .eulinx-anim-node-appear,
+  .eulinx-anim-card-expand,
+  .eulinx-anim-toast-in,
+  .eulinx-anim-toast-out {
+    transition: none !important;
+  }
+}
+
+/* ---- will-change arming helper -------------------------------------------- */
+/* Imported by use-animation.ts which sets it imperatively; exposed as a class
+   for completeness/culling. Never left on an idle element. */
+.eulinx-anim-will-change {
+  will-change: transform, opacity;
+}
