@@ -575,46 +575,46 @@ Read: 05-artifacts/readme, 05-artifacts/artifactarchitecture, 05-artifacts/merge
 
 Tasks:
   - [P10-ART-MANAGER] Artifact Manager
-    status: todo
+    status: completed
     docs: 02-runtime/artifactmanager
   - [P10-ART-REGISTRY] Registry
-    status: todo
+    status: completed
     docs: 05-artifacts/artifactarchitecture
   - [P10-ART-META] Metadata
-    status: todo
+    status: completed
     docs: 05-artifacts/artifactarchitecture
   - [P10-ART-VERSION] Versioning
-    status: todo
+    status: completed
     docs: 05-artifacts/artifactversioning
   - [P10-ART-STORAGE] Storage
-    status: todo
+    status: completed
     docs: 05-artifacts/artifactarchitecture
   - [P10-ART-REF] References
-    status: todo
+    status: completed
     docs: 05-artifacts/artifactarchitecture
   - [P10-ART-GRAPH] Dependency Graph
-    status: todo
+    status: completed
     docs: 05-artifacts/artifactarchitecture
   - [P10-ART-SEARCH] Search
-    status: todo
+    status: completed
     docs: 05-artifacts/artifactrelationships
   - [P10-ART-IMPORT] Import
-    status: todo
+    status: completed
     docs: 05-artifacts/mergeflow
   - [P10-ART-EXPORT] Export
-    status: todo
+    status: completed
     docs: 05-artifacts/mergeflow
   - [P10-ART-HISTORY] History
-    status: todo
+    status: completed
     docs: 08-database/historytables
   - [P10-ART-LIFECYCLE] Lifecycle (propose to verify to merge)
-    status: todo
+    status: completed
     docs: 05-artifacts/artifactlifecycle
   - [P10-ART-VERIFY] Verification
-    status: todo
+    status: completed
     docs: 05-artifacts/verification
   - [P10-ART-MERGE] MergeManager (apply to trusted state)
-    status: todo
+    status: completed
     docs: 02-runtime/mergemanager
 
 ================================================================================
