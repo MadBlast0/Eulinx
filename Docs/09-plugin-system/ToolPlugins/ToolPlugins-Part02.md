@@ -1,4 +1,4 @@
-﻿---
+---
 title: ToolPlugins Specification - Part 02
 status: draft
 version: 1.0
@@ -7,6 +7,7 @@ tags:
   - tool-plugins
   - manifest
   - validation
+  - flow:P13-TOOL-LOADER
 related:
   - "[[09-plugin-system/README]]"
   - "[[PluginArchitecture-Part01]]"

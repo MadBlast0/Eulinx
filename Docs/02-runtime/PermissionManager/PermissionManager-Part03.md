@@ -1,4 +1,4 @@
-﻿---
+---
 title: Permission Manager Part 03 - Grants, Approvals, Expiry
 status: draft
 version: 1.0
@@ -6,6 +6,7 @@ tags:
   - runtime
   - permission-manager
   - approvals
+  - flow:P14-SEC-APPROVAL
 related:
   - "[[PermissionManager-Part02]]"
   - "[[Permission-Part04]]"

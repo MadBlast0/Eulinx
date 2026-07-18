@@ -704,37 +704,37 @@ Read: 09-plugin-system/readme, 14-tool-system, 09-plugin-system/toolregistry
 
 Tasks:
   - [P13-TOOL-MANAGER] Tool Manager
-    status: todo
+    status: completed
     docs: 09-plugin-system/ToolPlugins
   - [P13-TOOL-FS] Filesystem tool
-    status: todo
+    status: completed
     docs: 09-plugin-system/ToolPlugins
   - [P13-TOOL-GIT] Git tool
-    status: todo
+    status: completed
     docs: 09-plugin-system/ToolPlugins
   - [P13-TOOL-TERM] Terminal tool (xterm + Rust PTY)
-    status: todo
+    status: completed
     docs: 09-plugin-system/ToolPlugins
   - [P13-TOOL-BROWSER] Browser tool
-    status: todo
+    status: completed
     docs: 09-plugin-system/ToolPlugins
   - [P13-TOOL-HTTP] HTTP tool
-    status: todo
+    status: completed
     docs: 09-plugin-system/ToolPlugins
   - [P13-TOOL-DB] Database tool
-    status: todo
+    status: completed
     docs: 09-plugin-system/ToolPlugins
   - [P13-TOOL-DOCKER] Docker tool
-    status: todo
+    status: completed
     docs: 09-plugin-system/ToolPlugins
   - [P13-TOOL-MCP] MCP tool
-    status: todo
+    status: completed
     docs: 09-plugin-system/pluginsdk
   - [P13-TOOL-LOADER] Plugin Loader
-    status: todo
+    status: completed
     docs: 09-plugin-system/pluginlifecycle
   - [P13-TOOL-REGISTRY] Tool Registry
-    status: todo
+    status: completed
     docs: 02-runtime/toolregistry
 
 ================================================================================
@@ -746,34 +746,34 @@ Read: 09-plugin-system/permissionmanager, 14-architecture-decisions/adr-009
 
 Tasks:
   - [P14-SEC-PERMISSION] Permission Manager
-    status: todo
+    status: completed
     docs: 02-runtime/permissionmanager
   - [P14-SEC-APPROVAL] Approval System
-    status: todo
+    status: completed
     docs: 02-runtime/permissionmanager
   - [P14-SEC-SECRET] Secret Manager
-    status: todo
+    status: completed
     docs: 02-runtime/permissionmanager
   - [P14-SEC-POLICY] Policy Engine
-    status: todo
+    status: completed
     docs: 02-runtime/permissionmanager
   - [P14-SEC-SANDBOX] Sandboxing
-    status: todo
+    status: completed
     docs: 09-plugin-system/pluginlifecycle
   - [P14-SEC-WSISO] Workspace Isolation
-    status: todo
+    status: completed
     docs: 09-plugin-system/pluginlifecycle
   - [P14-SEC-SESSISO] Session Isolation
-    status: todo
+    status: completed
     docs: 01-core-concepts/session
   - [P14-SEC-AUDIT] Auditing
-    status: todo
+    status: completed
     docs: 02-runtime/permissionmanager
   - [P14-SEC-AUTHN] Authentication
-    status: todo
+    status: completed
     docs: 02-runtime/permissionmanager
   - [P14-SEC-AUTHZ] Authorization
-    status: todo
+    status: completed
     docs: 02-runtime/permissionmanager
 
 ================================================================================

@@ -7,6 +7,7 @@ tags:
   - tool-plugins
   - json-schema
   - prompt
+  - flow:P13-TOOL-REGISTRY
 related:
   - "[[09-plugin-system/README]]"
   - "[[ToolPlugins-Part01]]"

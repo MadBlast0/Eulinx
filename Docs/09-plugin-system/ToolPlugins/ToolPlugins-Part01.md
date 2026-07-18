@@ -1,4 +1,4 @@
-﻿---
+---
 title: ToolPlugins Specification - Part 01
 status: draft
 version: 1.0
@@ -7,6 +7,7 @@ tags:
   - tool-plugins
   - tools
   - architecture
+  - flow:P13-TOOL-MANAGER
 related:
   - "[[09-plugin-system/README]]"
   - "[[PluginArchitecture-Part01]]"

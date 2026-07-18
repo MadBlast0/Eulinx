@@ -1,4 +1,4 @@
-﻿---
+---
 title: Permission Manager Part 01 - Purpose and Architecture
 status: draft
 version: 1.0
@@ -7,6 +7,7 @@ tags:
   - permission-manager
   - security
   - Eulinx
+  - flow:P14-SEC-PERMISSION
 related:
   - "[[Permission-Part01]]"
   - "[[RuntimeManager-Part01]]"
