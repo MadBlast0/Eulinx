@@ -1,48 +1,93 @@
-KEY IMPLEMENTATION MASTER FLOW (Construction Blueprint - Dependency Driven)
-
-HOW TO USE THIS FILE (AI + HUMAN WORKFLOW)
-This file is the single control panel for building Eulinx. Every phase below lists discrete TASKS.
-Each task has:
-  - TASK-ID  : a unique, stable identifier (e.g. P02-RUNTIME-MANAGER). Use it in commits, chat, and tags.
-  - status   : one of  todo | in_progress | partial | completed | blocked
-  - docs     : the doc topic(s) in the Docs/ vault that specify this task (PC-portable, no absolute paths).
-
-WORKFLOW FOR THE AI CODING MODEL
-  1. Human says: "Do phase NN" or "Complete task Pxx-YYY".
-  2. AI reads this file, finds the TASK-ID, checks status and docs.
-  3. AI reads the linked doc(s) under Docs/<docs> to learn the specification.
-  4. AI verifies ALL dependency tasks are completed before starting (rule).
-  5. AI implements ONLY that task, writes tests, runs lint/tests.
-  6. AI updates status in THIS file (todo->in_progress->partial/completed/blocked; add a note for partial/blocked).
-  7. AI adds the matching flow: tag to the doc file(s) it touched (see TAGGING below).
-  8. AI commits with the TASK-ID in the message.
-
-BIDIRECTIONAL TAGGING (so Docs <-> Flow always stay linked, on any PC)
-  - In THIS file, each task lists its docs: topic paths (e.g. 02-runtime/RuntimeManager).
-  - In the Docs vault, every spec file that a task implements MUST carry a tag of the form:
-        flow:Pxx-YYY
-    in its YAML tags: block. Example: a doc implementing P02-RUNTIME-MANAGER has flow:P02-RUNTIME-MANAGER.
-  - To find the docs for a task:   grep "flow:Pxx-YYY" across Docs/
-  - To find the task for a doc:    read its flow: tag, then search this file for that TASK-ID.
-  Tags are the source of truth for linking - never hard-code absolute file paths.
-
-STATUS LEGEND
-  todo         not started
-  in_progress  actively being built
-  partial      started but incomplete (see note)
-  completed    done, tests green, docs updated
-  blocked      cannot proceed (dependency or unknown) - see note
-
-SYMBOL LEGEND
-  X  = must be completed first (dependency)      -> = depends on
-  *  = major milestone                           ! = do NOT implement until deps complete
-  R  = read architecture docs first              T = testing required
-  D  = deliverable                               A = AI prompt stage
-
-GLOBAL RULES
-  ! Never implement a phase whose dependencies are incomplete.
-  ! Never ask the AI to build an entire subsystem in one prompt.
-  ! Break every subsystem into small, verifiable tasks with clear acceptance criteria.
+KEY IMPLEMENTATION MASTER FLOW (Construction Blueprint - Dependency Driven)
+
+
+
+HOW TO USE THIS FILE (AI + HUMAN WORKFLOW)
+
+This file is the single control panel for building Eulinx. Every phase below lists discrete TASKS.
+
+Each task has:
+
+  - TASK-ID  : a unique, stable identifier (e.g. P02-RUNTIME-MANAGER). Use it in commits, chat, and tags.
+
+  - status   : one of  todo | in_progress | partial | completed | blocked
+
+  - docs     : the doc topic(s) in the Docs/ vault that specify this task (PC-portable, no absolute paths).
+
+
+
+WORKFLOW FOR THE AI CODING MODEL
+
+  1. Human says: "Do phase NN" or "Complete task Pxx-YYY".
+
+  2. AI reads this file, finds the TASK-ID, checks status and docs.
+
+  3. AI reads the linked doc(s) under Docs/<docs> to learn the specification.
+
+  4. AI verifies ALL dependency tasks are completed before starting (rule).
+
+  5. AI implements ONLY that task, writes tests, runs lint/tests.
+
+  6. AI updates status in THIS file (todo->in_progress->partial/completed/blocked; add a note for partial/blocked).
+
+  7. AI adds the matching flow: tag to the doc file(s) it touched (see TAGGING below).
+
+  8. AI commits with the TASK-ID in the message.
+
+
+
+BIDIRECTIONAL TAGGING (so Docs <-> Flow always stay linked, on any PC)
+
+  - In THIS file, each task lists its docs: topic paths (e.g. 02-runtime/RuntimeManager).
+
+  - In the Docs vault, every spec file that a task implements MUST carry a tag of the form:
+
+        flow:Pxx-YYY
+
+    in its YAML tags: block. Example: a doc implementing P02-RUNTIME-MANAGER has flow:P02-RUNTIME-MANAGER.
+
+  - To find the docs for a task:   grep "flow:Pxx-YYY" across Docs/
+
+  - To find the task for a doc:    read its flow: tag, then search this file for that TASK-ID.
+
+  Tags are the source of truth for linking - never hard-code absolute file paths.
+
+
+
+STATUS LEGEND
+
+  todo         not started
+
+  in_progress  actively being built
+
+  partial      started but incomplete (see note)
+
+  completed    done, tests green, docs updated
+
+  blocked      cannot proceed (dependency or unknown) - see note
+
+
+
+SYMBOL LEGEND
+
+  X  = must be completed first (dependency)      -> = depends on
+
+  *  = major milestone                           ! = do NOT implement until deps complete
+
+  R  = read architecture docs first              T = testing required
+
+  D  = deliverable                               A = AI prompt stage
+
+
+
+GLOBAL RULES
+
+  ! Never implement a phase whose dependencies are incomplete.
+
+  ! Never ask the AI to build an entire subsystem in one prompt.
+
+  ! Break every subsystem into small, verifiable tasks with clear acceptance criteria.
+
   ! NO code belongs in the Docs/ specs (prose + mermaid/text diagrams only). This file tracks; docs specify.
 
 ================================================================================
@@ -401,34 +446,34 @@ Read: 03-worker-system/workersession, 03-worker-system/sessionbranching
 
 Tasks:
   - [P07-SESSION-CREATE] Session Creation
-    status: todo
+    status: completed
     docs: 01-core-concepts/session
   - [P07-SESSION-META] Metadata
-    status: todo
+    status: completed
     docs: 01-core-concepts/session
   - [P07-SESSION-PERSIST] Persistence
-    status: todo
+    status: completed
     docs: 08-database/runstatepersistence
   - [P07-SESSION-SNAP] Snapshots
-    status: todo
+    status: completed
     docs: 08-database/backuprestore
   - [P07-SESSION-REPLAY] Replay
-    status: todo
+    status: completed
     docs: 02-runtime/processlifecycle
   - [P07-SESSION-RESUME] Resume
-    status: todo
+    status: completed
     docs: 01-core-concepts/session
   - [P07-SESSION-BRANCH] Branches
-    status: todo
+    status: completed
     docs: 01-core-concepts/session
   - [P07-SESSION-HISTORY] History
-    status: todo
+    status: completed
     docs: 08-database/historytables
   - [P07-SESSION-CTX] Context
-    status: todo
+    status: completed
     docs: 04-memory/contextinjection
   - [P07-SESSION-CLEANUP] Cleanup
-    status: todo
+    status: completed
     docs: 03-worker-system/workerlifecycle
 
 ================================================================================
