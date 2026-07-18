@@ -6,6 +6,7 @@ tags:
   - ai-system
   - model-profiles
   - schema
+  - flow:P11-PROV-REGISTRY
 related:
   - "[[ModelProfiles-Part01]]"
   - "[[ModelProfiles-Part03]]"

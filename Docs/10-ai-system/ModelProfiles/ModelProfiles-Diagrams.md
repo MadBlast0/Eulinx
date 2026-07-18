@@ -6,6 +6,7 @@ tags:
   - ai-system
   - model-profiles
   - diagrams
+  - flow:P11-PROV-MANAGER
 related:
   - "[[ModelProfiles-Part01]]"
 ---

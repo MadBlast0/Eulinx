@@ -1,10 +1,11 @@
-﻿---
+---
 title: ModelProfiles Specification - Part 01
 status: draft
 version: 1.0
 tags:
   - ai-system
   - model-profiles
+  - flow:P11-PROV-MANAGER
 related:
   - "[[10-ai-system/README]]"
   - "[[ModelProfiles-Part02]]"

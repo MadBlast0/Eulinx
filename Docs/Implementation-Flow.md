@@ -626,34 +626,34 @@ Read: 10-ai-system/modelprofiles, 15-api/serviceapi
 
 Tasks:
   - [P11-PROV-MANAGER] Provider Manager
-    status: todo
+    status: completed
     docs: 10-ai-system/modelprofiles
   - [P11-PROV-CLAUDE] Claude adapter
-    status: todo
+    status: completed
     docs: 10-ai-system/modelprofiles
   - [P11-PROV-OPENAI] OpenAI adapter
-    status: todo
+    status: completed
     docs: 10-ai-system/modelprofiles
   - [P11-PROV-GEMINI] Gemini adapter
-    status: todo
+    status: completed
     docs: 10-ai-system/modelprofiles
   - [P11-PROV-OLLAMA] Ollama adapter
-    status: todo
+    status: completed
     docs: 10-ai-system/modelprofiles
   - [P11-PROV-HERMES] Hermes adapter
-    status: todo
+    status: completed
     docs: 10-ai-system/modelprofiles
   - [P11-PROV-OPENROUTER] OpenRouter adapter
-    status: todo
+    status: completed
     docs: 10-ai-system/modelprofiles
   - [P11-PROV-LMSTUDIO] LM Studio adapter
-    status: todo
+    status: completed
     docs: 10-ai-system/modelprofiles
   - [P11-PROV-CUSTOM] Custom Provider SDK
-    status: todo
+    status: completed
     docs: 10-ai-system/modelprofiles
   - [P11-PROV-REGISTRY] Provider Registry
-    status: todo
+    status: completed
     docs: 10-ai-system/modelprofiles
 
 ================================================================================
