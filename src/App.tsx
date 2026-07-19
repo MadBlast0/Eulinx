@@ -49,8 +49,16 @@ class Boundary extends Component<
   render() {
     if (this.state.error) {
       return (
-        <div style={{ padding: 8, color: "red", background: "#111", fontSize: 12, whiteSpace: "pre-wrap" as const }}>
-          <b>{this.props.label}:</b> {this.state.error.message}
+        <div
+          role="alert"
+          className="m-2 rounded-md border border-[color:hsl(var(--destructive))] bg-[color:hsl(var(--destructive)/0.12)] p-3 text-sm text-[color:hsl(var(--foreground))]"
+        >
+          <div className="font-semibold text-[color:hsl(var(--destructive))]">
+            {this.props.label} failed to render
+          </div>
+          <pre className="mt-1 overflow-auto whitespace-pre-wrap text-xs text-[color:hsl(var(--muted-foreground))]">
+            {this.state.error.message}
+          </pre>
         </div>
       )
     }
@@ -108,8 +116,8 @@ function App() {
                                                   <Info className="h-5 w-5" aria-hidden />
                                                 </div>
                                                 <div className="space-y-1">
-                                                  <p className="font-medium text-foreground">Nothing selected</p>
-                                                  <p className="leading-5">Select a node, worker, or workflow to view its details.</p>
+                                                  <p className="font-medium text-foreground">Nothing selected yet</p>
+                                                  <p className="leading-5">When you add a worker or open a file, its details appear here so you can watch its progress and review the results.</p>
                                                 </div>
                                               </div>
                                             </div> : undefined

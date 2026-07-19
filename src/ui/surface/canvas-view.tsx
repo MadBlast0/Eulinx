@@ -73,27 +73,28 @@ function CanvasEmptyState({
             className="text-sm font-medium"
             style={{ color: token("--Eulinx-color-text") }}
           >
-            No nodes yet
+            Start your first task
           </h2>
           <p
             className="text-xs"
             style={{ color: token("--Eulinx-color-text-muted") }}
           >
-            Add a worker node to start building your workflow. Connect nodes
-            together to create AI automation pipelines.
+            Add an AI helper to begin. Each helper — called a worker — carries out
+            steps of your goal in its own terminal session. You can add more and
+            connect them as your project grows.
           </p>
         </div>
         <button
           type="button"
           onClick={onAddNode}
-          className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs transition-colors"
+          className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-colors"
           style={{
             background: token("--Eulinx-color-accent"),
             color: token("--Eulinx-color-surface"),
           }}
         >
           <Icon name="action.add" size="xs" aria-hidden />
-          Add Worker
+          Add your first worker
         </button>
       </div>
     </div>

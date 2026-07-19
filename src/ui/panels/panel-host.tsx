@@ -201,6 +201,13 @@ export function PanelHost({ region = "bottom", emptyState = null }: PanelHostPro
   const groups = panels.groupsIn(region)
   const anim = useAnimation("panel.open")
 
+  // Fire the reduced-motion-aware enter transition once the region mounts.
+  useEffect(() => {
+    anim.begin()
+    return () => anim.end()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const maximized = Object.values(panels.state.instances).find(
     (i) => i.region === region && i.maximized,
   )

@@ -6,7 +6,7 @@
  * with proper spacing hierarchy.
  */
 
-import { useId, type ReactNode } from "react"
+import { useEffect, useId, type ReactNode } from "react"
 import { Icon } from "@/ui/icons"
 import { token } from "@/ui/tokens"
 import { useAnimation } from "@/ui/animations"
@@ -36,6 +36,14 @@ export function SidebarSection({
 }: SidebarSectionProps): React.ReactElement {
   const bodyId = useId()
   const anim = useAnimation("panel.open")
+
+  // Play a reduced-motion-aware enter transition whenever the section expands.
+  useEffect(() => {
+    if (expanded) {
+      anim.begin()
+      return () => anim.end()
+    }
+  }, [expanded, anim])
 
   return (
     <section

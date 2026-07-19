@@ -55,49 +55,59 @@ export function WelcomeScreen({
       className="flex h-full flex-col overflow-y-auto"
       style={{ background: token("--Eulinx-color-background") }}
     >
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-10 py-12">
-        {/* Header */}
-        <div className="flex flex-col gap-6 border-b pb-8" style={{ borderColor: token("--Eulinx-color-border") }}>
-          <div className="flex flex-col gap-2">
-            <h1
-              className="text-2xl font-semibold"
-              style={{ color: token("--Eulinx-color-text") }}
-            >
-              Eulinx
-            </h1>
-            <p
-              className="max-w-xl text-sm leading-6"
-              style={{ color: token("--Eulinx-color-text-secondary") }}
-            >
-              Open a workspace, create a project, or start from a workflow template.
-            </p>
-          </div>
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-10 py-12">
+          {/* Header */}
+          <div className="flex flex-col gap-6 border-b pb-8" style={{ borderColor: token("--Eulinx-color-border") }}>
+            <div className="flex flex-col gap-2">
+              <h1
+                className="text-2xl font-semibold"
+                style={{ color: token("--Eulinx-color-text") }}
+              >
+                Eulinx
+              </h1>
+              <p
+                className="max-w-xl text-sm leading-6"
+                style={{ color: token("--Eulinx-color-text-secondary") }}
+              >
+                Open a workspace, create a project, or start from a workflow template.
+              </p>
+              <p
+                className="max-w-2xl text-xs leading-5"
+                style={{ color: token("--Eulinx-color-text-muted") }}
+              >
+                Eulinx is a workspace for getting real work done with AI. You describe a
+                goal in plain language, and Eulinx starts AI helpers — called{" "}
+                <strong style={{ color: token("--Eulinx-color-text-secondary") }}>workers</strong> — that
+                carry out the steps in real terminal sessions. You review the results and
+                decide what to keep.
+              </p>
+            </div>
 
-          {/* Quick Actions */}
-          <div className="flex flex-wrap gap-2">
-            <QuickAction
-              icon="action.open"
-              label="Open Folder"
-              onClick={onOpenFolder}
-              primary
-            />
-            <QuickAction
-              icon="action.add"
-              label="New Project"
-              onClick={onCreateProject}
-            />
-            <QuickAction
-              icon="action.import"
-              label="Import"
-              onClick={onImportProject}
-            />
+            {/* Quick Actions */}
+            <div className="flex flex-wrap gap-2">
+              <QuickAction
+                icon="action.open"
+                label="Open Folder"
+                onClick={onOpenFolder}
+                primary
+              />
+              <QuickAction
+                icon="action.add"
+                label="New Project"
+                onClick={onCreateProject}
+              />
+              <QuickAction
+                icon="action.import"
+                label="Import"
+                onClick={onImportProject}
+              />
+            </div>
           </div>
-        </div>
 
         {/* Two-column layout */}
         <div className="grid grid-cols-1 gap-10 lg:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
           {/* Recent Projects */}
-          <Section title="Recent Projects">
+          <Section title="Example Projects" hint="These are sample entries to help you get started.">
             {RECENT_PROJECTS.length === 0 ? (
               <EmptyState message="No recent projects" />
             ) : (
@@ -250,9 +260,11 @@ function QuickAction({
 
 function Section({
   title,
+  hint,
   children,
 }: {
   title: string
+  hint?: string
   children: ReactNode
 }): ReactNode {
   return (
@@ -266,6 +278,11 @@ function Section({
       >
         {title}
       </h2>
+      {hint ? (
+        <p className="-mt-1 text-xs leading-5" style={{ color: token("--Eulinx-color-text-muted") }}>
+          {hint}
+        </p>
+      ) : null}
       {children}
     </div>
   )

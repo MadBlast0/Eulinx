@@ -290,10 +290,10 @@ export const MAX_ANIMATING_NODES = 24;
 export function durationVar(token: DurationToken): string {
   const map: Record<DurationToken, string> = {
     instant: "var(--Eulinx-duration-instant)",
-    fast: "var(--Eulinx-duration-fast)",
-    normal: "var(--Eulinx-duration-base)",
-    slow: "var(--Eulinx-duration-slow)",
-    deliberate: "var(--Eulinx-duration-slower)",
+    fast: "var(--Eulinx-duration-hover)",
+    normal: "var(--Eulinx-duration-button)",
+    slow: "var(--Eulinx-duration-card)",
+    deliberate: "var(--Eulinx-duration-navigation)",
   };
   return map[token];
 }
