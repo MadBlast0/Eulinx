@@ -22,7 +22,7 @@ import type {
   UserGoal,
   ProgressReport,
 } from "../orchestrator-types"
-import { PlannerOrchestrator } from "./planner"
+import { PlannerOrchestrator, type PlannerGraphNode } from "./planner"
 
 // ---------------------------------------------------------------------------
 // Coordinator (Root Orchestrator)
@@ -30,6 +30,7 @@ import { PlannerOrchestrator } from "./planner"
 
 export class CoordinatorOrchestrator extends BaseOrchestrator {
   private readonly goal: UserGoal
+  private readonly graphNodes: readonly PlannerGraphNode[]
   private planner: PlannerOrchestrator | null = null
   private plan: Plan | null = null
   private phaseOrchestrators: Map<OrchestratorId, BaseOrchestrator> = new Map()
@@ -37,9 +38,11 @@ export class CoordinatorOrchestrator extends BaseOrchestrator {
   constructor(
     config: OrchestratorConfig,
     goal: UserGoal,
+    graphNodes?: readonly PlannerGraphNode[],
   ) {
     super(config)
     this.goal = goal
+    this.graphNodes = graphNodes ?? []
   }
 
   // -----------------------------------------------------------------------
@@ -78,7 +81,12 @@ export class CoordinatorOrchestrator extends BaseOrchestrator {
       allowedRoles: ["planner"],
     }
 
-    this.planner = new PlannerOrchestrator(plannerConfig, this.goal)
+    this.planner = new PlannerOrchestrator(
+      plannerConfig,
+      this.goal,
+      undefined,
+      this.graphNodes,
+    )
     const planResult = await this.planner.start()
     if (!planResult.ok) {
       return err(planResult.error)
@@ -189,6 +197,7 @@ class PhaseOrchestratorStub extends BaseOrchestrator {
   }
 
   protected async onDelegate(): Promise<Result<void, CoreError>> {
+    this.logger.info(`Phase "${this.phaseNode.intent}" delegated (${this.getTaskNodes().length} tasks)`)
     return ok(undefined)
   }
 

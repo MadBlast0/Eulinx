@@ -6,62 +6,35 @@ import {
   Clock,
   Folder,
   HelpCircle,
+  Plus,
   Settings,
   Share2,
   Star,
+  TerminalSquare,
 } from "lucide-react"
 import { cn } from "@/utils/cn"
 import { useWorkspace } from "./use-workspace"
+import { useProjects } from "./use-projects"
+import { projectStorage } from "./project-storage"
+import type { CanvasView, CanvasViewKind, ProjectDoc } from "./project-types"
 import type { SurfaceKey } from "./workspace-app"
 
-interface Feature {
-  readonly id: string
-  readonly label: string
-  readonly icon: React.ReactNode
-  readonly active?: boolean
+function viewIcon(kind: CanvasViewKind): React.ReactNode {
+  switch (kind) {
+    case "node-graph":
+      return <Share2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+    case "artifacts":
+      return <Boxes className="h-3.5 w-3.5" strokeWidth={1.5} />
+    case "terminal":
+      return <TerminalSquare className="h-3.5 w-3.5" strokeWidth={1.5} />
+  }
 }
 
-interface Project {
-  readonly id: string
-  readonly name: string
-  readonly active?: boolean
-  readonly defaultOpen?: boolean
-  readonly features?: readonly Feature[]
+function folderName(path: string): string {
+  const trimmed = path.replace(/[\\/]+$/, "")
+  const segment = trimmed.split(/[\\/]/).pop()
+  return segment && segment.length > 0 ? segment : trimmed
 }
-
-const PROJECTS: readonly Project[] = [
-  {
-    id: "big-idea",
-    name: "Big Idea",
-    features: [
-      {
-        id: "big-idea-graph",
-        label: "Node Graph",
-        icon: <Share2 className="h-3.5 w-3.5" strokeWidth={1.5} />,
-      },
-    ],
-  },
-  { id: "cli-launcher", name: "Cli-launcher" },
-  {
-    id: "eulinx",
-    name: "Eulinx",
-    active: true,
-    defaultOpen: true,
-    features: [
-      {
-        id: "eulinx-graph",
-        label: "Node Graph",
-        icon: <Share2 className="h-3.5 w-3.5" strokeWidth={1.5} />,
-        active: true,
-      },
-      {
-        id: "eulinx-artifacts",
-        label: "Artifacts",
-        icon: <Boxes className="h-3.5 w-3.5" strokeWidth={1.5} />,
-      },
-    ],
-  },
-]
 
 export function LeftSidebar({
   activeSurface,
@@ -70,7 +43,8 @@ export function LeftSidebar({
   activeSurface: SurfaceKey | null
   onOpenSurface: (key: SurfaceKey) => void
 }) {
-  const { setOverlay, toggleLeftSidebar, selectNode } = useWorkspace()
+  const { setOverlay, toggleLeftSidebar } = useWorkspace()
+  const { projects, activeProjectId, selectProject, selectView, addProject } = useProjects()
 
   const NAV: readonly {
     readonly key: SurfaceKey
@@ -78,10 +52,26 @@ export function LeftSidebar({
     readonly icon: React.ReactNode
     readonly count?: number
   }[] = [
-    { key: "dashboard", label: "Projects", icon: <Folder className="h-3.5 w-3.5" strokeWidth={1.5} />, count: 3 },
+    {
+      key: "dashboard",
+      label: "Projects",
+      icon: <Folder className="h-3.5 w-3.5" strokeWidth={1.5} />,
+      count: projects.length,
+    },
     { key: "sessions", label: "Recent", icon: <Clock className="h-3.5 w-3.5" strokeWidth={1.5} /> },
     { key: "memory", label: "Favorites", icon: <Star className="h-3.5 w-3.5" strokeWidth={1.5} /> },
   ]
+
+  const handleAddProject = async (): Promise<void> => {
+    const picked = await projectStorage.pickFolder()
+    if (picked === null) return
+    if (picked.length > 0) {
+      addProject(picked, folderName(picked))
+      return
+    }
+    const name = `Project ${projects.length + 1}`
+    addProject(`local:/${name}`, name)
+  }
 
   return (
     <div className="flex h-full flex-col overflow-hidden border-r border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-sidebar)]">
@@ -130,12 +120,36 @@ export function LeftSidebar({
 
         {/* Project tree */}
         <div className="mt-3">
-          <div className="px-2 pb-1 pt-1.5 text-[11px] font-semibold uppercase tracking-[0.07em] text-[color:var(--Eulinx-color-text-muted)]">
-            Project Tree
+          <div className="flex items-center justify-between px-2 pb-1 pt-1.5">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.07em] text-[color:var(--Eulinx-color-text-muted)]">
+              Projects
+            </span>
+            <button
+              type="button"
+              aria-label="Add project"
+              title="Add project"
+              onClick={() => void handleAddProject()}
+              className="flex h-5 w-5 items-center justify-center rounded-[var(--Eulinx-radius-sm)] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            >
+              <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
+            </button>
           </div>
-          {PROJECTS.map((project) => (
-            <ProjectItem key={project.id} project={project} onSelectNode={selectNode} />
-          ))}
+
+          {projects.length === 0 ? (
+            <div className="px-2 py-2 text-[12px] text-[color:var(--Eulinx-color-text-muted)]">
+              No projects yet.
+            </div>
+          ) : (
+            projects.map((project) => (
+              <ProjectItem
+                key={project.id}
+                project={project}
+                isActive={project.id === activeProjectId}
+                onSelectProject={selectProject}
+                onSelectView={selectView}
+              />
+            ))
+          )}
         </div>
       </div>
 
@@ -152,7 +166,8 @@ export function LeftSidebar({
         <button
           type="button"
           aria-label="Help"
-          title="Help"
+          title="Keyboard shortcuts"
+          onClick={() => setOverlay("shortcuts")}
           className="flex h-6 w-6 items-center justify-center rounded-[var(--Eulinx-radius-sm)] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text-secondary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <HelpCircle className="h-3.5 w-3.5" strokeWidth={1.5} />
@@ -164,42 +179,61 @@ export function LeftSidebar({
 
 function ProjectItem({
   project,
-  onSelectNode,
+  isActive,
+  onSelectProject,
+  onSelectView,
 }: {
-  project: Project
-  onSelectNode: (id: string) => void
+  project: ProjectDoc
+  isActive: boolean
+  onSelectProject: (id: string) => void
+  onSelectView: (viewId: string) => void
 }) {
-  const [open, setOpen] = useState(project.defaultOpen ?? false)
+  const [open, setOpen] = useState(isActive)
 
   return (
     <div>
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+      <div
         className={cn(
-          "flex h-7 w-full items-center gap-2 rounded-[var(--Eulinx-radius-sm)] px-2 text-[12.5px] font-medium text-[color:var(--Eulinx-color-text)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)]",
-          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-          project.active && "bg-[color:var(--Eulinx-color-surface)]",
+          "flex h-7 w-full items-center gap-1 rounded-[var(--Eulinx-radius-sm)] pr-2 text-[12.5px] font-medium text-[color:var(--Eulinx-color-text)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)]",
+          isActive && "bg-[color:var(--Eulinx-color-surface)]",
         )}
       >
-        <ChevronRight
-          className={cn(
-            "h-3.5 w-3.5 shrink-0 text-[color:var(--Eulinx-color-text-muted)] transition-transform",
-            open && "rotate-90",
-          )}
-          strokeWidth={1.5}
-        />
-        <Folder className="h-3.5 w-3.5 shrink-0 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
-        <span className="flex-1 text-left">{project.name}</span>
-      </button>
+        <button
+          type="button"
+          aria-label={open ? "Collapse project" : "Expand project"}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+          className="flex h-7 w-5 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          <ChevronRight
+            className={cn(
+              "h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-muted)] transition-transform",
+              open && "rotate-90",
+            )}
+            strokeWidth={1.5}
+          />
+        </button>
+        <button
+          type="button"
+          onClick={() => onSelectProject(project.id)}
+          className="flex h-7 min-w-0 flex-1 items-center gap-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          <Folder className="h-3.5 w-3.5 shrink-0 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+          <span className="flex-1 truncate">{project.name}</span>
+        </button>
+      </div>
 
-      {open && project.features && (
+      {open && project.views.length > 0 && (
         <div className="relative mt-0.5 pl-4">
-          {/* vertical connector for the feature level */}
+          {/* vertical connector for the view level */}
           <span className="absolute bottom-2 left-[15px] top-1 w-px bg-[color:var(--Eulinx-color-border)]" />
-          {project.features.map((feature) => (
-            <FeatureItem key={feature.id} feature={feature} onSelectNode={onSelectNode} />
+          {project.views.map((view) => (
+            <ViewItem
+              key={view.id}
+              view={view}
+              isActive={isActive && view.id === project.activeViewId}
+              onSelectView={onSelectView}
+            />
           ))}
         </div>
       )}
@@ -207,12 +241,14 @@ function ProjectItem({
   )
 }
 
-function FeatureItem({
-  feature,
-  onSelectNode,
+function ViewItem({
+  view,
+  isActive,
+  onSelectView,
 }: {
-  feature: Feature
-  onSelectNode: (id: string) => void
+  view: CanvasView
+  isActive: boolean
+  onSelectView: (viewId: string) => void
 }) {
   return (
     <div className="relative flex items-center">
@@ -220,17 +256,18 @@ function FeatureItem({
       <span className="absolute left-[-9px] top-1/2 h-px w-[9px] bg-[color:var(--Eulinx-color-border)]" />
       <button
         type="button"
-        onClick={() => onSelectNode("node-main-term")}
+        onClick={() => onSelectView(view.id)}
+        aria-pressed={isActive}
         className={cn(
           "flex h-7 w-full items-center gap-2 rounded-[var(--Eulinx-radius-sm)] py-1 pl-3 pr-2 text-[12.5px] font-medium transition-colors hover:bg-[color:var(--Eulinx-color-hover)]",
           "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-          feature.active
+          isActive
             ? "bg-[color:var(--Eulinx-color-accent-surf)] text-[color:var(--Eulinx-color-text)]"
             : "text-[color:var(--Eulinx-color-text-secondary)]",
         )}
       >
-        <span className="text-[color:var(--Eulinx-color-text-muted)]">{feature.icon}</span>
-        <span className="flex-1 text-left">{feature.label}</span>
+        <span className="text-[color:var(--Eulinx-color-text-muted)]">{viewIcon(view.kind)}</span>
+        <span className="flex-1 truncate text-left">{view.name}</span>
       </button>
     </div>
   )

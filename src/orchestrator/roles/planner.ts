@@ -28,9 +28,20 @@ import type {
 // Planner
 // ---------------------------------------------------------------------------
 
+/** Minimal graph-node shape the planner uses when decomposing a node graph
+ *  into phases/tasks. Kept structural — no LLM required. */
+export interface PlannerGraphNode {
+  readonly id: string
+  readonly label: string
+  readonly kind: string
+}
+
+const PHASE_BATCH_SIZE = 4
+
 export class PlannerOrchestrator extends BaseOrchestrator {
   private readonly plannerConfig: PlannerConfig
   private readonly goal: UserGoal
+  private readonly graphNodes: readonly PlannerGraphNode[]
   private plan: Plan | null = null
   private phaseNodes: PlanNode[] = []
 
@@ -38,9 +49,11 @@ export class PlannerOrchestrator extends BaseOrchestrator {
     config: OrchestratorConfig,
     goal: UserGoal,
     plannerConfig?: Partial<PlannerConfig>,
+    graphNodes?: readonly PlannerGraphNode[],
   ) {
     super(config)
     this.goal = goal
+    this.graphNodes = graphNodes ?? []
     this.plannerConfig = {
       maxDecompositionDepth: 3,
       defaultTaskBudget: 100_000,
@@ -74,18 +87,20 @@ export class PlannerOrchestrator extends BaseOrchestrator {
     this.logger.info(`Planning goal: ${this.goal.description}`)
 
     // Decompose goal into phases (Planning-Part02 §Decomposition)
-    const phases = this.decomposeGoal(this.goal)
+    const phaseSpecs = this.extractPhaseIntents(this.goal.description)
+    const phases = this.decomposeGoal(this.goal, phaseSpecs)
     this.phaseNodes = phases
 
     // Build plan tree
     const nodes: Record<string, PlanNode> = {}
-    for (const phase of phases) {
+    phases.forEach((phase, index) => {
       nodes[phase.id] = phase
-      const tasks = this.decomphaseTask(this.goal.id, phases.indexOf(phase), phase.intent)
+      const phaseNodesForTasks = phaseSpecs[index]?.nodes ?? []
+      const tasks = this.decomphaseTask(this.goal.id, index, phase.intent, phaseNodesForTasks)
       for (const task of tasks) {
         nodes[task.id] = task
       }
-    }
+    })
 
     this.plan = {
       id: `plan-${this.goal.id}`,
@@ -118,25 +133,28 @@ export class PlannerOrchestrator extends BaseOrchestrator {
   // Decomposition (Planning-Part02 §Decomposition)
   // -----------------------------------------------------------------------
 
-  private decomposeGoal(goal: UserGoal): PlanNode[] {
+  private decomposeGoal(
+    goal: UserGoal,
+    phaseSpecs: readonly { title: string; nodes: readonly PlannerGraphNode[] }[],
+  ): PlanNode[] {
     const now = new Date().toISOString() as IsoTimestamp
-    const phaseIntents = this.extractPhaseIntents(goal.description)
 
-    return phaseIntents.map((intent, index) => {
-      const taskIntents = this.extractTaskIntents(intent)
-      const childIds = taskIntents.map((_, ti) => `phase-${goal.id}-${index}-task-${ti}`)
+    return phaseSpecs.map((phase, index) => {
+      const phaseId = `phase-${goal.id}-${index}`
+      const taskNodes = phase.nodes
+      const childIds = taskNodes.map((_, ti) => `${phaseId}-task-${ti}`)
 
       return {
-        id: `phase-${goal.id}-${index}`,
-        intent,
-        scope: intent,
+        id: phaseId,
+        intent: phase.title,
+        scope: phase.title,
         ownerOrchestratorId: this.id,
         ownerRole: "coordinator" as const,
         childIds,
         dependencies: index > 0 ? [`phase-${goal.id}-${index - 1}`] : [],
         checklist: [],
         budgetAllocation: Math.floor(this.plannerConfig.defaultTaskBudget * 1.5),
-        estimatedSubtasks: taskIntents.length,
+        estimatedSubtasks: taskNodes.length,
         state: "pending" as const,
         orderConstraint: index === 0 ? "parallel" as const : "sequential" as const,
         createdAt: now,
@@ -145,46 +163,63 @@ export class PlannerOrchestrator extends BaseOrchestrator {
     })
   }
 
-  private decomphaseTask(goalId: string, phaseIndex: number, intent: string): PlanNode[] {
+  private decomphaseTask(goalId: string, phaseIndex: number, phaseTitle: string, nodes: readonly PlannerGraphNode[]): PlanNode[] {
     const now = new Date().toISOString() as IsoTimestamp
-    const taskIntents = this.extractTaskIntents(intent)
 
-    return taskIntents.map((taskIntent, index) => ({
+    return nodes.map((node, index) => ({
       id: `phase-${goalId}-${phaseIndex}-task-${index}`,
-      intent: taskIntent,
-      scope: `${intent} > ${taskIntent}`,
+      intent: `Execute node "${node.label}" (${node.kind})`,
+      scope: `${phaseTitle} > ${node.label}`,
       ownerOrchestratorId: this.id,
-      ownerRole: "programmer" as const,
+      ownerRole: this.mapNodeKindToRole(node.kind),
       childIds: [],
       dependencies: index > 0 ? [`phase-${goalId}-${phaseIndex}-task-${index - 1}`] : [],
-      checklist: this.generateChecklist(taskIntent),
+      checklist: this.generateChecklist(node.label),
       budgetAllocation: this.plannerConfig.defaultTaskBudget,
       estimatedSubtasks: 1,
       state: "pending" as const,
-      orderConstraint: index === 0 ? "parallel" as const : "sequential" as const,
+      orderConstraint: "sequential" as const,
       createdAt: now,
       updatedAt: now,
     }))
   }
 
-  private extractPhaseIntents(goalDescription: string): string[] {
-    // Structural decomposition — in production, LLM-driven
+  /** A phase bundles a batch of graph nodes. Without a graph we fall back to a
+   *  naive string split so the existing UserGoal flow keeps working. */
+  private extractPhaseIntents(goalDescription: string): { title: string; nodes: readonly PlannerGraphNode[] }[] {
+    if (this.graphNodes.length > 0) {
+      const batches: PlannerGraphNode[][] = []
+      for (let i = 0; i < this.graphNodes.length; i += PHASE_BATCH_SIZE) {
+        batches.push(this.graphNodes.slice(i, i + PHASE_BATCH_SIZE))
+      }
+      return batches.map((batch, index) => ({
+        title: `Phase ${index + 1}: ${batch.map((n) => n.label).join(", ")}`,
+        nodes: batch,
+      }))
+    }
+
+    // Fallback: structural split on the goal description
     const words = goalDescription.toLowerCase().split(/\s+/)
-    if (words.length <= 5) return [goalDescription]
+    if (words.length <= 5) return [{ title: goalDescription, nodes: [] }]
 
     const mid = Math.ceil(words.length / 2)
     return [
-      `Phase 1: ${words.slice(0, mid).join(" ")}`,
-      `Phase 2: ${words.slice(mid).join(" ")}`,
+      { title: `Phase 1: ${words.slice(0, mid).join(" ")}`, nodes: [] },
+      { title: `Phase 2: ${words.slice(mid).join(" ")}`, nodes: [] },
     ]
   }
 
-  private extractTaskIntents(phaseIntent: string): string[] {
-    return [
-      `Research and design: ${phaseIntent}`,
-      `Implement: ${phaseIntent}`,
-      `Verify: ${phaseIntent}`,
-    ]
+  private mapNodeKindToRole(kind: string): PlanNode["ownerRole"] {
+    switch (kind) {
+      case "terminal":
+        return "programmer"
+      case "browser":
+        return "researcher"
+      case "map":
+        return "architect"
+      default:
+        return "programmer"
+    }
   }
 
   private generateChecklist(intent: string): ChecklistItem[] {

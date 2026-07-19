@@ -2,6 +2,13 @@ import { useEffect, useState, type ComponentType } from "react"
 import { ArrowLeft } from "lucide-react"
 import "./workspace.css"
 import { WorkspaceProvider, useWorkspace } from "./use-workspace"
+import { ProjectsProvider } from "./use-projects"
+import { MemoryProvider } from "./memory-store"
+import { RuntimeProvider } from "./runtime-store"
+import { SessionsProvider } from "./sessions-store"
+import { PromptsProvider } from "./prompts-store"
+import { SettingsProvider } from "./settings-store"
+import { WorkersProvider } from "./workers-store"
 import { TopBar } from "./top-bar"
 import { LeftSidebar } from "./left-sidebar"
 import { Canvas } from "./canvas"
@@ -159,11 +166,25 @@ function WorkspaceShell() {
 
 export function WorkspaceApp() {
   return (
-    <WorkspaceProvider>
-      <KeymapProvider>
-        <WorkspaceShell />
-      </KeymapProvider>
-    </WorkspaceProvider>
+    <ProjectsProvider>
+      <MemoryProvider>
+        <RuntimeProvider>
+          <SessionsProvider>
+            <PromptsProvider>
+              <WorkspaceProvider>
+                <SettingsProvider>
+                  <WorkersProvider>
+                    <KeymapProvider>
+                      <WorkspaceShell />
+                    </KeymapProvider>
+                  </WorkersProvider>
+                </SettingsProvider>
+              </WorkspaceProvider>
+            </PromptsProvider>
+          </SessionsProvider>
+        </RuntimeProvider>
+      </MemoryProvider>
+    </ProjectsProvider>
   )
 }
 

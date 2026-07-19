@@ -1,4 +1,4 @@
-mod commands;
+﻿mod commands;
 mod error;
 mod ipc;
 mod managers;
@@ -19,6 +19,14 @@ pub fn run() {
             commands::pty::pty_write,
             commands::pty::pty_resize,
             commands::pty::pty_kill,
+            commands::fs::fs_read_text,
+            commands::fs::fs_write_text,
+            commands::fs::fs_exists,
+            commands::fs::dialog_pick_folder,
+            commands::git::git_status,
+            commands::git::git_stage_all,
+            commands::git::git_commit,
+            commands::git::git_push,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -4,26 +4,9 @@ import { cn } from "@/utils/cn"
 import { Input } from "@/components/ui"
 import { ListRow, PanelSurface, StateBadge, Dot } from "../primitives"
 import { type Tone } from "../state"
+import { useMemory, type MemoryEntry, type MemorySeverity } from "../memory-store"
 
-type Severity = "critical" | "important" | "reference" | "archived"
-
-interface MemoryEntry {
-  readonly id: string
-  readonly title: string
-  readonly kind: "fact" | "note" | "doc" | "concept"
-  readonly severity: Severity
-  readonly tags: readonly string[]
-  readonly updated: string
-}
-
-const ENTRIES: readonly MemoryEntry[] = [
-  { id: "m1", title: "Project architecture overview", kind: "doc", severity: "critical", tags: ["eulinx", "design"], updated: "2h" },
-  { id: "m2", title: "Token system constraints", kind: "fact", severity: "important", tags: ["tokens", "lint"], updated: "5h" },
-  { id: "m3", title: "Meeting notes — Q3 planning", kind: "note", severity: "reference", tags: ["planning"], updated: "1d" },
-  { id: "m4", title: "Worker scheduling model", kind: "concept", severity: "important", tags: ["workers"], updated: "2d" },
-  { id: "m5", title: "Deprecated API surface", kind: "fact", severity: "archived", tags: ["legacy"], updated: "12d" },
-  { id: "m6", title: "Cost optimization ideas", kind: "note", severity: "reference", tags: ["cost"], updated: "14d" },
-]
+type Severity = MemorySeverity
 
 const SEVERITY_TONE: Record<Severity, Tone> = {
   critical: "error",
@@ -48,12 +31,13 @@ const FILTERS: readonly { readonly id: Severity | "all"; readonly label: string 
 ]
 
 export default function MemoryBrowser() {
+  const { entries } = useMemory()
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<Severity | "all">("all")
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return ENTRIES.filter((e) => {
+    return entries.filter((e) => {
       if (filter !== "all" && e.severity !== filter) return false
       if (!q) return true
       return (
@@ -69,7 +53,7 @@ export default function MemoryBrowser() {
         <div>
           <h1 className="text-lg font-semibold text-[color:var(--Eulinx-color-text)]">Memory</h1>
           <p className="text-xs text-[color:var(--Eulinx-color-text-muted)]">
-            {results.length} of {ENTRIES.length} entries
+            {results.length} of {entries.length} entries
           </p>
         </div>
         <div className="relative w-64">

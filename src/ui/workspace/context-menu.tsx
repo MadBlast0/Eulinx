@@ -4,7 +4,7 @@ import { useWorkspace } from "./use-workspace"
 import { ShellPicker } from "./terminal/shell-picker"
 
 export function ContextMenu() {
-  const { contextMenu, closeContextMenu, addNode } = useWorkspace()
+  const { contextMenu, closeContextMenu, addNode, autoLayout } = useWorkspace()
 
   useEffect(() => {
     if (!contextMenu) return
@@ -26,9 +26,9 @@ export function ContextMenu() {
          <ShellPicker align="right" onPick={(shell) => addNode("terminal", shell)} />
        </div>
       <Item icon={<Globe className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Add Browser" shortcut="B" onClick={() => addNode("browser")} />
-      <Item icon={<Squircle className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Add Worker" shortcut="W" onClick={closeContextMenu} />
+      <Item icon={<Squircle className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Add Worker" shortcut="W" onClick={() => addNode("worker")} />
       <div className="my-1 h-px bg-[color:var(--Eulinx-color-border)]" />
-      <Item icon={<LayoutGrid className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Auto-layout" shortcut="Shift+A" onClick={closeContextMenu} />
+      <Item icon={<LayoutGrid className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Auto-layout" shortcut="Shift+A" onClick={autoLayout} />
     </div>
   )
 }

@@ -3,46 +3,7 @@ import { FileCode2, Eye, ListTree } from "lucide-react"
 import { cn } from "@/utils/cn"
 import { PanelSurface, StateBadge, Dot } from "../primitives"
 import { type Tone } from "../state"
-
-interface Prompt {
-  readonly id: string
-  readonly name: string
-  readonly scope: "system" | "worker" | "session"
-  readonly tokens: number
-  readonly body: string
-}
-
-const PROMPTS: readonly Prompt[] = [
-  {
-    id: "p1",
-    name: "System — base agent",
-    scope: "system",
-    tokens: 412,
-    body: `You are Eulinx, a local-first AI operating system for knowledge work.
-Answer concisely. Prefer tool calls over prose. Never invent file paths.
-When unsure, ask a clarifying question.`,
-  },
-  {
-    id: "p2",
-    name: "Worker — build agent",
-    scope: "worker",
-    tokens: 188,
-    body: `Role: compile and bundle the workspace.
-Steps:
-1. Run pnpm build.
-2. Capture errors and surface them as StateBadge(error).
-3. On success emit a completion event.`,
-  },
-  {
-    id: "p3",
-    name: "Session — research synth",
-    scope: "session",
-    tokens: 256,
-    body: `Synthesize the conversation into structured notes.
-Output: title, bullets, and 3 follow-up questions.
-Tone: neutral, fact-dense, no preamble.`,
-  },
-]
+import { usePrompts, type Prompt } from "../prompts-store"
 
 const SCOPE_TONE: Record<Prompt["scope"], Tone> = {
   system: "accent",
@@ -51,8 +12,9 @@ const SCOPE_TONE: Record<Prompt["scope"], Tone> = {
 }
 
 export default function PromptInspector() {
-  const [activeId, setActiveId] = useState<string>(PROMPTS[0]!.id)
-  const active = PROMPTS.find((p) => p.id === activeId) ?? PROMPTS[0]!
+  const { prompts } = usePrompts()
+  const [activeId, setActiveId] = useState<string>(prompts[0]!.id)
+  const active = prompts.find((p) => p.id === activeId) ?? prompts[0]!
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -60,7 +22,7 @@ export default function PromptInspector() {
         <div>
           <h1 className="text-lg font-semibold text-[color:var(--Eulinx-color-text)]">Prompts</h1>
           <p className="text-xs text-[color:var(--Eulinx-color-text-muted)]">
-            {PROMPTS.length} prompts · {active.tokens} tokens
+            {prompts.length} prompts · {active.tokens} tokens
           </p>
         </div>
       </div>
@@ -70,7 +32,7 @@ export default function PromptInspector() {
           as="aside"
           className="m-0 flex w-72 shrink-0 flex-col overflow-y-auto rounded-none border-y-0 border-l-0 divide-y divide-[color:var(--Eulinx-color-border)]"
         >
-          {PROMPTS.map((p) => (
+          {prompts.map((p) => (
             <button
               key={p.id}
               type="button"

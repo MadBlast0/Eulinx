@@ -7,11 +7,15 @@ import {
   MemoryStick,
   TrendingUp,
 } from "lucide-react"
-import type { ReactNode } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import { cn } from "@/utils/cn"
 import { Button } from "@/components/ui"
 import { ListRow, PanelSurface, StateBadge, Dot } from "../primitives"
 import { type Tone, TONE_FG, toneSurface } from "../state"
+import { useProjects } from "../use-projects"
+import { useMemory } from "../memory-store"
+import { useSessions } from "../sessions-store"
+import { useRuntime } from "../runtime-store"
 
 interface Stat {
   readonly id: string
@@ -23,51 +27,55 @@ interface Stat {
   readonly icon: ReactNode
 }
 
-const STATS: readonly Stat[] = [
-  {
-    id: "workers",
-    label: "Active Workers",
-    value: "12",
-    delta: "+3",
-    trend: "up",
-    tone: "accent",
-    icon: <Boxes className="h-4 w-4" strokeWidth={1.5} />,
-  },
-  {
-    id: "tasks",
-    label: "Tasks Done",
-    value: "1,284",
-    delta: "+18%",
-    trend: "up",
-    tone: "success",
-    icon: <CheckCircle2 className="h-4 w-4" strokeWidth={1.5} />,
-  },
-  {
-    id: "tokens",
-    label: "Tokens Used",
-    value: "4.2M",
-    delta: "+6%",
-    trend: "up",
-    tone: "info",
-    icon: <Cpu className="h-4 w-4" strokeWidth={1.5} />,
-  },
-  {
-    id: "cost",
-    label: "Spend (mo)",
-    value: "$38.40",
-    delta: "-2%",
-    trend: "down",
-    tone: "warning",
-    icon: <TrendingUp className="h-4 w-4" strokeWidth={1.5} />,
-  },
-]
+type ActivityTone = Tone
 
 interface ActivityItem {
   readonly id: string
   readonly title: string
   readonly meta: string
-  readonly tone: Tone
+  readonly tone: ActivityTone
   readonly time: string
+}
+
+function buildStats(projects: number, sessions: number, memory: number): readonly Stat[] {
+  return [
+    {
+      id: "projects",
+      label: "Projects",
+      value: String(projects),
+      delta: "active",
+      trend: "flat",
+      tone: "accent",
+      icon: <Boxes className="h-4 w-4" strokeWidth={1.5} />,
+    },
+    {
+      id: "sessions",
+      label: "Sessions",
+      value: String(sessions),
+      delta: "tracked",
+      trend: "flat",
+      tone: "success",
+      icon: <CheckCircle2 className="h-4 w-4" strokeWidth={1.5} />,
+    },
+    {
+      id: "memory",
+      label: "Memory Entries",
+      value: String(memory),
+      delta: "indexed",
+      trend: "flat",
+      tone: "info",
+      icon: <Cpu className="h-4 w-4" strokeWidth={1.5} />,
+    },
+    {
+      id: "health",
+      label: "Services Healthy",
+      value: "0",
+      delta: "—",
+      trend: "flat",
+      tone: "warning",
+      icon: <TrendingUp className="h-4 w-4" strokeWidth={1.5} />,
+    },
+  ]
 }
 
 const ACTIVITY: readonly ActivityItem[] = [
@@ -137,8 +145,28 @@ function HealthRow({
 }
 
 export default function Dashboard() {
+  const { projects } = useProjects()
+  const { sessions } = useSessions()
+  const { entries } = useMemory()
+  const { services, healthyCount, healthCheck } = useRuntime()
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const stats = useMemo<readonly Stat[]>(() => {
+    const base = buildStats(projects.length, sessions.length, entries.length)
+    return base.map((s) =>
+      s.id === "health"
+        ? { ...s, value: String(healthyCount), trend: healthyCount === services.length ? "up" : "flat" }
+        : s,
+    )
+  }, [projects.length, sessions.length, entries.length, healthyCount, services.length])
+
+  const onRefresh = (): void => {
+    healthCheck()
+    setRefreshKey((k) => k + 1)
+  }
+
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden" key={refreshKey}>
       <div className="flex items-center justify-between border-b border-[color:var(--Eulinx-color-border)] px-6 py-4">
         <div>
           <h1 className="text-lg font-semibold text-[color:var(--Eulinx-color-text)]">Dashboard</h1>
@@ -146,7 +174,7 @@ export default function Dashboard() {
             Workspace overview and runtime health
           </p>
         </div>
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" onClick={onRefresh}>
           <Activity className="h-3.5 w-3.5" strokeWidth={1.5} />
           Refresh
         </Button>
@@ -154,7 +182,7 @@ export default function Dashboard() {
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          {STATS.map((s) => (
+          {stats.map((s) => (
             <MetricCard key={s.id} stat={s} />
           ))}
         </div>

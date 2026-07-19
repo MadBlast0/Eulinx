@@ -2,75 +2,22 @@ import { Boxes, Cpu, Gauge, RotateCw, AlertTriangle } from "lucide-react"
 import { cn } from "@/utils/cn"
 import { Button, Progress } from "@/components/ui"
 import { Dot, PanelSurface, StateBadge } from "../primitives"
-import { type Tone } from "../state"
+import {
+  useWorkers,
+  STATUS_TONE,
+  STATUS_LABEL,
+  type Worker,
+} from "../workers-store"
 
-type WorkerStatus = "running" | "idle" | "error"
-
-interface Worker {
-  readonly id: string
-  readonly name: string
-  readonly status: WorkerStatus
-  readonly desc: string
-  readonly utilization: number
-  readonly meta: readonly string[]
-}
-
-const WORKERS: readonly Worker[] = [
-  {
-    id: "w1",
-    name: "Build Agent",
-    status: "running",
-    desc: "Compiling TypeScript and bundling assets",
-    utilization: 72,
-    meta: ["72%", "·", "2m elapsed"],
-  },
-  {
-    id: "w2",
-    name: "Test Runner",
-    status: "idle",
-    desc: "Vitest — 42 tests, all passing",
-    utilization: 4,
-    meta: ["5m ago", "·", "42/42 passed"],
-  },
-  {
-    id: "w3",
-    name: "Indexer",
-    status: "running",
-    desc: "Embedding documents into vector store",
-    utilization: 38,
-    meta: ["38%", "·", "1.1k docs"],
-  },
-  {
-    id: "w4",
-    name: "Deploy Preview",
-    status: "error",
-    desc: "Build succeeded but deploy timed out",
-    utilization: 0,
-    meta: ["12m ago", "·", "retry"],
-  },
-  {
-    id: "w5",
-    name: "Summarizer",
-    status: "idle",
-    desc: "Condensing session transcripts",
-    utilization: 0,
-    meta: ["idle"],
-  },
-]
-
-const STATUS_TONE: Record<WorkerStatus, Tone> = {
-  running: "success",
-  idle: "neutral",
-  error: "error",
-}
-
-const STATUS_LABEL: Record<WorkerStatus, string> = {
-  running: "Running",
-  idle: "Idle",
-  error: "Error",
-}
-
-function WorkerCard({ worker }: { worker: Worker }) {
+function WorkerCard({
+  worker,
+  onRetry,
+  onRestart,
+}: {
+  worker: Worker
+  onRetry: (id: string) => void
+  onRestart: (id: string) => void
+}) {
   const tone = STATUS_TONE[worker.status]
   return (
     <PanelSurface className="flex flex-col gap-3 p-4 transition-colors hover:border-[color:var(--Eulinx-color-border-strong)]">
@@ -117,12 +64,22 @@ function WorkerCard({ worker }: { worker: Worker }) {
           ))}
         </div>
         {worker.status === "error" ? (
-          <Button size="sm" variant="ghost" className="h-7 px-2 text-[color:var(--Eulinx-color-error)]">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-[color:var(--Eulinx-color-error)]"
+            onClick={() => onRetry(worker.id)}
+          >
             <AlertTriangle className="h-3 w-3" strokeWidth={1.5} />
             Retry
           </Button>
         ) : (
-          <Button size="sm" variant="ghost" className="h-7 px-2 text-[color:var(--Eulinx-color-text-muted)]">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-[color:var(--Eulinx-color-text-muted)]"
+            onClick={() => onRestart(worker.id)}
+          >
             <RotateCw className="h-3 w-3" strokeWidth={1.5} />
             Restart
           </Button>
@@ -133,17 +90,21 @@ function WorkerCard({ worker }: { worker: Worker }) {
 }
 
 export default function WorkerExplorer() {
+  const { workers, spawnWorker, retryWorker, restartWorker } = useWorkers()
+
+  const runningCount = workers.filter((w) => w.status === "running").length
+  const errorCount = workers.filter((w) => w.status === "error").length
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-[color:var(--Eulinx-color-border)] px-6 py-4">
         <div>
           <h1 className="text-lg font-semibold text-[color:var(--Eulinx-color-text)]">Workers</h1>
           <p className="text-xs text-[color:var(--Eulinx-color-text-muted)]">
-            {WORKERS.filter((w) => w.status === "running").length} running ·{" "}
-            {WORKERS.filter((w) => w.status === "error").length} error
+            {runningCount} running · {errorCount} error
           </p>
         </div>
-        <Button size="sm" variant="outline">
+        <Button size="sm" variant="outline" onClick={() => spawnWorker("New Worker")}>
           <Boxes className="h-3.5 w-3.5" strokeWidth={1.5} />
           Spawn Worker
         </Button>
@@ -151,8 +112,13 @@ export default function WorkerExplorer() {
 
       <div className="flex-1 overflow-y-auto p-6">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {WORKERS.map((worker) => (
-            <WorkerCard key={worker.id} worker={worker} />
+          {workers.map((worker) => (
+            <WorkerCard
+              key={worker.id}
+              worker={worker}
+              onRetry={retryWorker}
+              onRestart={restartWorker}
+            />
           ))}
         </div>
       </div>
