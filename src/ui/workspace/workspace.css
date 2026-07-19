@@ -1,0 +1,144 @@
+/*
+ * Workspace surface styles.
+ * Prototype-specific tokens are derived from the Eulinx token system
+ * (src/ui/tokens/tokens.css) so the surface participates in theming.
+ */
+.wsx {
+  /* Semantic aliases onto Eulinx tokens */
+  --wsx-bg-app: var(--Eulinx-color-background);
+  --wsx-bg-panel: var(--Eulinx-color-sidebar);
+  --wsx-bg-surface: var(--Eulinx-color-surface);
+  --wsx-bg-elevated: color-mix(in srgb, var(--Eulinx-color-surface) 88%, white 4%);
+  --wsx-bg-hover: var(--Eulinx-color-hover);
+  --wsx-bg-active: var(--Eulinx-color-pressed);
+
+  --wsx-border: var(--Eulinx-color-border);
+  --wsx-border-strong: var(--Eulinx-color-border-strong);
+
+  --wsx-text: var(--Eulinx-color-text);
+  --wsx-text-sec: var(--Eulinx-color-text-secondary);
+  --wsx-text-muted: var(--Eulinx-color-text-muted);
+
+  --wsx-accent: var(--Eulinx-color-accent);
+  --wsx-accent-dim: color-mix(in srgb, var(--Eulinx-color-accent) 55%, var(--Eulinx-color-background));
+  --wsx-accent-surf: color-mix(in srgb, var(--Eulinx-color-accent) 18%, var(--Eulinx-color-background));
+
+  --wsx-green: var(--Eulinx-color-success);
+  --wsx-green-dim: color-mix(in srgb, var(--Eulinx-color-success) 22%, var(--Eulinx-color-background));
+  --wsx-amber: var(--Eulinx-color-warning);
+  --wsx-amber-dim: color-mix(in srgb, var(--Eulinx-color-warning) 22%, var(--Eulinx-color-background));
+  --wsx-red: var(--Eulinx-color-error);
+  --wsx-red-dim: color-mix(in srgb, var(--Eulinx-color-error) 22%, var(--Eulinx-color-background));
+  --wsx-purple: #a78bfa;
+
+  --wsx-r-sm: var(--Eulinx-radius-sm);
+  --wsx-r-md: var(--Eulinx-radius-md);
+  --wsx-r-lg: var(--Eulinx-radius-xl);
+
+  --wsx-shadow-sm: var(--Eulinx-elev-sm);
+  --wsx-shadow-md: var(--Eulinx-elev-md);
+  --wsx-shadow-lg: var(--Eulinx-elev-lg);
+
+  --wsx-font-mono: var(--Eulinx-font-mono);
+
+  --wsx-left-w: 220px;
+  --wsx-right-w: 300px;
+  --wsx-topbar-h: 38px;
+  --wsx-panel-h: 200px;
+  --wsx-statusbar-h: 24px;
+  --wsx-grid-dot: rgba(255, 255, 255, 0.04);
+
+  font-size: 13px;
+  color: var(--wsx-text);
+  background: var(--wsx-bg-app);
+  height: 100vh;
+  overflow: hidden;
+}
+
+.wsx button {
+  font: inherit;
+  border: none;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.wsx input {
+  font: inherit;
+  border: none;
+  background: none;
+  color: inherit;
+  outline: none;
+}
+
+/* Grid canvas backdrop */
+.wsx-canvas-grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--wsx-grid-dot) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+/* Terminal cursor blink */
+.wsx-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 15px;
+  background: var(--wsx-accent);
+  animation: wsx-blink 1s step-end infinite;
+  vertical-align: text-bottom;
+}
+@keyframes wsx-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* Tooltip */
+.wsx-tip {
+  position: relative;
+}
+.wsx-tip:hover::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  background: var(--wsx-bg-elevated);
+  border: 1px solid var(--wsx-border);
+  border-radius: var(--wsx-r-sm);
+  font-size: 11px;
+  color: var(--wsx-text-sec);
+  white-space: nowrap;
+  z-index: 200;
+  pointer-events: none;
+  box-shadow: var(--wsx-shadow-md);
+}
+
+/* Edge layer */
+.wsx-edge-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.wsx-edge-layer path {
+  fill: none;
+  stroke: var(--wsx-border-strong);
+  stroke-width: 1.5;
+}
+.wsx-edge-layer path.active {
+  stroke: var(--wsx-accent-dim);
+  stroke-width: 2;
+}
+
+/* Scoped scrollbar to match prototype */
+.wsx *::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.wsx *::-webkit-scrollbar-thumb {
+  background: var(--wsx-border-strong);
+  border-radius: 3px;
+}

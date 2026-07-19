@@ -1,0 +1,54 @@
+import { useEffect } from "react"
+import { Globe, LayoutGrid, Squircle, TerminalSquare } from "lucide-react"
+import { useWorkspace } from "./use-workspace"
+
+export function ContextMenu() {
+  const { contextMenu, closeContextMenu, addNode } = useWorkspace()
+
+  useEffect(() => {
+    if (!contextMenu) return
+    const onClick = () => closeContextMenu()
+    document.addEventListener("click", onClick)
+    return () => document.removeEventListener("click", onClick)
+  }, [contextMenu, closeContextMenu])
+
+  if (!contextMenu) return null
+
+  return (
+    <div
+      className="fixed z-[100] min-w-[180px] rounded-[var(--wsx-r-md)] border border-[color:var(--wsx-border)] bg-[color:var(--wsx-bg-elevated)] p-1 shadow-[var(--wsx-shadow-lg)]"
+      style={{ left: contextMenu.x, top: contextMenu.y }}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <Item icon={<TerminalSquare className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Add Terminal" shortcut="T" onClick={() => addNode("terminal")} />
+      <Item icon={<Globe className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Add Browser" shortcut="B" onClick={() => addNode("browser")} />
+      <Item icon={<Squircle className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Add Worker" shortcut="W" onClick={closeContextMenu} />
+      <div className="my-1 h-px bg-[color:var(--wsx-border)]" />
+      <Item icon={<LayoutGrid className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Auto-layout" shortcut="Shift+A" onClick={closeContextMenu} />
+    </div>
+  )
+}
+
+function Item({
+  icon,
+  label,
+  shortcut,
+  onClick,
+}: {
+  icon: React.ReactNode
+  label: string
+  shortcut: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex w-full items-center gap-2 rounded-[var(--wsx-r-sm)] px-3 py-2 text-xs text-[color:var(--wsx-text-sec)] hover:bg-[color:var(--wsx-bg-hover)] hover:text-[color:var(--wsx-text)]"
+    >
+      <span className="text-[color:var(--wsx-text-muted)]">{icon}</span>
+      {label}
+      <kbd className="ml-auto text-[10px] text-[color:var(--wsx-text-muted)]">{shortcut}</kbd>
+    </button>
+  )
+}
