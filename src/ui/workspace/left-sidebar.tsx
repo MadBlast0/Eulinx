@@ -1,45 +1,44 @@
 import { useState } from "react"
 import {
+  Boxes,
   ChevronLeft,
   ChevronRight,
   Clock,
   Folder,
-  Globe,
   HelpCircle,
-  Map as MapIcon,
   Settings,
+  Share2,
   Star,
-  TerminalSquare,
 } from "lucide-react"
 import { cn } from "@/utils/cn"
-import { Dot } from "./primitives"
-import { type Tone } from "./state"
 import { useWorkspace } from "./use-workspace"
 import type { SurfaceKey } from "./workspace-app"
 
-interface TreeNode {
-  readonly kind: "terminal" | "browser" | "map"
+interface Feature {
+  readonly id: string
   readonly label: string
-  readonly tone: Tone
+  readonly icon: React.ReactNode
   readonly active?: boolean
 }
 
 interface Project {
   readonly id: string
   readonly name: string
-  readonly nodes?: readonly TreeNode[]
   readonly active?: boolean
   readonly defaultOpen?: boolean
+  readonly features?: readonly Feature[]
 }
 
 const PROJECTS: readonly Project[] = [
   {
     id: "big-idea",
     name: "Big Idea",
-    nodes: [
-      { kind: "terminal", label: "Main Terminal", tone: "success" },
-      { kind: "terminal", label: "Terminal 1", tone: "success" },
-      { kind: "browser", label: "Browser", tone: "success" },
+    features: [
+      {
+        id: "big-idea-graph",
+        label: "Node Graph",
+        icon: <Share2 className="h-3.5 w-3.5" strokeWidth={1.5} />,
+      },
     ],
   },
   { id: "cli-launcher", name: "Cli-launcher" },
@@ -48,22 +47,21 @@ const PROJECTS: readonly Project[] = [
     name: "Eulinx",
     active: true,
     defaultOpen: true,
-    nodes: [
-      { kind: "terminal", label: "Main Terminal", tone: "success", active: true },
-      { kind: "terminal", label: "Terminal 1", tone: "success" },
-      { kind: "terminal", label: "Terminal 2", tone: "success" },
-      { kind: "browser", label: "Browser", tone: "success" },
-      { kind: "map", label: "Map", tone: "warning" },
+    features: [
+      {
+        id: "eulinx-graph",
+        label: "Node Graph",
+        icon: <Share2 className="h-3.5 w-3.5" strokeWidth={1.5} />,
+        active: true,
+      },
+      {
+        id: "eulinx-artifacts",
+        label: "Artifacts",
+        icon: <Boxes className="h-3.5 w-3.5" strokeWidth={1.5} />,
+      },
     ],
   },
 ]
-
-function TreeIcon({ kind }: { kind: TreeNode["kind"] }) {
-  const cls = "h-3.5 w-3.5 shrink-0"
-  if (kind === "terminal") return <TerminalSquare className={cls} strokeWidth={1.5} />
-  if (kind === "browser") return <Globe className={cls} strokeWidth={1.5} />
-  return <MapIcon className={cls} strokeWidth={1.5} />
-}
 
 export function LeftSidebar({
   activeSurface,
@@ -187,39 +185,53 @@ function ProjectItem({
       >
         <ChevronRight
           className={cn(
-            "h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-muted)] transition-transform",
+            "h-3.5 w-3.5 shrink-0 text-[color:var(--Eulinx-color-text-muted)] transition-transform",
             open && "rotate-90",
           )}
           strokeWidth={1.5}
         />
-        <Folder className="h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+        <Folder className="h-3.5 w-3.5 shrink-0 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
         <span className="flex-1 text-left">{project.name}</span>
       </button>
 
-      {open && project.nodes && (
-        <div className="mt-0.5">
-          {project.nodes.map((node, i) => (
-            <button
-              key={`${node.label}-${i}`}
-              type="button"
-              onClick={() => onSelectNode("node-main-term")}
-              className={cn(
-                "relative flex h-7 w-full items-center gap-2 rounded-[var(--Eulinx-radius-sm)] py-1 pl-9 pr-2 text-[12.5px] transition-colors",
-                "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-                node.active
-                  ? "bg-[color:var(--Eulinx-color-accent-surf)] text-[color:var(--Eulinx-color-text)]"
-                  : "text-[color:var(--Eulinx-color-text-secondary)] hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]",
-              )}
-            >
-              <TreeIcon kind={node.kind} />
-              <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left">
-                {node.label}
-              </span>
-              <Dot tone={node.tone} />
-            </button>
+      {open && project.features && (
+        <div className="relative mt-0.5 pl-4">
+          {/* vertical connector for the feature level */}
+          <span className="absolute bottom-2 left-[15px] top-1 w-px bg-[color:var(--Eulinx-color-border)]" />
+          {project.features.map((feature) => (
+            <FeatureItem key={feature.id} feature={feature} onSelectNode={onSelectNode} />
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function FeatureItem({
+  feature,
+  onSelectNode,
+}: {
+  feature: Feature
+  onSelectNode: (id: string) => void
+}) {
+  return (
+    <div className="relative flex items-center">
+      {/* horizontal connector */}
+      <span className="absolute left-[-9px] top-1/2 h-px w-[9px] bg-[color:var(--Eulinx-color-border)]" />
+      <button
+        type="button"
+        onClick={() => onSelectNode("node-main-term")}
+        className={cn(
+          "flex h-7 w-full items-center gap-2 rounded-[var(--Eulinx-radius-sm)] py-1 pl-3 pr-2 text-[12.5px] font-medium transition-colors hover:bg-[color:var(--Eulinx-color-hover)]",
+          "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+          feature.active
+            ? "bg-[color:var(--Eulinx-color-accent-surf)] text-[color:var(--Eulinx-color-text)]"
+            : "text-[color:var(--Eulinx-color-text-secondary)]",
+        )}
+      >
+        <span className="text-[color:var(--Eulinx-color-text-muted)]">{feature.icon}</span>
+        <span className="flex-1 text-left">{feature.label}</span>
+      </button>
     </div>
   )
 }
