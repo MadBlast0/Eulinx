@@ -27,7 +27,7 @@ export interface TerminalToolbarProps {
 const STATUS_COLOR: Record<PtyStatus, string> = {
   spawning: "var(--Eulinx-color-text-muted)",
   running: "var(--Eulinx-color-success)",
-  exited: "var(--Eulinx-color-danger)",
+  exited: "var(--Eulinx-color-error)",
   killing: "var(--Eulinx-color-warning)",
   detached: "var(--Eulinx-color-text-muted)",
 }
@@ -63,7 +63,7 @@ export function TerminalToolbar({
       />
       <span
         className="truncate text-role-label"
-        style={{ color: token("--Eulinx-color-text-primary") }}
+        style={{ color: token("--Eulinx-color-text") }}
         title={title}
       >
         {title}
@@ -97,7 +97,7 @@ function ToolbarButton({
       title={label}
       onClick={onClick}
       style={{ ...FOCUS_RING_STYLE }}
-      className="flex h-7 w-7 items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-elevated-2)]"
+      className="flex h-7 w-7 items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-surface-2)]"
     >
       <Icon name={icon} size="sm" aria-hidden />
     </button>

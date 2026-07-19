@@ -67,7 +67,7 @@ export function TerminalSearch({ searchAddon, onClose, reducedMotion }: Terminal
 
   const transition = reducedMotion
     ? "none"
-    : `opacity ${token("--Eulinx-duration-fast")} var(--Eulinx-ease-standard)`
+    : `opacity ${token("--Eulinx-duration-hover")} var(--Eulinx-ease-standard)`
 
   return (
     <div
@@ -75,7 +75,7 @@ export function TerminalSearch({ searchAddon, onClose, reducedMotion }: Terminal
       aria-label="Find in terminal"
       className="absolute right-2 top-9 z-[var(--Eulinx-z-popover)] flex items-center gap-2 rounded border px-2 py-1 shadow-[var(--Eulinx-elev-md)]"
       style={{
-        background: token("--Eulinx-color-elevated"),
+        background: token("--Eulinx-color-surface"),
         borderColor: token("--Eulinx-color-border"),
         transition,
       }}
@@ -92,7 +92,7 @@ export function TerminalSearch({ searchAddon, onClose, reducedMotion }: Terminal
         style={{
           ...FOCUS_RING_STYLE,
           background: "transparent",
-          color: token("--Eulinx-color-text-primary"),
+          color: token("--Eulinx-color-text"),
           outline: "none",
           width: "14rem",
         }}
@@ -109,7 +109,7 @@ export function TerminalSearch({ searchAddon, onClose, reducedMotion }: Terminal
         title="Previous (Shift+F3)"
         onClick={() => run("prev")}
         style={FOCUS_RING_STYLE}
-        className="flex h-6 w-6 items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-elevated-2)]"
+        className="flex h-6 w-6 items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-surface-2)]"
       >
         <Icon name="nav.chevron.left" size="sm" aria-hidden />
       </button>
@@ -119,7 +119,7 @@ export function TerminalSearch({ searchAddon, onClose, reducedMotion }: Terminal
         title="Next (F3)"
         onClick={() => run("next")}
         style={FOCUS_RING_STYLE}
-        className="flex h-6 w-6 items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-elevated-2)]"
+        className="flex h-6 w-6 items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-surface-2)]"
       >
         <Icon name="nav.chevron.right" size="sm" aria-hidden />
       </button>
@@ -131,7 +131,7 @@ export function TerminalSearch({ searchAddon, onClose, reducedMotion }: Terminal
         aria-label="Close search"
         onClick={onClose}
         style={FOCUS_RING_STYLE}
-        className="flex h-6 w-6 items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-elevated-2)]"
+        className="flex h-6 w-6 items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-surface-2)]"
       >
         <Icon name="nav.close" size="sm" aria-hidden />
       </button>
@@ -159,7 +159,7 @@ function SearchToggle({
         ...FOCUS_RING_STYLE,
         color: active ? token("--Eulinx-color-accent") : token("--Eulinx-color-text-muted"),
       }}
-      className="flex h-6 min-w-6 items-center justify-center rounded px-1 text-role-caption hover:bg-[color:var(--Eulinx-color-elevated-2)]"
+      className="flex h-6 min-w-6 items-center justify-center rounded px-1 text-role-caption hover:bg-[color:var(--Eulinx-color-surface-2)]"
     >
       {label.slice(0, 1)}
     </button>

@@ -243,7 +243,7 @@ function TerminalViewBase({
           role="status"
           className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-3 px-4 py-2 text-role-label"
           style={{
-            background: token("--Eulinx-color-elevated"),
+            background: token("--Eulinx-color-surface"),
             borderTop: `var(--Eulinx-border-thin) solid ${token("--Eulinx-color-border")}`,
             color: token("--Eulinx-color-text-muted"),
           }}
