@@ -1,10 +1,9 @@
 /**
- * Eulinx Sidebar — collapsible section wrapper.
+ * SidebarSection — collapsible section wrapper.
  *
- * Fixed vertical order is owned by the Sidebar (Part 01). Each section has a
- * header with a count badge and a collapse toggle. Collapse state is Tier 2
- * view state held in the Sidebar provider. The header respects reduced motion
- * via the token CSS (durations collapse to 0ms under prefers-reduced-motion).
+ * Fixed vertical order owned by the Sidebar. Each section has a
+ * header with count badge and collapse toggle. Clean, minimal styling
+ * with proper spacing hierarchy.
  */
 
 import { useId, type ReactNode } from "react"
@@ -21,6 +20,8 @@ export interface SidebarSectionProps {
   readonly children: ReactNode
   /** Render the body even when collapsed (used for the virtualized tree). */
   readonly keepBodyMounted?: boolean
+  /** Optional right-aligned action in the header. */
+  readonly headerAction?: ReactNode
 }
 
 export function SidebarSection({
@@ -31,6 +32,7 @@ export function SidebarSection({
   onToggle,
   children,
   keepBodyMounted = false,
+  headerAction,
 }: SidebarSectionProps): React.ReactElement {
   const bodyId = useId()
   const anim = useAnimation("panel.open")
@@ -44,15 +46,15 @@ export function SidebarSection({
       <div
         role="heading"
         aria-level={2}
-        className="flex shrink-0 items-center justify-between px-2 py-1"
+        className="flex shrink-0 items-center justify-between px-2 py-1.5"
       >
         <button
           type="button"
           aria-expanded={expanded}
           aria-controls={bodyId}
           onClick={onToggle}
-          className="flex flex-1 items-center gap-1 text-role-caption"
-          style={{ color: token("--Eulinx-color-text-muted"), textTransform: "uppercase", letterSpacing: "0.04em" }}
+          className="flex flex-1 items-center gap-1.5 text-[11px] font-medium uppercase tracking-wider"
+          style={{ color: token("--Eulinx-color-text-muted") }}
         >
           <Icon
             name={expanded ? "nav.chevron.down" : "nav.chevron.right"}
@@ -62,21 +64,22 @@ export function SidebarSection({
           <span>{title}</span>
           {badge !== undefined && badge > 0 ? (
             <span
-              className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-role-caption"
+              className="inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px]"
               style={{
-                background: token("--Eulinx-color-elevated-2"),
-                color: token("--Eulinx-color-text-primary"),
+                background: token("--Eulinx-color-surface-alt"),
+                color: token("--Eulinx-color-text-muted"),
               }}
             >
               {badge}
             </span>
           ) : null}
         </button>
+        {headerAction}
       </div>
       {expanded || keepBodyMounted ? (
         <div
           id={bodyId}
-          className="min-h-0 flex-1"
+          className="min-h-0 flex-1 overflow-y-auto"
           hidden={!expanded}
           style={{ ...anim.style }}
         >

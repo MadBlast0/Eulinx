@@ -250,7 +250,7 @@ export function FileTree({
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           className="w-full bg-transparent px-2 py-1 text-role-caption outline-none"
-          style={{ color: token("--Eulinx-color-text-primary") }}
+          style={{ color: token("--Eulinx-color-text") }}
         />
       </div>
       <VirtualList<TreeRow>
@@ -320,8 +320,8 @@ function TreeRowButton({
       className="flex cursor-pointer items-center gap-1 px-1"
       style={{
         paddingLeft: indent,
-        color: selected ? token("--Eulinx-color-accent") : token("--Eulinx-color-text-primary"),
-        background: selected ? token("--Eulinx-color-elevated-2") : "transparent",
+        color: selected ? token("--Eulinx-color-accent") : token("--Eulinx-color-text"),
+        background: selected ? token("--Eulinx-color-surface-alt") : "transparent",
         outline: "none",
       }}
     >

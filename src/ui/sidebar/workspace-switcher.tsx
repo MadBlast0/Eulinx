@@ -1,13 +1,8 @@
 /**
- * Eulinx Sidebar — Workspace switcher.
+ * WorkspaceSwitcher — workspace selector with popover.
  *
- * Lists workspaces (and their active project) and lets the user switch. The
- * popover is positioned above the trigger and uses the `--Eulinx-z-dropdown`
- * layer. Switching a workspace MUST NOT touch any worker process — it only
- * changes which workspace the Sidebar displays (Sidebar-Part01 §MUST NOT).
- *
- * Keyboard-operable: the filter input and option buttons are normal tab stops
- * within the popover; Escape closes and restores focus to the trigger.
+ * Lists workspaces (and their active project) and lets the user switch.
+ * Clean, minimal styling with proper focus management.
  */
 
 import { useEffect, useMemo, useRef, useState } from "react"
@@ -28,7 +23,7 @@ export interface WorkspaceSwitcherProps {
 export function WorkspaceSwitcher({
   workspaces,
   activeWorkspaceId,
-  activeProjectId,
+  activeProjectId: _activeProjectId,
   open,
   onOpenChange,
   onSwitch,
@@ -62,22 +57,25 @@ export function WorkspaceSwitcher({
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => onOpenChange(!open)}
-        className="flex w-full items-center gap-2 px-2 py-2 text-left"
+        className="flex w-full items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-[color:var(--Eulinx-color-hover)]"
         style={{ borderBottom: `var(--Eulinx-border-thin) solid ${token("--Eulinx-color-border")}` }}
       >
-        <Icon name="domain.workspace" size="sm" aria-hidden />
+        <span style={{ color: token("--Eulinx-color-text-muted") }}>
+          <Icon name="domain.workspace" size="sm" aria-hidden />
+        </span>
         <span className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-role-label" style={{ color: token("--Eulinx-color-text-primary") }}>
+          <span className="truncate text-xs font-medium" style={{ color: token("--Eulinx-color-text") }}>
             {active?.name ?? "No workspace"}
           </span>
           {active?.projectName ? (
-            <span className="truncate text-role-caption" style={{ color: token("--Eulinx-color-text-muted") }}>
+            <span className="truncate text-[10px]" style={{ color: token("--Eulinx-color-text-muted") }}>
               {active.projectName}
-              {activeProjectId ? ` · ${activeProjectId}` : ""}
             </span>
           ) : null}
         </span>
-        <Icon name="nav.chevron.down" size="xs" aria-hidden />
+        <span style={{ color: token("--Eulinx-color-text-muted") }}>
+          <Icon name="nav.chevron.down" size="xs" aria-hidden />
+        </span>
       </button>
 
       {open ? (
@@ -88,27 +86,30 @@ export function WorkspaceSwitcher({
           className="absolute left-0 right-0 top-full z-dropdown mt-1 flex flex-col"
           style={{
             zIndex: 100,
-            background: token("--Eulinx-color-elevated"),
+            background: token("--Eulinx-color-surface"),
             border: `var(--Eulinx-border-thin) solid ${token("--Eulinx-color-border")}`,
-            borderRadius: "var(--Eulinx-radius-md)",
-            boxShadow: "var(--Eulinx-elev-md)",
+            borderRadius: 8,
+            boxShadow: token("--Eulinx-elev-md"),
           }}
         >
           <div className="p-2" role="search">
             <input
               type="text"
               aria-label="Filter workspaces"
-              placeholder="Filter workspaces…"
+              placeholder="Filter workspaces..."
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
               autoFocus
-              className="w-full bg-transparent px-2 py-1 text-role-caption outline-none"
-              style={{ color: token("--Eulinx-color-text-primary") }}
+              className="w-full rounded bg-transparent px-2 py-1 text-xs outline-none"
+              style={{
+                color: token("--Eulinx-color-text"),
+                border: `var(--Eulinx-border-thin) solid ${token("--Eulinx-color-border")}`,
+              }}
             />
           </div>
           <div role="menu" className="max-h-64 overflow-y-auto">
             {filtered.length === 0 ? (
-              <div className="px-2 py-1 text-role-caption" style={{ color: token("--Eulinx-color-text-muted") }}>
+              <div className="px-2 py-1 text-xs" style={{ color: token("--Eulinx-color-text-muted") }}>
                 No matches
               </div>
             ) : (
@@ -124,17 +125,17 @@ export function WorkspaceSwitcher({
                       onSwitch(w.id)
                       onOpenChange(false)
                     }}
-                    className="flex w-full items-center gap-2 px-2 py-1 text-left"
+                    className="flex w-full items-center gap-2 px-2 py-1.5 text-left transition-colors hover:bg-[color:var(--Eulinx-color-hover)]"
                     style={{
-                      color: isActive ? token("--Eulinx-color-accent") : token("--Eulinx-color-text-primary"),
-                      background: isActive ? token("--Eulinx-color-elevated-2") : "transparent",
+                      color: isActive ? token("--Eulinx-color-accent") : token("--Eulinx-color-text"),
+                      background: isActive ? token("--Eulinx-color-surface-alt") : "transparent",
                     }}
                   >
                     <Icon name="domain.workspace" size="xs" aria-hidden />
                     <span className="flex min-w-0 flex-1 flex-col">
-                      <span className="truncate text-role-caption">{w.name}</span>
+                      <span className="truncate text-xs">{w.name}</span>
                       {w.projectName ? (
-                        <span className="truncate text-role-caption" style={{ color: token("--Eulinx-color-text-muted") }}>
+                        <span className="truncate text-[10px]" style={{ color: token("--Eulinx-color-text-muted") }}>
                           {w.projectName}
                         </span>
                       ) : null}

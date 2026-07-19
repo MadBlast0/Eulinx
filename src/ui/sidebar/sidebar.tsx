@@ -1,15 +1,11 @@
 /**
- * Eulinx Sidebar — main composition (Sidebar-Part01 §Component Tree).
+ * Sidebar — main composition.
  *
- * Renders (in fixed order): WorkspaceSwitcher, SearchEntry, and the four
- * collapsible sections (Explorer / Workers / Workflows / Sessions). In rail
- * mode only icons render; clicking an icon expands to full (Sidebar-Part03).
+ * Renders (in fixed order): WorkspaceSwitcher, SearchEntry, collapsible
+ * sections (Explorer / Workers / Workflows / Sessions), and a Settings
+ * footer at the bottom. Clean, professional layout with proper hierarchy.
  *
- * Consumes the WorkspaceLayout `sidebar` region slot via `<SidebarSlot>` when
- * mounted there; the Sidebar itself is framework-agnostic and reads everything
- * from the `SidebarProvider` context + its props.
- *
- * Collapse is a CSS width change, never an unmount (Sidebar-Part01 §Invariants).
+ * In rail mode only icons render; clicking an icon expands to full.
  */
 
 import { useMemo, useState } from "react"
@@ -29,12 +25,14 @@ export interface SidebarProps {
   readonly onNavigate: SidebarNavigate
   readonly onSwitchWorkspace: (workspaceId: string) => void
   readonly onOpenPalette: () => void
+  readonly onOpenSettings?: () => void
 }
 
 export function Sidebar({
   onNavigate,
   onSwitchWorkspace,
   onOpenPalette,
+  onOpenSettings,
 }: SidebarProps): React.ReactElement {
   const {
     data,
@@ -151,6 +149,22 @@ export function Sidebar({
           <SessionList sessions={data.sessions} onNavigate={navigate} selection={selectionId} />
         </SidebarSection>
       </div>
+
+      {/* Settings footer */}
+      <div
+        className="flex shrink-0 items-center border-t"
+        style={{ borderColor: token("--Eulinx-color-border") }}
+      >
+        <button
+          type="button"
+          onClick={onOpenSettings}
+          className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs transition-colors hover:bg-[color:var(--Eulinx-color-hover)]"
+          style={{ color: token("--Eulinx-color-text-muted") }}
+        >
+          <Icon name="domain.settings" size="sm" aria-hidden />
+          <span>Settings</span>
+        </button>
+      </div>
     </nav>
   )
 }
@@ -180,7 +194,7 @@ function Rail({
   return (
     <nav
       aria-label="Sidebar (rail)"
-      className="flex h-full flex-col items-center gap-2 py-2"
+      className="flex h-full flex-col items-center gap-1 py-2"
       style={{ background: token("--Eulinx-color-sidebar-bg"), width: 48 }}
     >
       {items.map((it, i) => (
@@ -190,7 +204,7 @@ function Rail({
           aria-label={it.label}
           title={it.label}
           onClick={() => (i === 1 ? onOpenPalette() : onExpand())}
-          className="flex h-8 w-8 items-center justify-center rounded"
+          className="flex h-8 w-8 items-center justify-center rounded transition-colors hover:bg-[color:var(--Eulinx-color-hover)]"
           style={{ color: token("--Eulinx-color-text-muted") }}
           onFocus={() => {
             if (i !== 1) onExpand()

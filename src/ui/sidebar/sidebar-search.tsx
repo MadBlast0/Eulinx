@@ -1,12 +1,8 @@
 /**
- * Eulinx Sidebar — Search entry.
+ * SidebarSearch — search entry in the sidebar header.
  *
- * The header search input is a single search surface: focusing/typing opens the
- * command palette (Sidebar-Part03 — do not also filter the tree; the tree has
- * its own inline filter). Ctrl/Cmd+K is the global palette shortcut; this entry
- * provides the same affordance via click/focus. Local typing also filters the
- * file tree below (Sidebar-Part01 lists a SearchEntry that routes to a Panel),
- * but the primary action is opening the palette.
+ * The primary search surface: focusing/typing opens the command palette.
+ * Local typing also filters the file tree below.
  */
 
 import { useEffect, useRef } from "react"
@@ -37,7 +33,7 @@ export function SidebarSearch({
 
   return (
     <div
-      className="shrink-0 px-2 py-1"
+      className="shrink-0 px-2 py-1.5"
       style={{ borderBottom: `var(--Eulinx-border-thin) solid ${token("--Eulinx-color-border")}` }}
     >
       <button
@@ -45,26 +41,28 @@ export function SidebarSearch({
         onClick={onOpenPalette}
         onFocus={() => onOpenPalette()}
         aria-label="Search or run command"
-        className="flex w-full items-center gap-2 px-2 py-1 text-left"
+        className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left transition-colors hover:bg-[color:var(--Eulinx-color-hover)]"
         style={{
           color: token("--Eulinx-color-text-muted"),
           border: `var(--Eulinx-border-thin) solid ${token("--Eulinx-color-border")}`,
-          borderRadius: "var(--Eulinx-radius-md)",
         }}
       >
         <Icon name="domain.search" size="xs" aria-hidden />
-        <span className="flex-1 text-left text-role-caption">Search files, workers…</span>
-        <span className="text-role-caption" style={{ color: token("--Eulinx-color-text-muted") }}>
-          ⌘K
-        </span>
+        <span className="flex-1 text-left text-xs">Search files, workers...</span>
+        <kbd
+          className="text-[10px] opacity-60"
+          style={{ fontFamily: "var(--Eulinx-font-mono, monospace)" }}
+        >
+          Ctrl+K
+        </kbd>
       </button>
       <input
         ref={inputRef}
         type="text"
         aria-label="Filter tree (local)"
-        placeholder="Quick filter…"
-        className="mt-1 w-full bg-transparent px-2 py-1 text-role-caption outline-none"
-        style={{ color: token("--Eulinx-color-text-primary") }}
+        placeholder="Quick filter..."
+        className="mt-1 w-full rounded bg-transparent px-2 py-1 text-xs outline-none"
+        style={{ color: token("--Eulinx-color-text") }}
         onChange={(e) => {
           const value = e.target.value
           if (debounce.current !== null) window.clearTimeout(debounce.current)

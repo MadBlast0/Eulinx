@@ -41,8 +41,8 @@ export function SessionList({
               onClick={() => onNavigate({ kind: "session", id: s.sessionId })}
               className="flex w-full items-center gap-2 px-2 py-1 text-left"
               style={{
-                color: selected ? token("--Eulinx-color-accent") : token("--Eulinx-color-text-primary"),
-                background: selected ? token("--Eulinx-color-elevated-2") : "transparent",
+                color: selected ? token("--Eulinx-color-accent") : token("--Eulinx-color-text"),
+                background: selected ? token("--Eulinx-color-surface-alt") : "transparent",
                 outline: "none",
               }}
             >

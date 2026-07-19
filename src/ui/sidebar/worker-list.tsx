@@ -115,8 +115,8 @@ export function WorkerList({
                         paddingLeft: 24,
                         color: selected
                           ? token("--Eulinx-color-accent")
-                          : token("--Eulinx-color-text-primary"),
-                        background: selected ? token("--Eulinx-color-elevated-2") : "transparent",
+                          : token("--Eulinx-color-text"),
+                        background: selected ? token("--Eulinx-color-surface-alt") : "transparent",
                         outline: "none",
                       }}
                     >
