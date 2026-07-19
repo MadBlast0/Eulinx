@@ -60,7 +60,7 @@ function renderPort(
     top: centerY,
     width: NODE_GEOMETRY.PORT_HIT_SIZE,
     height: NODE_GEOMETRY.PORT_HIT_SIZE,
-    background: token("--Eulinx-color-elevated-2"),
+    background: token("--Eulinx-color-surface-alt"),
     border: `var(--Eulinx-border-base) solid ${accentVar}`,
     [isIn ? "left" : "right"]: -NODE_GEOMETRY.PORT_HIT_SIZE / 2,
     opacity: connectMode ? 1 : 0.85,
@@ -132,7 +132,7 @@ function ProgressBar({ value }: { value: number }): React.ReactNode {
         height: 6,
         width: "100%",
         borderRadius: token("--Eulinx-radius-full"),
-        background: token("--Eulinx-color-elevated-2"),
+        background: token("--Eulinx-color-surface-alt"),
         overflow: "hidden",
       }}
     >
@@ -141,7 +141,7 @@ function ProgressBar({ value }: { value: number }): React.ReactNode {
           height: "100%",
           width: `${pct}%`,
           background: token("--Eulinx-color-accent"),
-          transition: `width ${token("--Eulinx-duration-base")} ${token("--Eulinx-ease-standard")}`,
+          transition: `width ${token("--Eulinx-duration-card")} ${token("--Eulinx-ease-standard")}`,
         }}
       />
     </div>
@@ -202,7 +202,7 @@ function EulinxNodeComponentImpl(props: EulinxNodeProps): React.ReactNode {
     minHeight: height,
     borderRadius: token(meta.geometry.radius as never),
     border: `${token("--Eulinx-border-thin")} solid ${token("--Eulinx-color-border")}`,
-    background: token("--Eulinx-color-elevated"),
+    background: token("--Eulinx-color-surface"),
     boxShadow: token("--Eulinx-elev-sm"),
     overflow: "hidden",
     display: "flex",
@@ -263,7 +263,7 @@ function EulinxNodeComponentImpl(props: EulinxNodeProps): React.ReactNode {
             whiteSpace: "nowrap",
             overflow: "hidden",
             textOverflow: "ellipsis",
-            color: token("--Eulinx-color-text-primary"),
+            color: token("--Eulinx-color-text"),
           }}
           title={data.label}
         >
@@ -320,7 +320,7 @@ function NodeBody({ data }: { data: EulinxNodeData }): React.ReactNode {
       return (
         <div style={{ display: "flex", gap: token("--Eulinx-space-2"), fontSize: 11 }}>
           <span style={{ color: token("--Eulinx-color-success") }}>PASS {v.pass}</span>
-          <span style={{ color: token("--Eulinx-color-danger") }}>FAIL {v.fail}</span>
+          <span style={{ color: token("--Eulinx-color-error") }}>FAIL {v.fail}</span>
           <span style={{ color: token("--Eulinx-color-text-muted") }}>SKIP {v.skip}</span>
         </div>
       )
@@ -352,7 +352,7 @@ function NodeBody({ data }: { data: EulinxNodeData }): React.ReactNode {
           : conn === "connecting"
             ? token("--Eulinx-color-info")
             : conn === "unreachable"
-              ? token("--Eulinx-color-danger")
+              ? token("--Eulinx-color-error")
               : token("--Eulinx-color-text-muted")
       return (
         <span className="text-role-caption" style={{ color, display: "inline-flex", alignItems: "center", gap: token("--Eulinx-space-1") }}>

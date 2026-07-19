@@ -70,7 +70,7 @@ function EulinxEdgeImpl(props: EulinxEdgeProps): React.ReactNode {
             style={{
               position: "absolute",
               transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-              background: token("--Eulinx-color-elevated"),
+              background: token("--Eulinx-color-surface"),
               color: token("--Eulinx-color-text-muted"),
               borderRadius: token("--Eulinx-radius-sm"),
               padding: "1px 6px",

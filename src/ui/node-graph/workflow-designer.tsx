@@ -27,7 +27,7 @@ import { token } from "@/ui/tokens"
 import { Icon } from "@/ui/icons"
 import { NodeGraphDomMirror, useDomMirror } from "@/a11y/dom-mirror"
 import type { WorkerState } from "@/a11y"
-import { NodeGraphProvider, useNodeGraph } from "./use-node-graph"
+import { useNodeGraph, type NodeGraphProviderProps } from "./use-node-graph"
 import { EulinxNode } from "./custom-node"
 import { EulinxEdge } from "./custom-edge"
 import { GraphMiniMap } from "./graph-minimap"
@@ -44,20 +44,12 @@ export type WorkflowDesignerProps = {
   /** Run id context for new nodes. */
   runId?: string
   /** Initial snapshot. */
-  initialNodes?: Parameters<typeof NodeGraphProvider>[0]["initialNodes"]
-  initialEdges?: Parameters<typeof NodeGraphProvider>[0]["initialEdges"]
+  initialNodes?: NodeGraphProviderProps["initialNodes"]
+  initialEdges?: NodeGraphProviderProps["initialEdges"]
 }
 
-export function WorkflowDesigner(props: WorkflowDesignerProps): ReactNode {
-  return (
-    <NodeGraphProvider
-      runId={props.runId}
-      initialNodes={props.initialNodes}
-      initialEdges={props.initialEdges}
-    >
-      <WorkflowCanvas />
-    </NodeGraphProvider>
-  )
+export function WorkflowDesigner(_props: WorkflowDesignerProps): ReactNode {
+  return <WorkflowCanvas />
 }
 
 function WorkflowCanvas(): ReactNode {
@@ -138,7 +130,7 @@ function WorkflowCanvas(): ReactNode {
         <Controls
           showInteractive={false}
           style={{
-            background: token("--Eulinx-color-elevated"),
+            background: token("--Eulinx-color-surface"),
             border: `${token("--Eulinx-border-thin")} solid ${token("--Eulinx-color-border")}`,
             borderRadius: token("--Eulinx-radius-md"),
             boxShadow: token("--Eulinx-elev-sm"),
@@ -234,7 +226,7 @@ function GraphToolbar({
             top: "100%",
             left: 0,
             marginTop: token("--Eulinx-space-1"),
-            background: token("--Eulinx-color-elevated"),
+            background: token("--Eulinx-color-surface"),
             border: `${token("--Eulinx-border-thin")} solid ${token("--Eulinx-color-border")}`,
             borderRadius: token("--Eulinx-radius-md"),
             boxShadow: token("--Eulinx-elev-md"),
@@ -276,8 +268,8 @@ function toolbarBtnStyle(active: boolean): React.CSSProperties {
     padding: `${token("--Eulinx-space-1")} ${token("--Eulinx-space-3")}`,
     borderRadius: token("--Eulinx-radius-md"),
     border: `${token("--Eulinx-border-thin")} solid ${token("--Eulinx-color-border")}`,
-    background: active ? token("--Eulinx-color-accent") : token("--Eulinx-color-elevated"),
-    color: active ? token("--Eulinx-color-surface") : token("--Eulinx-color-text-primary"),
+    background: active ? token("--Eulinx-color-accent") : token("--Eulinx-color-surface"),
+    color: active ? token("--Eulinx-color-surface") : token("--Eulinx-color-text"),
     cursor: "pointer",
   }
 }

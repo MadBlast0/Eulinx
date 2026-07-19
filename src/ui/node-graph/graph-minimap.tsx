@@ -29,7 +29,7 @@ export function GraphMiniMap(props: GraphMiniMapProps): React.ReactNode {
       zoomable={false}
       ariaLabel="Graph overview"
       style={{
-        background: token("--Eulinx-color-elevated"),
+        background: token("--Eulinx-color-surface"),
         border: `${token("--Eulinx-border-thin")} solid ${token("--Eulinx-color-border")}`,
         borderRadius: token("--Eulinx-radius-md"),
         boxShadow: token("--Eulinx-elev-sm"),
