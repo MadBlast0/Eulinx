@@ -29,7 +29,7 @@
   --wsx-amber-dim: color-mix(in srgb, var(--Eulinx-color-warning) 22%, var(--Eulinx-color-background));
   --wsx-red: var(--Eulinx-color-error);
   --wsx-red-dim: color-mix(in srgb, var(--Eulinx-color-error) 22%, var(--Eulinx-color-background));
-  --wsx-purple: #a78bfa;
+  --wsx-purple: color-mix(in srgb, var(--wsx-accent) 80%, white 20%);
 
   --wsx-r-sm: var(--Eulinx-radius-sm);
   --wsx-r-md: var(--Eulinx-radius-md);
@@ -58,6 +58,7 @@
   background: var(--wsx-bg-app);
   height: 100vh;
   overflow: hidden;
+  transition: background-color 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .wsx button {
@@ -166,5 +167,5 @@
 }
 .wsx *::-webkit-scrollbar-thumb {
   background: var(--wsx-border-strong);
-  border-radius: 3px;
+  border-radius: var(--Eulinx-radius-sm);
 }

@@ -13,8 +13,8 @@
  * ------------------------------------------------------------------------- */
 
 @font-face {
-  font-family: "Inter Variable";
-  src: url("/fonts/InterVariable.woff2") format("woff2-variations");
+  font-family: "Geist Variable";
+  src: url("/fonts/GeistVariable.woff2") format("woff2-variations");
   font-weight: 100 900;
   font-style: normal;
   font-display: block;
@@ -24,16 +24,16 @@
 }
 
 @font-face {
-  font-family: "JetBrains Mono";
-  src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-family: "Departure Mono";
+  src: url("/fonts/DepartureMono-Regular.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
   font-display: block;
 }
 
 @font-face {
-  font-family: "JetBrains Mono";
-  src: url("/fonts/JetBrainsMono-Bold.woff2") format("woff2");
+  font-family: "Departure Mono";
+  src: url("/fonts/DepartureMono-Bold.woff2") format("woff2");
   font-weight: 700;
   font-style: normal;
   font-display: block;
@@ -44,11 +44,11 @@
  * ------------------------------------------------------------------------- */
 
 :root {
-  --Eulinx-font-sans: "Inter Variable", "Inter", -apple-system,
+  --Eulinx-font-sans: "Geist Variable", "Geist", -apple-system,
     BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", "Ubuntu",
     "Cantarell", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
 
-  --Eulinx-font-mono: "JetBrains Mono", "Cascadia Mono", "Cascadia Code",
+  --Eulinx-font-mono: "Departure Mono", "Cascadia Mono", "Cascadia Code",
     "Consolas", "SF Mono", "Menlo", "Monaco", "DejaVu Sans Mono",
     "Liberation Mono", "Ubuntu Mono", "Noto Sans Mono", monospace;
 
@@ -166,6 +166,7 @@
   font-weight: var(--Eulinx-role-display-weight);
   text-transform: var(--Eulinx-role-display-transform);
   font-feature-settings: "liga" 1, "calt" 1, "tnum" 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .text-role-heading1 {
@@ -176,6 +177,7 @@
   font-weight: var(--Eulinx-role-heading1-weight);
   text-transform: var(--Eulinx-role-heading1-transform);
   font-feature-settings: "liga" 1, "calt" 1, "tnum" 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .text-role-heading2 {
@@ -186,6 +188,7 @@
   font-weight: var(--Eulinx-role-heading2-weight);
   text-transform: var(--Eulinx-role-heading2-transform);
   font-feature-settings: "liga" 1, "calt" 1, "tnum" 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .text-role-heading3 {
@@ -196,6 +199,7 @@
   font-weight: var(--Eulinx-role-heading3-weight);
   text-transform: var(--Eulinx-role-heading3-transform);
   font-feature-settings: "liga" 1, "calt" 1, "tnum" 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .text-role-heading4 {
@@ -206,6 +210,7 @@
   font-weight: var(--Eulinx-role-heading4-weight);
   text-transform: var(--Eulinx-role-heading4-transform);
   font-feature-settings: "liga" 1, "calt" 1, "tnum" 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .text-role-body {
@@ -216,6 +221,7 @@
   font-weight: var(--Eulinx-role-body-weight);
   text-transform: var(--Eulinx-role-body-transform);
   font-feature-settings: "liga" 1, "calt" 1, "tnum" 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .text-role-label {
@@ -226,6 +232,7 @@
   font-weight: var(--Eulinx-role-label-weight);
   text-transform: var(--Eulinx-role-label-transform);
   font-feature-settings: "liga" 1, "calt" 1, "tnum" 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .text-role-caption {
@@ -236,6 +243,7 @@
   font-weight: var(--Eulinx-role-caption-weight);
   text-transform: var(--Eulinx-role-caption-transform);
   font-feature-settings: "liga" 1, "calt" 1, "tnum" 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .text-role-code {
@@ -246,6 +254,7 @@
   font-weight: var(--Eulinx-role-code-weight);
   text-transform: var(--Eulinx-role-code-transform);
   font-feature-settings: "liga" 1, "calt" 1, "tnum" 1;
+  font-variant-numeric: tabular-nums;
 }
 
 .text-role-terminal {
@@ -257,6 +266,7 @@
   text-transform: var(--Eulinx-role-terminal-transform);
   /* Terminal MUST NOT use ligatures or contextual alternates. */
   font-feature-settings: "liga" 0, "calt" 0, "tnum" 1;
+  font-variant-numeric: tabular-nums;
   /* Terminal text scrolls horizontally; it never truncates. */
   white-space: pre;
   text-rendering: auto;

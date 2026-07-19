@@ -124,6 +124,7 @@ const config: Config = {
         out: "var(--ease-out)",
         "in-out": "var(--ease-in-out)",
         linear: "var(--ease-linear)",
+        expressive: "var(--ease-expressive)",
       },
     },
   },

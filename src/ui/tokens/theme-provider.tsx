@@ -343,25 +343,25 @@ const EULINX_DARK_COLORS: ThemeColors = {
   "border-strong": "#484F58",
   "text-primary": "#E6EDF3",
   "text-muted": "#9DA7B3",
-  accent: "#4C9EFF",
+  accent: "#E07135",
   success: "#3FB950",
   warning: "#D29922",
   danger: "#F85149",
-  info: "#58A6FF",
+  info: "#D4875A",
   // Worker states
   "state-requested": "#8B949E",
-  "state-queued": "#58A6FF",
-  "state-spawning": "#BC8CFF",
+  "state-queued": "#E07135",
+  "state-spawning": "#F1924F",
   "state-initializing": "#D29922",
   "state-idle": "#8B949E",
-  "state-working": "#4C9EFF",
+  "state-working": "#E07135",
   "state-waiting": "#D29922",
   "state-blocked": "#F85149",
   "state-paused": "#D29922",
   "state-failing": "#F85149",
   "state-terminating": "#FF7B72",
   "state-terminated": "#6E7681",
-  "state-zombie": "#A371F7",
+  "state-zombie": "#C1562B",
 }
 
 const EULINX_LIGHT_COLORS: ThemeColors = {
@@ -372,24 +372,24 @@ const EULINX_LIGHT_COLORS: ThemeColors = {
   "border-strong": "#AFB8C1",
   "text-primary": "#1F2328",
   "text-muted": "#59636E",
-  accent: "#0969DA",
+  accent: "#D47A42",
   success: "#1A7F37",
   warning: "#9A6700",
   danger: "#CF222E",
-  info: "#0969DA",
+  info: "#B86A3E",
   "state-requested": "#59636E",
-  "state-queued": "#0969DA",
-  "state-spawning": "#8250DF",
+  "state-queued": "#D47A42",
+  "state-spawning": "#DEA77A",
   "state-initializing": "#9A6700",
   "state-idle": "#59636E",
-  "state-working": "#0969DA",
+  "state-working": "#D47A42",
   "state-waiting": "#9A6700",
   "state-blocked": "#CF222E",
   "state-paused": "#9A6700",
   "state-failing": "#CF222E",
   "state-terminating": "#A40E26",
   "state-terminated": "#6E7781",
-  "state-zombie": "#8250DF",
+  "state-zombie": "#9A512B",
 }
 
 const EULINX_HIGH_CONTRAST_COLORS: ThemeColors = {
@@ -400,17 +400,17 @@ const EULINX_HIGH_CONTRAST_COLORS: ThemeColors = {
   "border-strong": "#FFFFFF",
   "text-primary": "#FFFFFF",
   "text-muted": "#E0E0E0",
-  accent: "#FFD60A",
+  accent: "#F6B47A",
   success: "#3FF23F",
   warning: "#FFD60A",
   danger: "#FF5C5C",
   info: "#5CC8FF",
   "state-requested": "#FFFFFF",
-  "state-queued": "#5CC8FF",
+  "state-queued": "#F6B47A",
   "state-spawning": "#E692FF",
   "state-initializing": "#FFD60A",
   "state-idle": "#FFFFFF",
-  "state-working": "#5CC8FF",
+  "state-working": "#F6B47A",
   "state-waiting": "#FFD60A",
   "state-blocked": "#FF5C5C",
   "state-paused": "#FFD60A",
@@ -425,21 +425,21 @@ export const BUILTIN_THEMES: Record<string, Theme> = {
     "Eulinx-dark",
     "dark",
     "dark",
-    { name: "Eulinx Dark", author: "Eulinx", description: "Default dark theme.", version: "1.0.0" },
+    { name: "Eulinx Dark", author: "Eulinx", description: "Default dark theme with warm copper accent.", version: "1.0.0" },
     EULINX_DARK_COLORS,
   ),
   "Eulinx-light": makeBuiltin(
     "Eulinx-light",
     "light",
     "light",
-    { name: "Eulinx Light", author: "Eulinx", description: "Default light theme.", version: "1.0.0" },
+    { name: "Eulinx Light", author: "Eulinx", description: "Default light theme with warm copper accent.", version: "1.0.0" },
     EULINX_LIGHT_COLORS,
   ),
   "Eulinx-high-contrast": makeBuiltin(
     "Eulinx-high-contrast",
     "dark",
     "dark",
-    { name: "Eulinx High Contrast", author: "Eulinx", description: "WCAG AAA high-contrast dark theme.", version: "1.0.0" },
+    { name: "Eulinx High Contrast", author: "Eulinx", description: "WCAG AAA high-contrast dark theme with warm copper accent.", version: "1.0.0" },
     EULINX_HIGH_CONTRAST_COLORS,
   ),
 }
@@ -630,7 +630,7 @@ export function ThemeProvider({ children, onApplied }: ThemeProviderProps): Reac
       return
     }
     const root = document.documentElement
-    root.style.transition = "background-color 200ms ease, color 200ms ease"
+    root.style.transition = "background-color 200ms cubic-bezier(0.22, 0.61, 0.36, 1), color 200ms cubic-bezier(0.22, 0.61, 0.36, 1)"
     apply()
     const cleanup = (): void => {
       root.style.transition = ""

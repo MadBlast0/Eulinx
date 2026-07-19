@@ -145,7 +145,7 @@ export const THEME_IDS: ThemeId[] = [THEME_DARK, THEME_LIGHT];
 
 type RampStep = 50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | 950;
 const RAMP_STEPS: RampStep[] = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
-type Hue = "neutral" | "blue" | "green" | "amber" | "red";
+type Hue = "neutral" | "copper" | "green" | "amber" | "red";
 
 function rampPrimitive(hue: Hue, step: RampStep, value: string, usage: string): PrimitiveToken {
   return {
@@ -182,18 +182,18 @@ const NEUTRAL: Record<RampStep, string> = {
   950: "#0F1115",   // darkest dark (background)
 };
 
-const BLUE: Record<RampStep, string> = {
-  50: "#EEF4FF",
-  100: "#D6E4FF",
-  200: "#ADC6FF",
-  300: "#7EA8FF",
-  400: "#639AFF",
-  500: "#4F8CFF",   // primary accent (node-graph redesign)
-  600: "#3D74E8",
-  700: "#2E5BC4",
-  800: "#274C9E",
-  900: "#243E78",
-  950: "#16203F",
+const COPPER: Record<RampStep, string> = {
+  50: "#FEF6EE",
+  100: "#FDEBD8",
+  200: "#FAD2A8",
+  300: "#F6B47A",
+  400: "#F1924F",
+  500: "#E07135",   // primary accent — warm copper
+  600: "#C1562B",
+  700: "#9F4020",
+  800: "#82331A",
+  900: "#6B2915",
+  950: "#3F140C",
 };
 
 const GREEN: Record<RampStep, string> = {
@@ -239,14 +239,14 @@ const RED: Record<RampStep, string> = {
 };
 
 const neutralUsage = "Neutral grey ramp — surfaces, text, borders (invariant).";
-const blueUsage = "Blue ramp — accent, info roles, focus states (invariant).";
+const copperUsage = "Copper ramp — warm accent, info roles, focus states (invariant).";
 const greenUsage = "Green ramp — success roles, positive states (invariant).";
 const amberUsage = "Amber ramp — warning roles, paused states (invariant).";
 const redUsage = "Red ramp — danger/error roles, failing states (invariant).";
 
 const colorPrimitives: PrimitiveToken[] = [
   ...RAMP_STEPS.map((s) => rampPrimitive("neutral", s, NEUTRAL[s], neutralUsage)),
-  ...RAMP_STEPS.map((s) => rampPrimitive("blue", s, BLUE[s], blueUsage)),
+  ...RAMP_STEPS.map((s) => rampPrimitive("copper", s, COPPER[s], copperUsage)),
   ...RAMP_STEPS.map((s) => rampPrimitive("green", s, GREEN[s], greenUsage)),
   ...RAMP_STEPS.map((s) => rampPrimitive("amber", s, AMBER[s], amberUsage)),
   ...RAMP_STEPS.map((s) => rampPrimitive("red", s, RED[s], redUsage)),
@@ -284,13 +284,13 @@ const spacePrimitives: PrimitiveToken[] = Object.entries(spaceSteps).map(([step,
 
 // Radius: spec: xs 4, sm 6, md 8, lg 10, xl 12, 2xl 16, full 999
 const radiusValues: Record<string, string> = {
-  xs: "4px",
-  sm: "6px",
-  md: "8px",
-  lg: "10px",
-  xl: "12px",
-  "2xl": "16px",
-  full: "9999px",
+  xs: "2px",      // micro-interactions, checkboxes
+  sm: "6px",      // small controls, badges, pills
+  md: "10px",     // cards, buttons, panels — default radius
+  lg: "14px",     // dialogs, sheets, modals
+  xl: "18px",     // floating panels, large overlays
+  "2xl": "24px",  // command palette, mega-menus
+  full: "9999px", // pills, avatars, tags
 };
 
 const radiusPrimitives: PrimitiveToken[] = Object.entries(radiusValues).map(([variant, val]) => ({
@@ -299,15 +299,15 @@ const radiusPrimitives: PrimitiveToken[] = Object.entries(radiusValues).map(([va
   name: `--Eulinx-radius-${variant}`,
   value: val,
   themeScope: "invariant" as const,
-  usage: `Corner radius "${variant}". Default md (10px) for cards/buttons, lg (12px) for dialogs, full for pills.`,
+  usage: `Corner radius "${variant}". Default md (10px) for cards/buttons, lg (14px) for dialogs, full for pills.`,
 }));
 
 // Border width: spec says thin 1px borders
 const borderValues: Record<string, string> = {
   none: "0px",
   thin: "1px",
-  base: "2px",
-  thick: "4px",
+  base: "1px",     // was 2px — reduced for minimality
+  thick: "2px",    // was 4px — reduced
 };
 
 const borderPrimitives: PrimitiveToken[] = Object.entries(borderValues).map(([variant, val]) => ({
@@ -418,6 +418,7 @@ const durationPrimitives: PrimitiveToken[] = Object.entries(durationValues).map(
 // Easing: spec: cubic-bezier(.22,.61,.36,1)
 const easeValues: Record<string, string> = {
   standard: "cubic-bezier(0.22, 0.61, 0.36, 1)",
+  expressive: "cubic-bezier(0.16, 1, 0.3, 1)",  // spring-like entrance
   linear: "linear",
 };
 
@@ -427,7 +428,7 @@ const easePrimitives: PrimitiveToken[] = Object.entries(easeValues).map(([varian
   name: `--Eulinx-ease-${variant}`,
   value: val,
   themeScope: "invariant" as const,
-  usage: `Easing curve "${variant}". Spec uses cubic-bezier(0.22, 0.61, 0.36, 1) for all motion.`,
+  usage: `Easing curve "${variant}". Standard for most motion, expressive for entrance/emphasis animations.`,
 }));
 
 const primitiveTokens: PrimitiveToken[] = [
@@ -607,35 +608,35 @@ const BASE_ROLES: SemanticColorSpec[] = [
   },
   {
     name: "--Eulinx-color-info",
-    darkBinding: "--Eulinx-color-blue-500",      // #3B82F6
-    lightBinding: "--Eulinx-color-blue-500",     // #3B82F6
+    darkBinding: "--Eulinx-color-copper-400",      // #F1924F
+    lightBinding: "--Eulinx-color-copper-400",     // #F1924F
     onSurface: "--Eulinx-color-surface",
     requirement: "ui-3.0",
     darkRatio: 4.0,
     lightRatio: 4.0,
-    usage: "Informational state, neutral emphasis.",
+    usage: "Informational state, neutral emphasis using muted copper.",
   },
 
   // Accent / focus
   {
     name: "--Eulinx-color-accent",
-    darkBinding: "--Eulinx-color-blue-500",      // #3B82F6
-    lightBinding: "--Eulinx-color-blue-500",     // #3B82F6
+    darkBinding: "--Eulinx-color-copper-500",      // #E07135
+    lightBinding: "--Eulinx-color-copper-500",     // #E07135
     onSurface: "--Eulinx-color-surface",
     requirement: "ui-3.0",
     darkRatio: 4.0,
     lightRatio: 4.0,
-    usage: "Primary accent color — focus rings, active selection, links.",
+    usage: "Primary accent color — focus rings, active selection, links. Uses warm copper for a non-AI look.",
   },
   {
     name: "--Eulinx-color-ring",
-    darkBinding: "--Eulinx-color-blue-500",      // #3B82F6
-    lightBinding: "--Eulinx-color-blue-500",     // #3B82F6
+    darkBinding: "--Eulinx-color-copper-500",      // #E07135
+    lightBinding: "--Eulinx-color-copper-500",     // #E07135
     onSurface: "--Eulinx-color-surface",
     requirement: "ui-3.0",
     darkRatio: 4.0,
     lightRatio: 4.0,
-    usage: "Focus ring color (same as accent per spec).",
+    usage: "Focus ring color (same as accent per spec — warm copper).",
   },
 ];
 
