@@ -16,7 +16,7 @@ export function ContextMenu() {
 
   return (
     <div
-      className="fixed z-[var(--Eulinx-z-dropdown)] min-w-[180px] rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-1 shadow-[var(--Eulinx-elev-lg)]"
+      className="fixed z-[var(--Eulinx-z-dropdown)] min-w-[180px] animate-[ctx-in_120ms_ease] rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] p-1.5 shadow-[var(--Eulinx-elev-lg)]"
       style={{ left: contextMenu.x, top: contextMenu.y }}
       onClick={(e) => e.stopPropagation()}
     >
@@ -44,7 +44,7 @@ function Item({
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-[var(--Eulinx-radius-sm)] px-3 py-2 text-xs text-[color:var(--Eulinx-color-text-secondary)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]"
+      className="flex h-[30px] w-full items-center gap-2.5 rounded-[var(--Eulinx-radius-sm)] px-3 text-[12.5px] text-[color:var(--Eulinx-color-text)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)]"
     >
       <span className="text-[color:var(--Eulinx-color-text-muted)]">{icon}</span>
       {label}

@@ -7,7 +7,7 @@ import { useKeymap } from "./use-keyboard"
 
 function Kbd({ children }: { children: React.ReactNode }) {
   return (
-    <kbd className="rounded-[var(--Eulinx-radius-xs)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-1.5 py-0.5 font-mono text-[11px] text-[color:var(--Eulinx-color-text-secondary)]">
+    <kbd className="rounded-[var(--Eulinx-radius-xs)] border border-[color:var(--Eulinx-color-border)] border-b-2 bg-[color:var(--Eulinx-color-surface)] px-1.5 py-0.5 font-mono text-[10px] font-medium text-[color:var(--Eulinx-color-text-muted)]">
       {children}
     </kbd>
   )
@@ -79,7 +79,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
 
   return (
     <div
-      className="fixed inset-0 z-[var(--Eulinx-z-modal)] flex items-start justify-center bg-[color:color-mix(in_srgb,var(--Eulinx-color-background)_50%,transparent)] pt-[12vh]"
+      className="fixed inset-0 z-[var(--Eulinx-z-modal)] flex items-start justify-center bg-[color:color-mix(in_srgb,var(--Eulinx-color-background)_55%,transparent)] pt-[14vh]"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
@@ -88,23 +88,24 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="w-[600px] max-w-[92vw] overflow-hidden border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] shadow-[var(--Eulinx-elev-lg)] rounded-[var(--Eulinx-radius-lg)]"
+        className="w-[560px] max-w-[92vw] animate-[pal-in_160ms_ease] overflow-hidden border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] shadow-[var(--Eulinx-elev-xl)] rounded-[var(--Eulinx-radius-xl)]"
         onKeyDown={onKeyDown}
       >
-        <div className="flex items-center gap-2 border-b border-[color:var(--Eulinx-color-border)] px-3">
+        <div className="flex items-center gap-2.5 border-b border-[color:var(--Eulinx-color-border)] px-4 py-3.5">
           <Search className="h-4 w-4 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Type a command or search..."
-            className="h-11 flex-1 bg-transparent text-sm text-[color:var(--Eulinx-color-text)] outline-none placeholder:text-[color:var(--Eulinx-color-text-muted)]"
+            placeholder="Search nodes, run commands…"
+            className="h-5 flex-1 bg-transparent text-[14px] text-[color:var(--Eulinx-color-text)] outline-none placeholder:text-[color:var(--Eulinx-color-text-muted)]"
             aria-label="Command query"
           />
+          <Kbd>Esc</Kbd>
         </div>
-        <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-1.5">
+        <div ref={listRef} className="max-h-[340px] overflow-y-auto p-1.5">
           {filtered.length === 0 ? (
-            <div className="px-3 py-6 text-center text-sm text-[color:var(--Eulinx-color-text-muted)]">
+            <div className="px-3 py-6 text-center text-[12.5px] text-[color:var(--Eulinx-color-text-muted)]">
               No results found.
             </div>
           ) : (
@@ -116,9 +117,9 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
                 onMouseEnter={() => setActiveIndex(i)}
                 onClick={() => run(cmd)}
                 className={cn(
-                  "flex w-full items-center justify-between gap-3 rounded-[var(--Eulinx-radius-sm)] px-3 py-2 text-left text-sm transition-colors",
+                  "flex w-full items-center justify-between gap-3 rounded-[var(--Eulinx-radius-md)] px-2.5 py-2 text-left text-[13px] transition-colors",
                   i === activeIndex
-                    ? "bg-[color:var(--Eulinx-color-accent)] text-white"
+                    ? "bg-[color:var(--Eulinx-color-hover)] text-[color:var(--Eulinx-color-text)]"
                     : "text-[color:var(--Eulinx-color-text-secondary)] hover:bg-[color:var(--Eulinx-color-hover)]",
                 )}
               >
@@ -127,7 +128,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
                   className={cn(
                     "shrink-0 font-mono text-[11px]",
                     i === activeIndex
-                      ? "text-white/80"
+                      ? "text-[color:var(--Eulinx-color-text-muted)]"
                       : "text-[color:var(--Eulinx-color-text-muted)]",
                   )}
                 >

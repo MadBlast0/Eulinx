@@ -106,7 +106,7 @@ function WorkspaceShell() {
       }}
     >
       <div style={{ gridArea: "topbar" }}>
-        <TopBar onOpenSurface={setSurface} />
+        <TopBar />
       </div>
 
       <div style={{ gridArea: "left", overflow: "hidden" }}>
@@ -145,7 +145,7 @@ function WorkspaceShell() {
       </div>
 
       <div style={{ gridArea: "right", overflow: "hidden" }}>
-        {rightSidebarOpen && <RightSidebar onOpenSurface={setSurface} />}
+        {rightSidebarOpen && <RightSidebar />}
       </div>
 
       <div style={{ gridArea: "status" }}>

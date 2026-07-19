@@ -166,33 +166,34 @@ function rampPrimitive(hue: Hue, step: RampStep, value: string, usage: string): 
 // We keep primitives as a single neutral/blue/green/amber/red ramp
 // (invariant) and bind semantic roles per theme.
 
-// Neutral: warm tones — cream whites for light, warm charcoals for dark
+// Neutral: cool blue-gray tones — cool whites for light, cool charcoals for dark
+// (Eulinx node-graph redesign: #0F1115 / #171A20 / #1D222B / #232935 / #2C3340)
 const NEUTRAL: Record<RampStep, string> = {
-  50: "#FAF8F6",    // light background (warm white)
-  100: "#F6F4F2",   // light sidebar (cream)
-  200: "#ECE9E6",   // light border (warm gray)
-  300: "#D8D4CF",
-  400: "#A8A29E",   // light text-muted (warm)
-  500: "#78716C",   // mid gray (warm stone)
-  600: "#57534E",
-  700: "#44403C",
-  800: "#292524",   // dark sidebar (warm charcoal)
-  900: "#1C1917",   // dark surface (warm dark)
-  950: "#0F0D0C",   // darkest dark (background)
+  50: "#F7F8FA",    // light background (cool white)
+  100: "#EFF1F4",   // light sidebar (cool gray)
+  200: "#E2E5EA",   // light border (cool gray)
+  300: "#C7CCD4",
+  400: "#8B93A1",   // light text-muted (cool)
+  500: "#6B7280",   // mid gray (cool stone)
+  600: "#4B5563",
+  700: "#2C3340",   // dark border-strong (cool charcoal)
+  800: "#232935",   // dark hover/pressed/selected (cool charcoal)
+  900: "#171A20",   // dark surface (cool dark)
+  950: "#0F1115",   // darkest dark (background)
 };
 
 const BLUE: Record<RampStep, string> = {
-  50: "#EFF6FF",
-  100: "#DBEAFE",
-  200: "#BFDBFE",
-  300: "#93C5FD",
-  400: "#60A5FA",
-  500: "#3B82F6",   // spec info color
-  600: "#2563EB",
-  700: "#1D4ED8",
-  800: "#1E40AF",
-  900: "#1E3A8A",
-  950: "#172554",
+  50: "#EEF4FF",
+  100: "#D6E4FF",
+  200: "#ADC6FF",
+  300: "#7EA8FF",
+  400: "#639AFF",
+  500: "#4F8CFF",   // primary accent (node-graph redesign)
+  600: "#3D74E8",
+  700: "#2E5BC4",
+  800: "#274C9E",
+  900: "#243E78",
+  950: "#16203F",
 };
 
 const GREEN: Record<RampStep, string> = {
@@ -462,45 +463,45 @@ type SemanticColorSpec = {
   usage: string;
 };
 
-// Minimal_Clean spec semantic color roles
+// Minimal_Clean spec semantic color roles (remapped to cool blue-gray ramp)
 const BASE_ROLES: SemanticColorSpec[] = [
   // Background layers
   {
     name: "--Eulinx-color-background",
-    darkBinding: "--Eulinx-color-neutral-950",   // #09090B
-    lightBinding: "--Eulinx-color-neutral-50",   // #FAFAFA
+    darkBinding: "--Eulinx-color-neutral-950",   // #0F1115
+    lightBinding: "--Eulinx-color-neutral-50",   // #F7F8FA
     usage: "App background / canvas. Deepest surface.",
   },
   {
     name: "--Eulinx-color-surface",
-    darkBinding: "--Eulinx-color-neutral-900",   // #18181B
+    darkBinding: "--Eulinx-color-neutral-900",   // #171A20
     lightBinding: "--Eulinx-color-neutral-100",  // #FFFFFF
     usage: "Primary surface for cards, panels, content areas.",
   },
   {
     name: "--Eulinx-color-surface-alt",
-    darkBinding: "--Eulinx-color-neutral-900",   // #18181B
+    darkBinding: "--Eulinx-color-neutral-900",   // #171A20
     lightBinding: "--Eulinx-color-neutral-100",  // #FCFCFC
     usage: "Alternate surface for subtle differentiation.",
   },
   {
     name: "--Eulinx-color-sidebar",
-    darkBinding: "--Eulinx-color-neutral-950",   // #111113
-    lightBinding: "--Eulinx-color-neutral-100",  // #F7F7F7
+    darkBinding: "--Eulinx-color-neutral-900",   // #171A20
+    lightBinding: "--Eulinx-color-neutral-100",  // #EFF1F4
     usage: "Sidebar / navigation rail background.",
   },
   {
     name: "--Eulinx-color-toolbar",
-    darkBinding: "--Eulinx-color-neutral-950",   // #101012
-    lightBinding: "--Eulinx-color-neutral-100",  // #F8F8F8
+    darkBinding: "--Eulinx-color-neutral-900",   // #171A20
+    lightBinding: "--Eulinx-color-neutral-100",  // #F0F2F5
     usage: "Toolbar / header background.",
   },
 
   // Borders
   {
     name: "--Eulinx-color-border",
-    darkBinding: "--Eulinx-color-neutral-800",   // #27272A
-    lightBinding: "--Eulinx-color-neutral-200",  // #E5E5E5
+    darkBinding: "--Eulinx-color-neutral-700",   // #2C3340
+    lightBinding: "--Eulinx-color-neutral-200",  // #E2E5EA
     onSurface: "--Eulinx-color-surface",
     requirement: "ui-3.0",
     darkRatio: 3.2,
@@ -509,8 +510,8 @@ const BASE_ROLES: SemanticColorSpec[] = [
   },
   {
     name: "--Eulinx-color-border-strong",
-    darkBinding: "--Eulinx-color-neutral-700",   // #3F3F46
-    lightBinding: "--Eulinx-color-neutral-400",  // #A3A3A3
+    darkBinding: "--Eulinx-color-neutral-600",   // #4B5563
+    lightBinding: "--Eulinx-color-neutral-400",  // #8B93A1
     onSurface: "--Eulinx-color-surface",
     requirement: "ui-3.0",
     darkRatio: 3.5,
@@ -521,22 +522,22 @@ const BASE_ROLES: SemanticColorSpec[] = [
   // Interaction states
   {
     name: "--Eulinx-color-hover",
-    darkBinding: "--Eulinx-color-neutral-800",   // #242428
-    lightBinding: "--Eulinx-color-neutral-100",  // #F2F2F2
+    darkBinding: "--Eulinx-color-neutral-800",   // #232935
+    lightBinding: "--Eulinx-color-neutral-100",  // #E8EBF0
     // Background state — no foreground text contrast requirement
     usage: "Hover background for buttons, rows, interactive elements.",
   },
   {
     name: "--Eulinx-color-pressed",
-    darkBinding: "--Eulinx-color-neutral-700",   // #2B2B30
-    lightBinding: "--Eulinx-color-neutral-200",  // #ECECEC
+    darkBinding: "--Eulinx-color-neutral-700",   // #2C3340
+    lightBinding: "--Eulinx-color-neutral-200",  // #D7DBE2
     // Background state — no foreground text contrast requirement
     usage: "Pressed/active background state.",
   },
   {
     name: "--Eulinx-color-selected",
-    darkBinding: "--Eulinx-color-neutral-700",   // #303036
-    lightBinding: "--Eulinx-color-neutral-200",  // #E8E8E8
+    darkBinding: "--Eulinx-color-neutral-800",   // #232935
+    lightBinding: "--Eulinx-color-neutral-200",  // #D7DBE2
     // Background state — no foreground text contrast requirement
     usage: "Selected item background (sidebar, tabs, lists).",
   },
@@ -544,8 +545,8 @@ const BASE_ROLES: SemanticColorSpec[] = [
   // Text
   {
     name: "--Eulinx-color-text",
-    darkBinding: "--Eulinx-color-neutral-50",    // #FAFAFA
-    lightBinding: "--Eulinx-color-neutral-950",  // #18181B
+    darkBinding: "--Eulinx-color-neutral-50",    // #F7F8FA
+    lightBinding: "--Eulinx-color-neutral-950",  // #0F1115
     onSurface: "--Eulinx-color-surface",
     requirement: "text-4.5",
     darkRatio: 16.0,
@@ -554,8 +555,8 @@ const BASE_ROLES: SemanticColorSpec[] = [
   },
   {
     name: "--Eulinx-color-text-secondary",
-    darkBinding: "--Eulinx-color-neutral-400",   // #A1A1AA
-    lightBinding: "--Eulinx-color-neutral-600",  // #71717A
+    darkBinding: "--Eulinx-color-neutral-300",   // #C7CCD4
+    lightBinding: "--Eulinx-color-neutral-600",  // #4B5563
     onSurface: "--Eulinx-color-surface",
     requirement: "text-4.5",
     darkRatio: 7.5,
@@ -564,8 +565,8 @@ const BASE_ROLES: SemanticColorSpec[] = [
   },
   {
     name: "--Eulinx-color-text-muted",
-    darkBinding: "--Eulinx-color-neutral-500",   // #71717A
-    lightBinding: "--Eulinx-color-neutral-500",  // #A1A1AA (spec says same for both)
+    darkBinding: "--Eulinx-color-neutral-400",   // #8B93A1
+    lightBinding: "--Eulinx-color-neutral-500",  // #6B7280
     onSurface: "--Eulinx-color-surface",
     requirement: "text-4.5",
     darkRatio: 5.2,
@@ -758,6 +759,14 @@ const componentTokens: ComponentToken[] = [
     binding: "--Eulinx-color-surface",
     owner: "Surface",
     usage: "Raised surface (cards, popovers) sitting above the base background.",
+  },
+  {
+    layer: "component",
+    category: "color",
+    name: "--Eulinx-color-surface-elevated",
+    binding: "--Eulinx-color-neutral-800",
+    owner: "Surface",
+    usage: "Elevated surface (dialogs, command palette) — cool charcoal above panels.",
   },
   {
     layer: "component",

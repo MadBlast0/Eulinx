@@ -1,30 +1,21 @@
 import {
-  Bell,
-  ChevronLeft,
-  ChevronRight,
+  ChevronDown,
   Globe,
-  Gauge,
-  Keyboard,
-  LayoutGrid,
   Map as MapIcon,
-  Maximize2,
-  Minus,
   PanelLeft,
   PanelRight,
+  Play,
+  Redo2,
+  RotateCw,
   Search,
-  Settings,
-  Share2,
   Squircle,
   TerminalSquare,
-  X,
-  ZoomIn,
+  Undo2,
 } from "lucide-react"
-import { cn } from "@/utils/cn"
 import { ToolbarButton, ToolbarSep } from "./primitives"
 import { useWorkspace } from "./use-workspace"
-import type { SurfaceKey } from "./workspace-app"
 
-export function TopBar({ onOpenSurface }: { onOpenSurface: (key: SurfaceKey) => void }) {
+export function TopBar() {
   const {
     toggleLeftSidebar,
     toggleRightSidebar,
@@ -34,130 +25,110 @@ export function TopBar({ onOpenSurface }: { onOpenSurface: (key: SurfaceKey) => 
 
   return (
     <div
-      className="flex items-center gap-0 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-toolbar)] px-2"
+      className="flex items-center gap-2 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-toolbar)] px-3"
       style={{ WebkitAppRegion: "drag" }}
     >
-      <ToolbarButton tip="Eulinx">
-        <Squircle className="h-4 w-4" strokeWidth={1.5} />
-      </ToolbarButton>
-      <ToolbarSep />
-      <ToolbarButton tip="Toggle left sidebar" onClick={toggleLeftSidebar}>
-        <PanelLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
-      <ToolbarButton tip="Toggle right sidebar" onClick={toggleRightSidebar}>
-        <PanelRight className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
-      <ToolbarSep />
-      <ToolbarButton tip="Back">
-        <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
-      <ToolbarButton tip="Forward">
-        <ChevronRight className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
+      {/* Left group: logo, workspace selector, breadcrumb */}
+      <div className="flex shrink-0 items-center gap-2" style={{ WebkitAppRegion: "no-drag" }}>
+        <button
+          type="button"
+          aria-label="Eulinx"
+          className="flex items-center gap-2 rounded-[var(--Eulinx-radius-sm)] px-2 py-1.5 text-[13px] font-semibold tracking-[-0.01em] text-[color:var(--Eulinx-color-text)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          <Squircle className="h-[18px] w-[18px] text-[color:var(--Eulinx-color-accent)]" strokeWidth={2.4} />
+          Eulinx
+        </button>
+
+        <ToolbarButton tip="Toggle left sidebar" onClick={toggleLeftSidebar}>
+          <PanelLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </ToolbarButton>
+
+        <button
+          type="button"
+          aria-label="Select workspace"
+          className="flex items-center gap-1.5 rounded-[var(--Eulinx-radius-sm)] px-2 py-1.5 text-[12px] font-medium text-[color:var(--Eulinx-color-text)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          <Squircle className="h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+          Personal
+          <ChevronDown className="h-3 w-3 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+        </button>
+
+        <div className="flex items-center gap-1.5 text-[12px] text-[color:var(--Eulinx-color-text-muted)]">
+          <span>Eulinx</span>
+          <span className="text-[color:var(--Eulinx-color-border-strong)]">/</span>
+          <span className="text-[color:var(--Eulinx-color-text)]">Node Graph</span>
+        </div>
+      </div>
 
       <ToolbarSep />
 
-      <span
-        className="whitespace-nowrap px-2 text-[11px] text-[color:var(--Eulinx-color-text-muted)]"
-        style={{ WebkitAppRegion: "no-drag" }}
-      >
-        Project 1
-      </span>
-      <ToolbarSep />
-      <ToolbarButton tip="Canvas view" active>
-        <LayoutGrid className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
-      <ToolbarButton tip="Terminal view">
-        <TerminalSquare className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
-      <ToolbarButton tip="Node graph">
-        <Share2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
+      {/* Context-aware toolbar slot (populated when a node is selected) */}
+      <div id="wsx-ctx-toolbar" className="hidden items-center gap-1" style={{ WebkitAppRegion: "no-drag" }} />
 
-      <ToolbarSep />
+      {/* Center: search trigger */}
+      <div className="flex flex-1 justify-center" style={{ WebkitAppRegion: "drag" }}>
+        <button
+          type="button"
+          aria-label="Search or run a command"
+          onClick={() => setOverlay("cmd")}
+          className="flex h-[30px] w-full max-w-[420px] items-center gap-2 rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-background)] px-2.5 text-[12px] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:border-[color:var(--Eulinx-color-border-strong)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          style={{ WebkitAppRegion: "no-drag" }}
+        >
+          <Search className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <span className="flex-1 text-left">Search or run a command…</span>
+          <kbd className="rounded-[var(--Eulinx-radius-xs)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-1.5 py-0.5 text-[10px] font-medium text-[color:var(--Eulinx-color-text-muted)]">
+            Ctrl K
+          </kbd>
+        </button>
+      </div>
 
-      <ToolbarButton tip="New terminal" onClick={() => addNode("terminal")}>
-        <TerminalSquare className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
-      <ToolbarButton tip="New browser" onClick={() => addNode("browser")}>
-        <Globe className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
-      <ToolbarButton tip="New worker">
-        <Squircle className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
-      <ToolbarButton tip="New map" onClick={() => addNode("map")}>
-        <MapIcon className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
+      {/* Right group: add nodes, undo/redo, run, sync, profile */}
+      <div className="flex shrink-0 items-center gap-1" style={{ WebkitAppRegion: "no-drag" }}>
+        <ToolbarButton tip="New terminal" onClick={() => addNode("terminal")}>
+          <TerminalSquare className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </ToolbarButton>
+        <ToolbarButton tip="New browser" onClick={() => addNode("browser")}>
+          <Globe className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </ToolbarButton>
+        <ToolbarButton tip="New map" onClick={() => addNode("map")}>
+          <MapIcon className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </ToolbarButton>
 
-      <ToolbarSep />
-      <ToolbarButton tip="Zoom to fit">
-        <ZoomIn className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
-      <ToolbarButton tip="Minimap">
-        <MapIcon className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
+        <ToolbarSep />
 
-      <div className="flex-1" style={{ WebkitAppRegion: "drag" }} />
+        <ToolbarButton tip="Undo">
+          <Undo2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </ToolbarButton>
+        <ToolbarButton tip="Redo">
+          <Redo2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </ToolbarButton>
 
-      <ToolbarButton tip="Search (Ctrl+K)" onClick={() => setOverlay("cmd")}>
-        <Search className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
+        <ToolbarSep />
 
-      <ToolbarSep />
+        <button
+          type="button"
+          aria-label="Run"
+          className="flex h-[30px] items-center gap-1.5 rounded-[var(--Eulinx-radius-sm)] bg-[color:var(--Eulinx-color-accent)] px-3 text-[12px] font-medium text-white transition-colors hover:bg-[color:var(--Eulinx-color-accent)]/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          <Play className="h-3.5 w-3.5 fill-current" strokeWidth={0} />
+          Run
+        </button>
+        <ToolbarButton tip="Sync">
+          <RotateCw className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </ToolbarButton>
+        <ToolbarButton tip="Toggle right sidebar" onClick={toggleRightSidebar}>
+          <PanelRight className="h-3.5 w-3.5" strokeWidth={1.5} />
+        </ToolbarButton>
 
-      <ToolbarButton tip="Keyboard shortcuts" onClick={() => setOverlay("shortcuts")}>
-        <Keyboard className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
-      <ToolbarButton tip="Notifications">
-        <Bell className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
-      <ToolbarButton tip="Settings" onClick={() => setOverlay("settings")}>
-        <Settings className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
-      <ToolbarButton tip="Dashboard" onClick={() => onOpenSurface("dashboard")}>
-        <Gauge className="h-3.5 w-3.5" strokeWidth={1.5} />
-      </ToolbarButton>
-
-      <ToolbarSep />
-
-      <div className="flex items-center" style={{ WebkitAppRegion: "no-drag" }}>
-        <WindowButton label="Minimize">
-          <Minus className="h-3 w-3" strokeWidth={1.5} />
-        </WindowButton>
-        <WindowButton label="Maximize">
-          <Maximize2 className="h-3 w-3" strokeWidth={1.5} />
-        </WindowButton>
-        <WindowButton label="Close" close>
-          <X className="h-3 w-3" strokeWidth={1.5} />
-        </WindowButton>
+        <button
+          type="button"
+          aria-label="Profile"
+          title="Profile"
+          className="ml-1 flex h-7 w-7 items-center justify-center rounded-full border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] text-[11px] font-semibold text-[color:var(--Eulinx-color-text)] transition-colors hover:border-[color:var(--Eulinx-color-border-strong)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          MB
+        </button>
       </div>
     </div>
-  )
-}
-
-function WindowButton({
-  label,
-  close = false,
-  children,
-}: {
-  label: string
-  close?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      className={cn(
-        "flex h-[var(--wsx-topbar-h)] w-9 items-center justify-center text-[color:var(--Eulinx-color-text-muted)] transition-colors",
-        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-        close
-          ? "hover:bg-[color:var(--Eulinx-color-error)] hover:text-white"
-          : "hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]",
-      )}
-    >
-      {children}
-    </button>
   )
 }
