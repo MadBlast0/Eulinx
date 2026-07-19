@@ -1,5 +1,29 @@
 import "@testing-library/jest-dom/vitest";
 
+// Mock Tauri internals for jsdom (theme-provider calls listen())
+if (!(window as Record<string, unknown>).__TAURI_INTERNALS__) {
+  (window as Record<string, unknown>).__TAURI_INTERNALS__ = {
+    transformCallback: (cb?: (response: unknown) => void) => {
+      const id = Math.floor(Math.random() * 100000);
+      if (cb) {
+        (window as Record<string, unknown>)[`_tauri_cb_${id}`] = cb;
+      }
+      return id;
+    },
+    invoke: () => Promise.resolve(),
+    event: {
+      listen: () => Promise.resolve(() => {}),
+      emit: () => Promise.resolve(),
+    },
+  };
+}
+if (!(window as Record<string, unknown>).__TAURI_EVENT_PLUGIN_INTERNALS__) {
+  (window as Record<string, unknown>).__TAURI_EVENT_PLUGIN_INTERNALS__ = {
+    registerListener: () => {},
+    unregisterListener: () => {},
+  };
+}
+
 Object.defineProperty(window, "matchMedia", {
   writable: true,
   value: (query: string) => ({

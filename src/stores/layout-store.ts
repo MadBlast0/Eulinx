@@ -71,11 +71,11 @@ export interface LayoutState {
 // ---------------------------------------------------------------------------
 
 export const REGION_CONSTRAINTS: Record<RegionId, RegionConstraints> = {
-  titleBar: { id: "titleBar", axis: "height", minSize: 36, maxSize: 36, defaultSize: 36, collapseMode: "none", railSize: 0, collapseThreshold: 0, resizable: false },
-  sidebar: { id: "sidebar", axis: "width", minSize: 180, maxSize: 480, defaultSize: 240, collapseMode: "rail", railSize: 48, collapseThreshold: 60, resizable: true },
+  titleBar: { id: "titleBar", axis: "height", minSize: 32, maxSize: 32, defaultSize: 32, collapseMode: "none", railSize: 0, collapseThreshold: 0, resizable: false },
+  sidebar: { id: "sidebar", axis: "width", minSize: 200, maxSize: 400, defaultSize: 260, collapseMode: "rail", railSize: 48, collapseThreshold: 60, resizable: true },
   canvas: { id: "canvas", axis: "width", minSize: 480, maxSize: Infinity, defaultSize: 0, collapseMode: "none", railSize: 0, collapseThreshold: 0, resizable: false },
   inspector: { id: "inspector", axis: "width", minSize: 260, maxSize: 560, defaultSize: 320, collapseMode: "hidden", railSize: 0, collapseThreshold: 80, resizable: true },
-  panel: { id: "panel", axis: "height", minSize: 120, maxSize: 640, defaultSize: 220, collapseMode: "hidden", railSize: 0, collapseThreshold: 50, resizable: true },
+  panel: { id: "panel", axis: "height", minSize: 120, maxSize: 640, defaultSize: 240, collapseMode: "hidden", railSize: 0, collapseThreshold: 50, resizable: true },
   statusBar: { id: "statusBar", axis: "height", minSize: 24, maxSize: 24, defaultSize: 24, collapseMode: "none", railSize: 0, collapseThreshold: 0, resizable: false },
 }
 
@@ -89,11 +89,11 @@ function createDefaultLayout(workspaceId: string): LayoutState {
     schemaVersion: 1,
     workspaceId,
     regions: {
-      titleBar: { id: "titleBar", visible: true, collapsed: false, size: 36, restoreSize: 36 },
-      sidebar: { id: "sidebar", visible: true, collapsed: false, size: 240, restoreSize: 240 },
+      titleBar: { id: "titleBar", visible: true, collapsed: false, size: 32, restoreSize: 32 },
+      sidebar: { id: "sidebar", visible: true, collapsed: false, size: 260, restoreSize: 260 },
       canvas: { id: "canvas", visible: true, collapsed: false, size: 0, restoreSize: 0 },
-      inspector: { id: "inspector", visible: true, collapsed: false, size: 320, restoreSize: 320 },
-      panel: { id: "panel", visible: true, collapsed: false, size: 220, restoreSize: 220 },
+      inspector: { id: "inspector", visible: true, collapsed: true, size: 0, restoreSize: 320 },
+      panel: { id: "panel", visible: true, collapsed: true, size: 0, restoreSize: 240 },
       statusBar: { id: "statusBar", visible: true, collapsed: false, size: 24, restoreSize: 24 },
     },
     canvasTabs: {
