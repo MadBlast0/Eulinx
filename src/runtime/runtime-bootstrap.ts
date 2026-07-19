@@ -5,10 +5,46 @@
  * From RuntimeManager-Part02: service graph and startup phases.
  */
 
-import type { RuntimeServiceDefinition, ServiceRegistry } from "./service-registry"
+import type { RuntimeServiceDefinition, ServiceRegistry, ServiceState } from "./service-registry"
 import { createLogger } from "@/core/logger"
+import { EventBus } from "@/event-bus/event-bus"
+import { PermissionManager } from "@/security/permission-manager"
+import { MemoryManager } from "@/memory/memory-manager"
+import { ArtifactManager } from "@/artifact/artifact-manager"
+import { ToolRegistry } from "@/tools/tool-registry"
+import { Scheduler } from "@/scheduler/scheduler"
+import type { WorkspaceId } from "@/core/types"
 
 const logger = createLogger("RuntimeBootstrap")
+
+// ---------------------------------------------------------------------------
+// Lightweight adapter for services without real implementations yet.
+// Provides start()/stop()/getState() lifecycle and logs through EventBus.
+// Replace with a proper implementation when the module exists.
+// ---------------------------------------------------------------------------
+
+class ServiceAdapter {
+  protected state: ServiceState = "registered"
+  protected readonly log: ReturnType<typeof createLogger>
+
+  constructor(name: string, _eventBus?: EventBus) {
+    this.log = createLogger(name)
+  }
+
+  async start(): Promise<void> {
+    this.state = "running"
+    this.log.info("Started (adapter — no real implementation)")
+  }
+
+  async stop(): Promise<void> {
+    this.state = "stopped"
+    this.log.info("Stopped (adapter — no real implementation)")
+  }
+
+  getState(): ServiceState {
+    return this.state
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Core service definitions (5 phases from spec)
@@ -58,6 +94,43 @@ export function bootstrapServiceRegistry(
       registry.register(definition)
     }
   }
+
+  // -----------------------------------------------------------------------
+  // Phase 1 — Core Infrastructure
+  // -----------------------------------------------------------------------
+  const eventBus = new EventBus()
+  registry.setInstance("EventBus", eventBus)
+
+  // -----------------------------------------------------------------------
+  // Phase 2 — Safety Services
+  // -----------------------------------------------------------------------
+  registry.setInstance("WorkspaceManager", new ServiceAdapter("WorkspaceManager", eventBus))
+  registry.setInstance("PermissionManager", new PermissionManager())
+  registry.setInstance("LockManager", new ServiceAdapter("LockManager", eventBus))
+
+  // -----------------------------------------------------------------------
+  // Phase 3 — Data Services
+  // -----------------------------------------------------------------------
+  registry.setInstance("MemoryManager", new MemoryManager())
+  registry.setInstance(
+    "ArtifactManager",
+    new ArtifactManager("__bootstrap__" as unknown as WorkspaceId),
+  )
+  registry.setInstance("ContextManager", new ServiceAdapter("ContextManager", eventBus))
+
+  // -----------------------------------------------------------------------
+  // Phase 4 — Capability Services
+  // -----------------------------------------------------------------------
+  registry.setInstance("ToolRegistry", new ToolRegistry())
+  registry.setInstance("ProcessLifecycle", new ServiceAdapter("ProcessLifecycle", eventBus))
+  registry.setInstance("WorkerSpawner", new ServiceAdapter("WorkerSpawner", eventBus))
+
+  // -----------------------------------------------------------------------
+  // Phase 5 — Execution Services
+  // -----------------------------------------------------------------------
+  registry.setInstance("Scheduler", new Scheduler())
+  registry.setInstance("ExecutionEngine", new ServiceAdapter("ExecutionEngine", eventBus))
+  registry.setInstance("MergeManager", new ServiceAdapter("MergeManager", eventBus))
 
   logger.info(`Service registry bootstrapped (${CORE_SERVICE_DEFINITIONS.length} core services)`)
 }

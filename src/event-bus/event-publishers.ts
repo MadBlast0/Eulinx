@@ -17,6 +17,19 @@ import { generateId } from "@/core/uuid"
 import { isReplayGrade } from "./event-types"
 
 // ---------------------------------------------------------------------------
+// Event sequence counter
+// ---------------------------------------------------------------------------
+
+let eventSequence = 0
+
+/**
+ * Reset the event sequence counter to 0 (for testing).
+ */
+export function resetEventSequence(): void {
+  eventSequence = 0
+}
+
+// ---------------------------------------------------------------------------
 // Envelope builder
 // ---------------------------------------------------------------------------
 
@@ -32,15 +45,14 @@ type BuildEventOptions = {
 }
 
 /**
- * Build an EulinxEvent with auto-generated eventId and emittedAt.
- * Does NOT assign sequence — the bus does that on publish.
+ * Build an EulinxEvent with auto-generated eventId, emittedAt, and sequence.
  */
 export function buildEvent<TType extends string, TPayload>(
   options: BuildEventOptions & { type: TType; payload: TPayload },
 ): EulinxEvent<TType, TPayload> {
   return {
     eventId: generateId(),
-    sequence: 0, // placeholder — overwritten by bus
+    sequence: ++eventSequence,
     type: options.type,
     payload: options.payload,
     source: options.source,

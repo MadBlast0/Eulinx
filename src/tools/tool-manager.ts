@@ -18,9 +18,8 @@ import type {
 import { ToolRegistry } from "./tool-registry"
 import { createLogger } from "@/core/logger"
 import type { Logger } from "@/core/logger"
-import type { Result } from "@/core/result"
-import { err, ok } from "@/core/result"
-import type { CoreError } from "@/core/error"
+import type { JsonValue } from "@/core/types"
+import { invoke, isTauri } from "@tauri-apps/api/core"
 
 // ---------------------------------------------------------------------------
 // Tool Manager
@@ -31,6 +30,7 @@ export class ToolManager {
   private readonly registry: ToolRegistry
   private readonly eventListeners: Map<ToolEventType, Set<(event: ToolEvent) => void>>
   private readonly invocations = new Map<string, AbortController>()
+  private readonly handlers = new Map<string, (args: Record<string, unknown>) => Promise<unknown>>()
 
   constructor() {
     this.logger = createLogger("ToolManager")
@@ -43,8 +43,16 @@ export class ToolManager {
   // -----------------------------------------------------------------------
 
   /** Register a core tool */
-  registerCoreTool(tool: CoreTool): void {
+  registerCoreTool(tool: CoreTool, handler?: (args: Record<string, unknown>) => Promise<unknown>): void {
     this.registry.registerCoreTool(tool)
+    if (handler) {
+      this.handlers.set(tool.id, handler)
+    }
+  }
+
+  /** Register an in-process handler for a tool */
+  registerHandler(toolId: string, handler: (args: Record<string, unknown>) => Promise<unknown>): void {
+    this.handlers.set(toolId, handler)
   }
 
   /** Register a plugin tool */
@@ -136,11 +144,17 @@ export class ToolManager {
   // Invocation
   // -----------------------------------------------------------------------
 
-  /** Invoke a tool (placeholder - actual execution happens in Rust) */
-  async invoke(
-    request: ToolInvocationRequest,
-    handler: (args: Record<string, unknown>) => Promise<unknown>,
-  ): Promise<ToolInvocationResult> {
+  /**
+   * Invoke a tool.
+   *
+   * In Tauri mode, execution is delegated to the Rust backend via
+   * `invoke("tool_invoke", { toolId, args })`. In browser mode, the
+   * in-process handler registered via `registerHandler` or
+   * `registerCoreTool` is called directly. Returns a structured
+   * `ToolInvocationResult` with `ok: true` and `data` on success, or
+   * `ok: false` and `error` on failure.
+   */
+  async invoke(request: ToolInvocationRequest): Promise<ToolInvocationResult> {
     const startTime = Date.now()
     const toolId = request.toolId
 
@@ -164,7 +178,17 @@ export class ToolManager {
     try {
       this.emitEvent("tool.invoked", toolId, { workerId: request.workerId })
 
-      const data = await handler(request.args as Record<string, unknown>)
+      let data: unknown
+
+      if (isTauri()) {
+        data = await invoke<JsonValue>("tool_invoke", { toolId, args: request.args })
+      } else {
+        const handler = this.handlers.get(toolId)
+        if (!handler) {
+          throw new Error(`No handler registered for tool "${toolId}"`)
+        }
+        data = await handler(request.args as Record<string, unknown>)
+      }
 
       clearTimeout(timeoutId)
       this.invocations.delete(toolId)
@@ -173,7 +197,7 @@ export class ToolManager {
 
       return {
         ok: true,
-        data: data as import("@/core/types").JsonValue,
+        data: data as JsonValue,
         durationMs: Date.now() - startTime,
         toolId,
       }

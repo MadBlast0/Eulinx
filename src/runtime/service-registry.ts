@@ -194,7 +194,22 @@ export class ServiceRegistry {
     )
   }
 
+  // ---------------------------------------------------------------------------
+  // Instance storage (instantiated by bootstrap)
+  // ---------------------------------------------------------------------------
+
+  private readonly instances = new Map<string, unknown>()
+
+  setInstance<T>(serviceId: string, instance: T): void {
+    this.instances.set(serviceId, instance)
+  }
+
+  getInstance<T>(serviceId: string): T | undefined {
+    return this.instances.get(serviceId) as T | undefined
+  }
+
   clear(): void {
     this.services.clear()
+    this.instances.clear()
   }
 }

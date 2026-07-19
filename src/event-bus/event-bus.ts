@@ -36,6 +36,7 @@ import { UiBatcher } from "./event-batcher"
 import { EventRegistry, getDefaultRegistry } from "./event-registry"
 import { matchesFilter, isValidTopicPattern, PLUGIN_SUBSCRIPTION_LIMIT } from "./event-subscriptions"
 import { generateId } from "@/core/uuid"
+import { invoke, isTauri } from "@tauri-apps/api/core"
 
 // ---------------------------------------------------------------------------
 // EventBus
@@ -56,6 +57,12 @@ export class EventBus {
   // Log write failures counter
   private consecutiveLogFailures = 0
 
+  private readonly log: EulinxEventUnion[] = []
+  private flushTimer: ReturnType<typeof setInterval> | null = null
+  private static readonly FLUSH_INTERVAL_MS = 5000
+  private static readonly FLUSH_THRESHOLD = 50
+  private static readonly LOG_STORAGE_KEY = "eulinx.event-log.v1"
+
   constructor(
     config: Partial<EventBusConfig> = {},
     onBatchFlush?: (batch: import("./event-batcher").EventBatch) => void,
@@ -68,6 +75,12 @@ export class EventBus {
     this._eventRegistry = getDefaultRegistry()
 
     this.batcher = new UiBatcher(this.config, onBatchFlush ?? (() => {}))
+
+    if (!isTauri()) {
+      this.flushTimer = setInterval(() => {
+        this.flushLog()
+      }, EventBus.FLUSH_INTERVAL_MS)
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -122,6 +135,9 @@ export class EventBus {
   async drain(): Promise<void> {
     this.state = "draining"
 
+    // Step 3: Flush the open log transaction
+    await this.flushLog()
+
     // Step 4: Flush UI batcher
     this.batcher.shutdown()
 
@@ -131,6 +147,12 @@ export class EventBus {
     // Steps 6-7: Force stop after timeout
     // In a real implementation, we'd wait for core queues to drain.
     // Since we're in TypeScript single-threaded, queues are drained immediately.
+
+    // Clear periodic flush timer
+    if (this.flushTimer !== null) {
+      clearInterval(this.flushTimer)
+      this.flushTimer = null
+    }
 
     // Step 8: Transition to Stopped
     this.state = "stopped"
@@ -144,6 +166,10 @@ export class EventBus {
     this.coreQueue.drain()
     this.pluginQueue.drain()
     this.batcher.shutdown()
+    if (this.flushTimer !== null) {
+      clearInterval(this.flushTimer)
+      this.flushTimer = null
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -418,9 +444,59 @@ export class EventBus {
     }
   }
 
+  public async flushLog(): Promise<void> {
+    if (this.log.length === 0) return
+
+    const batch = this.log.splice(0)
+    if (isTauri()) {
+      for (const event of batch) {
+        try {
+          await invoke("event_log_write", { event })
+        } catch {
+          // Individual write failures are non-fatal at flush time;
+          // the original publish() already handled the error path.
+        }
+      }
+    } else {
+      try {
+        const existing = localStorage.getItem(EventBus.LOG_STORAGE_KEY)
+        const stored: EulinxEventUnion[] = existing ? JSON.parse(existing) : []
+        stored.push(...batch)
+        localStorage.setItem(EventBus.LOG_STORAGE_KEY, JSON.stringify(stored))
+      } catch {
+        // localStorage may be full or unavailable; silently drop.
+      }
+    }
+  }
+
+  public getLog(): EulinxEventUnion[] {
+    return [...this.log]
+  }
+
+  public clearLog(): void {
+    this.log.length = 0
+    if (!isTauri()) {
+      try {
+        localStorage.removeItem(EventBus.LOG_STORAGE_KEY)
+      } catch {
+        // ignore
+      }
+    }
+  }
+
   private async writeToLog(event: EulinxEventUnion): Promise<void> {
-    // Placeholder: in a real implementation, this writes to SQLite event_log.
-    // The write is synchronous before delivery (EventBus-Part04 step 5 before step 7).
-    void event
+    this.log.push(event)
+
+    if (isTauri()) {
+      try {
+        await invoke("event_log_write", { event })
+      } catch {
+        throw new Error("Failed to write event to Tauri backend")
+      }
+    } else {
+      if (this.log.length >= EventBus.FLUSH_THRESHOLD) {
+        await this.flushLog()
+      }
+    }
   }
 }

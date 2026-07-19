@@ -86,11 +86,11 @@ describe("ToolManager", () => {
   })
 
   it("invokes a tool successfully", async () => {
-    manager.registerCoreTool(createMockCoreTool())
+    const tool = createMockCoreTool()
+    manager.registerCoreTool(tool, async () => "success")
 
     const result = await manager.invoke(
       { toolId: "test.tool", args: {}, workerId: "worker-1" },
-      async () => "success",
     )
 
     expect(result.ok).toBe(true)
@@ -98,12 +98,12 @@ describe("ToolManager", () => {
   })
 
   it("returns error for disabled tool", async () => {
-    manager.registerPluginTool(createMockPluginTool())
+    const tool = createMockPluginTool()
+    manager.registerPluginTool(tool)
     manager.disableTool("myplugin.test")
 
     const result = await manager.invoke(
       { toolId: "myplugin.test", args: {}, workerId: "worker-1" },
-      async () => "success",
     )
 
     expect(result.ok).toBe(false)
@@ -111,37 +111,49 @@ describe("ToolManager", () => {
   })
 
   it("returns error for failed handler", async () => {
-    manager.registerCoreTool(createMockCoreTool())
+    const tool = createMockCoreTool()
+    manager.registerCoreTool(tool)
+    manager.registerHandler("test.tool", async () => { throw new Error("Handler failed") })
 
     const result = await manager.invoke(
       { toolId: "test.tool", args: {}, workerId: "worker-1" },
-      async () => { throw new Error("Handler failed") },
     )
 
     expect(result.ok).toBe(false)
     expect(result.error?.message).toBe("Handler failed")
   })
 
+  it("returns error when no handler is registered", async () => {
+    manager.registerCoreTool(createMockCoreTool())
+
+    const result = await manager.invoke(
+      { toolId: "test.tool", args: {}, workerId: "worker-1" },
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.error?.message).toContain("No handler registered")
+  })
+
   it("emits events", async () => {
     const events: string[] = []
     manager.on("tool.invoked", (e) => events.push(e.type))
 
-    manager.registerCoreTool(createMockCoreTool())
+    const tool = createMockCoreTool()
+    manager.registerCoreTool(tool, async () => "ok")
     await manager.invoke(
       { toolId: "test.tool", args: {}, workerId: "worker-1" },
-      async () => "ok",
     )
 
     expect(events).toContain("tool.invoked")
   })
 
   it("cancels running invocation", () => {
-    manager.registerCoreTool(createMockCoreTool())
+    const tool = createMockCoreTool()
+    manager.registerCoreTool(tool, () => new Promise(() => {})) // Never resolves
 
     // Start an invocation (won't complete)
     manager.invoke(
       { toolId: "test.tool", args: {}, workerId: "worker-1" },
-      () => new Promise(() => {}), // Never resolves
     )
 
     const cancelled = manager.cancel("test.tool")

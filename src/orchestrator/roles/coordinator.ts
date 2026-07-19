@@ -23,6 +23,14 @@ import type {
   ProgressReport,
 } from "../orchestrator-types"
 import { PlannerOrchestrator, type PlannerGraphNode } from "./planner"
+import { ArchitectOrchestrator } from "./architect"
+import { ResearcherOrchestrator } from "./researcher"
+import { ProgrammerOrchestrator } from "./programmer"
+import { ReviewerOrchestrator } from "./reviewer"
+import { DebuggerOrchestrator } from "./debugger"
+import { DocumentationOrchestrator } from "./documentation"
+import { QAOrchestrator } from "./qa"
+import { ReleaseOrchestrator } from "./release"
 
 // ---------------------------------------------------------------------------
 // Coordinator (Root Orchestrator)
@@ -126,8 +134,7 @@ export class CoordinatorOrchestrator extends BaseOrchestrator {
         allowedRoles: ["programmer", "reviewer", "researcher", "debugger"],
       }
 
-      // In production, these would be dynamic role-specific orchestrators
-      const phaseOrch = new PhaseOrchestratorStub(phaseOrchConfig, phase, this.plan)
+      const phaseOrch = new PhaseOrchestratorRouter(phaseOrchConfig, phase, this.plan)
       this.phaseOrchestrators.set(phaseOrchConfig.id, phaseOrch)
       this.addChild(phaseOrchConfig.id)
     }
@@ -171,12 +178,14 @@ export class CoordinatorOrchestrator extends BaseOrchestrator {
 }
 
 // ---------------------------------------------------------------------------
-// Phase Orchestrator Stub (simplified for structural completeness)
+// Phase Orchestrator Router
 // ---------------------------------------------------------------------------
 
-class PhaseOrchestratorStub extends BaseOrchestrator {
+class PhaseOrchestratorRouter extends BaseOrchestrator {
   private readonly phaseNode: PlanNode
   private readonly plan: Plan
+  private readonly roleOrchestrators = new Map<OrchestratorRole, BaseOrchestrator>()
+  private taskResults: Array<{ taskId: string; status: "success" | "failed"; error?: string }> = []
 
   constructor(
     config: OrchestratorConfig,
@@ -189,38 +198,58 @@ class PhaseOrchestratorStub extends BaseOrchestrator {
   }
 
   describe(): string {
-    return `Phase: ${this.phaseNode.intent}`
+    return `PhaseRouter: orchestrating phase "${this.phaseNode.intent}"`
   }
 
   protected async onPlan(): Promise<Result<void, CoreError>> {
+    this.logger.info(`PhaseRouter planning for phase: ${this.phaseNode.intent}`)
     return ok(undefined)
   }
 
   protected async onDelegate(): Promise<Result<void, CoreError>> {
     const taskNodes = this.getTaskNodes()
-    this.logger.info(`Phase "${this.phaseNode.intent}" delegating ${taskNodes.length} tasks`)
+    this.logger.info(`PhaseRouter delegating ${taskNodes.length} tasks for phase "${this.phaseNode.intent}"`)
 
     for (const task of taskNodes) {
+      const roleType = this.detectRoleType(task)
       this.addTask(task.id as TaskId)
+
       const cost = Math.floor(this.config.budgetAllocated / Math.max(taskNodes.length, 1))
-      const result = this.spendBudget(cost)
-      if (!result.ok) {
-        this.logger.warn(`Budget exceeded during phase "${this.phaseNode.intent}"`)
+      const budgetResult = this.spendBudget(cost)
+      if (!budgetResult.ok) {
+        this.logger.warn(`Budget exceeded during phase "${this.phaseNode.intent}" at task "${task.intent}"`)
+        this.taskResults.push({ taskId: task.id, status: "failed", error: budgetResult.error.message })
         break
       }
-      this.logger.info(`Task "${task.intent}" launched (budget: $${(cost / 100).toFixed(2)})`)
+
+      try {
+        const result = await this.dispatchTask(roleType, task)
+        if (result.ok) {
+          this.taskResults.push({ taskId: task.id, status: "success" })
+        } else {
+          this.taskResults.push({ taskId: task.id, status: "failed", error: result.error.message })
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        this.logger.error(`Task "${task.intent}" failed: ${message}`)
+        this.taskResults.push({ taskId: task.id, status: "failed", error: message })
+      }
     }
 
     this.emit("orchestrator.state_changed", {
       phase: this.phaseNode.intent,
       tasksDelegated: taskNodes.length,
+      tasksSucceeded: this.taskResults.filter(r => r.status === "success").length,
+      tasksFailed: this.taskResults.filter(r => r.status === "failed").length,
     })
 
     return ok(undefined)
   }
 
   protected async onComplete(): Promise<Result<void, CoreError>> {
-    this.logger.info(`Phase "${this.phaseNode.intent}" completed with ${this.getTaskNodes().length} tasks`)
+    const succeeded = this.taskResults.filter(r => r.status === "success").length
+    const total = this.taskResults.length
+    this.logger.info(`PhaseRouter phase "${this.phaseNode.intent}" completed: ${succeeded}/${total} tasks succeeded`)
     const report = this.getProgress()
     this.logger.info(`Progress: ${report.percentComplete}% complete, $${(report.budgetSpent / 100).toFixed(2)} spent`)
     return ok(undefined)
@@ -234,5 +263,75 @@ class PhaseOrchestratorStub extends BaseOrchestrator {
     return this.phaseNode.childIds
       .map(id => this.plan.nodes[id])
       .filter((n): n is PlanNode => n !== undefined)
+  }
+
+  private detectRoleType(task: PlanNode): OrchestratorRole {
+    return task.ownerRole
+  }
+
+  private async dispatchTask(roleType: OrchestratorRole, task: PlanNode): Promise<Result<void, CoreError>> {
+    const orchestrator = this.createRoleOrchestrator(roleType, task)
+    if (!orchestrator) {
+      return err(new CoreError("internal_error", `No orchestrator for role: ${roleType} on task "${task.intent}"`))
+    }
+
+    this.roleOrchestrators.set(roleType, orchestrator)
+    this.addChild(orchestrator.id)
+
+    const startResult = await orchestrator.start()
+    if (!startResult.ok) {
+      this.failChild(orchestrator.id, startResult.error.message)
+      return startResult
+    }
+
+    const completeResult = await orchestrator.complete()
+    if (!completeResult.ok) {
+      this.failChild(orchestrator.id, completeResult.error.message)
+      return completeResult
+    }
+
+    this.completeChild(orchestrator.id)
+    return ok(undefined)
+  }
+
+  private createRoleOrchestrator(roleType: OrchestratorRole, task: PlanNode): BaseOrchestrator | null {
+    const childConfig: OrchestratorConfig = {
+      id: brand(`task-${this.id}-${task.id}`),
+      role: roleType,
+      level: "task",
+      displayName: task.intent.slice(0, 50),
+      workspaceId: this.config.workspaceId,
+      sessionId: this.config.sessionId,
+      projectId: this.config.projectId,
+      parentOrchestratorId: this.id,
+      refinementMode: this.config.refinementMode,
+      budgetAllocated: task.budgetAllocation,
+      maxWorkers: 1,
+      maxDepth: 1,
+      allowedRoles: [roleType],
+    }
+
+    switch (roleType) {
+      case "planner":
+        return null
+      case "architect":
+        return new ArchitectOrchestrator(childConfig, task, this.plan)
+      case "researcher":
+        return new ResearcherOrchestrator(childConfig, task, this.plan)
+      case "programmer":
+        return new ProgrammerOrchestrator(childConfig, task, this.plan)
+      case "reviewer":
+        return new ReviewerOrchestrator(childConfig)
+      case "debugger":
+        return new DebuggerOrchestrator(childConfig, task, this.plan)
+      case "documentation":
+        return new DocumentationOrchestrator(childConfig, task, this.plan)
+      case "qa":
+        return new QAOrchestrator(childConfig, task, this.plan)
+      case "release":
+        return new ReleaseOrchestrator(childConfig, task, this.plan)
+      default:
+        return null
+    }
   }
 }

@@ -1,17 +1,4 @@
-﻿// In-memory + bridge PTY contract for the Eulinx terminal.
-//
-// A `Pty` is a line-discipline stream: you `write` bytes in, you receive
-// decoded `onData` chunks out, and you are notified `onExit` when the
-// process ends. Two implementations satisfy this interface:
-//
-//  - `createMockPty`  — purely in-memory, used in the browser (`pnpm dev`)
-//    where no native runtime is present.
-//  - `createNativePty` — drives a real OS shell through the Tauri bridge
-//    (commands `pty_spawn` / `pty_write` / `pty_resize` / `pty_kill` and the
-//    `pty://<id>/data` + `pty://<id>/exit` event channels). Active under the
-//    Tauri desktop runtime.
-
-export type PtyId = string
+﻿export type PtyId = string
 export type ExitCode = number | null
 
 export interface Pty {
@@ -28,6 +15,8 @@ interface MockPtyListeners {
   readonly exit: Set<(code: ExitCode) => void>
 }
 
+import { virtualFs } from "../fs-client"
+
 const ESC = String.fromCharCode(27)
 const SGR = {
   reset: ESC + "[0m",
@@ -40,21 +29,63 @@ const SGR = {
   cyan: ESC + "[36m",
 } as const
 
-const PROMPT =
-  SGR.green + SGR.bold + SGR.blue + "eulinx" + SGR.reset +
-  SGR.green + ":" + SGR.reset + SGR.cyan + "~" + SGR.reset +
-  SGR.green + "$ " + SGR.reset
+const PTY_ROOT = "/home/user/project"
+const VFS_PREFIX = PTY_ROOT.replace(/\/+$/, "") + "/"
 
-const BANNER = [
-  SGR.bold + "Eulinx mock PTY" + SGR.reset + " " + SGR.dim + "(in-memory)" + SGR.reset,
-  SGR.cyan + "Type a command and press Enter. Try:" + SGR.reset +
-    " " + SGR.yellow + "help" + SGR.reset + ", " +
-    SGR.yellow + "status" + SGR.reset + ", " + SGR.yellow + "fail" + SGR.reset,
-  "",
-].join("" + ESC + "[0m" + "")
+function stripRoot(p: string): string {
+  if (p === PTY_ROOT) return ""
+  if (p.startsWith(VFS_PREFIX)) return p.slice(VFS_PREFIX.length)
+  return p.replace(/^\//, "")
+}
+
+function normPath(cwd: string, input: string): string {
+  if (!input) return cwd
+  const parts = (input.startsWith("/") ? input : `${cwd}/${input}`).split("/").filter(Boolean)
+  const resolved: string[] = []
+  for (const p of parts) {
+    if (p === ".") continue
+    if (p === "..") { resolved.pop(); continue }
+    resolved.push(p)
+  }
+  return "/" + resolved.join("/")
+}
+
+function getPrompt(cwd: string): string {
+  const dir = cwd === PTY_ROOT ? "~" : cwd.slice(PTY_ROOT.length + 1)
+  return (
+    SGR.green + SGR.bold + "user" + SGR.reset +
+    SGR.green + "@" + SGR.reset +
+    SGR.bold + SGR.blue + "eulinx" + SGR.reset +
+    SGR.green + ":" + SGR.reset +
+    SGR.cyan + dir + SGR.reset +
+    SGR.green + " $ " + SGR.reset
+  )
+}
 
 function emit(lines: string): string {
-  return lines + ESC + "[0m" + String.fromCharCode(13) + String.fromCharCode(10)
+  return lines + String.fromCharCode(13) + String.fromCharCode(10)
+}
+
+function lsEntries(dirVfs: string): string[] {
+  const items: string[] = []
+  for (const [key, val] of virtualFs) {
+    if (dirVfs === "" || key.startsWith(dirVfs + "/")) {
+      const rel = dirVfs ? key.slice(dirVfs.length + 1) : key
+      if (rel && !rel.includes("/")) {
+        items.push(val.isDir ? `${SGR.blue}${rel}/${SGR.reset}` : rel)
+      }
+    }
+  }
+  return items.sort()
+}
+
+function findChild(dirVfs: string, name: string): boolean {
+  const prefix = dirVfs ? `${dirVfs}/` : ""
+  const target = prefix + name
+  for (const key of virtualFs.keys()) {
+    if (key === target || key.startsWith(target + "/")) return true
+  }
+  return false
 }
 
 export function createMockPty(): Pty {
@@ -63,15 +94,12 @@ export function createMockPty(): Pty {
   let killed = false
   let exited = false
   let started = false
+  let cwd = PTY_ROOT
 
   const dispatchData = (chunk: string): void => {
     if (killed || exited) return
     for (const cb of listeners.data) {
-      try {
-        cb(chunk)
-      } catch {
-        // A subscriber error must never break the stream.
-      }
+      try { cb(chunk) } catch { /* ignore subscriber errors */ }
     }
   }
 
@@ -79,11 +107,7 @@ export function createMockPty(): Pty {
     if (exited) return
     exited = true
     for (const cb of listeners.exit) {
-      try {
-        cb(code)
-      } catch {
-        // Ignore subscriber errors.
-      }
+      try { cb(code) } catch { /* ignore */ }
     }
   }
 
@@ -93,56 +117,152 @@ export function createMockPty(): Pty {
 
     const trimmed = data.replace(/\r?\n$/, "")
     if (trimmed.length === 0) {
-      dispatchData(PROMPT)
+      dispatchData(getPrompt(cwd))
       return
     }
-    const cmd = trimmed.split(/\s+/)[0]?.toLowerCase() ?? ""
+    const args = trimmed.split(/\s+/).filter(Boolean)
+    const cmd = args[0]?.toLowerCase() ?? ""
+    const rest = args.slice(1)
 
     switch (cmd) {
+      case "cd": {
+        if (rest.length === 0) { cwd = PTY_ROOT; break }
+        const target = normPath(cwd, rest[0]!)
+        const vfs = stripRoot(target)
+        if (vfs && !virtualFs.has(vfs) && !findChild("", vfs)) {
+          dispatchData(emit(`${SGR.red}cd: ${rest[0]!}: No such directory${SGR.reset}`))
+          break
+        }
+        if (vfs) {
+          const e = virtualFs.get(vfs)
+          if (e && !e.isDir) {
+            dispatchData(emit(`${SGR.red}cd: ${rest[0]!}: Not a directory${SGR.reset}`))
+            break
+          }
+        }
+        cwd = target
+        break
+      }
+      case "ls": {
+        const target = rest.length > 0 ? normPath(cwd, rest[0]!) : cwd
+        const vfs = stripRoot(target)
+        const items = lsEntries(vfs)
+        dispatchData(emit(items.length > 0 ? items.join("  ") : ""))
+        break
+      }
+      case "cat": {
+        if (rest.length === 0) { dispatchData(emit("cat: missing operand")); break }
+        const target = normPath(cwd, rest[0]!)
+        const vfs = stripRoot(target)
+        const e = virtualFs.get(vfs)
+        if (!e) { dispatchData(emit(`${SGR.red}cat: ${rest[0]!}: No such file${SGR.reset}`)); break }
+        if (e.isDir) { dispatchData(emit(`${SGR.red}cat: ${rest[0]!}: Is a directory${SGR.reset}`)); break }
+        dispatchData(emit(e.content))
+        break
+      }
+      case "echo":
+        dispatchData(emit(rest.join(" ")))
+        break
+      case "pwd":
+        dispatchData(emit(cwd))
+        break
+      case "mkdir": {
+        if (rest.length === 0) { dispatchData(emit("mkdir: missing operand")); break }
+        const target = normPath(cwd, rest[0]!)
+        const vfs = stripRoot(target)
+        if (virtualFs.has(vfs)) { dispatchData(emit(`${SGR.red}mkdir: ${rest[0]!}: File exists${SGR.reset}`)); break }
+        virtualFs.set(vfs, { content: "", isDir: true, modified: new Date() })
+        const parts = vfs.split("/")
+        for (let i = 1; i < parts.length; i++) {
+          const dp = parts.slice(0, i).join("/")
+          if (!virtualFs.has(dp)) virtualFs.set(dp, { content: "", isDir: true, modified: new Date() })
+        }
+        break
+      }
+      case "touch": {
+        if (rest.length === 0) { dispatchData(emit("touch: missing operand")); break }
+        const target = normPath(cwd, rest[0]!)
+        const vfs = stripRoot(target)
+        const now = new Date()
+        if (virtualFs.has(vfs)) {
+          const existing = virtualFs.get(vfs)!
+          virtualFs.set(vfs, { ...existing, modified: now })
+        } else {
+          virtualFs.set(vfs, { content: "", isDir: false, modified: now })
+          const parts = vfs.split("/")
+          for (let i = 1; i < parts.length; i++) {
+            const dp = parts.slice(0, i).join("/")
+            if (!virtualFs.has(dp)) virtualFs.set(dp, { content: "", isDir: true, modified: now })
+          }
+        }
+        break
+      }
+      case "rm": {
+        if (rest.length === 0) { dispatchData(emit("rm: missing operand")); break }
+        const target = normPath(cwd, rest[0]!)
+        const vfs = stripRoot(target)
+        if (!virtualFs.has(vfs)) { dispatchData(emit(`${SGR.red}rm: ${rest[0]!}: No such file or directory${SGR.reset}`)); break }
+        const recursive = rest.includes("-r") || rest.includes("-rf")
+        if (virtualFs.get(vfs)?.isDir && !recursive) {
+          dispatchData(emit(`${SGR.red}rm: ${rest[0]!}: Is a directory (use -r)${SGR.reset}`))
+          break
+        }
+        for (const key of [...virtualFs.keys()]) {
+          if (key === vfs || key.startsWith(vfs + "/")) virtualFs.delete(key)
+        }
+        break
+      }
+      case "cp": {
+        if (rest.length < 2) { dispatchData(emit("cp: missing file operand")); break }
+        const src = normPath(cwd, rest[0]!)
+        const dst = normPath(cwd, rest[1]!)
+        const srcVfs = stripRoot(src)
+        const srcE = virtualFs.get(srcVfs)
+        if (!srcE) { dispatchData(emit(`${SGR.red}cp: ${rest[0]!}: No such file or directory${SGR.reset}`)); break }
+        if (srcE.isDir) { dispatchData(emit(`${SGR.red}cp: ${rest[0]!}: Is a directory${SGR.reset}`)); break }
+        const dstVfs = stripRoot(dst)
+        virtualFs.set(dstVfs, { ...srcE, modified: new Date() })
+        break
+      }
+      case "mv": {
+        if (rest.length < 2) { dispatchData(emit("mv: missing file operand")); break }
+        const src = normPath(cwd, rest[0]!)
+        const dst = normPath(cwd, rest[1]!)
+        const srcVfs = stripRoot(src)
+        const srcE = virtualFs.get(srcVfs)
+        if (!srcE) { dispatchData(emit(`${SGR.red}mv: ${rest[0]!}: No such file or directory${SGR.reset}`)); break }
+        const dstVfs = stripRoot(dst)
+        virtualFs.set(dstVfs, { ...srcE, modified: new Date() })
+        virtualFs.delete(srcVfs)
+        break
+      }
       case "help":
-        dispatchData(
-          emit(
-            [
-              SGR.bold + "Available commands:" + SGR.reset,
-              "  " + SGR.yellow + "help" + SGR.reset + "    show this help",
-              "  " + SGR.yellow + "status" + SGR.reset + "  report worker status",
-              "  " + SGR.yellow + "fail" + SGR.reset + "    simulate a failing command",
-              "  " + SGR.yellow + "exit" + SGR.reset + "    terminate this session",
-            ].join(String.fromCharCode(13) + String.fromCharCode(10)),
-          ),
-        )
+        dispatchData(emit(
+          SGR.bold + "Available commands:" + SGR.reset +
+            "\n  " + SGR.yellow + "cd" + SGR.reset + "      change directory" +
+            "\n  " + SGR.yellow + "ls" + SGR.reset + "      list directory contents" +
+            "\n  " + SGR.yellow + "cat" + SGR.reset + "     display file contents" +
+            "\n  " + SGR.yellow + "echo" + SGR.reset + "    print text" +
+            "\n  " + SGR.yellow + "pwd" + SGR.reset + "     print working directory" +
+            "\n  " + SGR.yellow + "mkdir" + SGR.reset + "   create directory" +
+            "\n  " + SGR.yellow + "touch" + SGR.reset + "   create/update file" +
+            "\n  " + SGR.yellow + "rm" + SGR.reset + "      remove file or directory (-r)" +
+            "\n  " + SGR.yellow + "cp" + SGR.reset + "      copy file" +
+            "\n  " + SGR.yellow + "mv" + SGR.reset + "      move/rename file" +
+            "\n  " + SGR.yellow + "help" + SGR.reset + "    show this help" +
+            "\n  " + SGR.yellow + "exit" + SGR.reset + "   terminate this session",
+        ))
         break
-      case "status":
-        dispatchData(
-          emit(
-            [
-              SGR.green + "OK planner   idle" + SGR.reset,
-              SGR.green + "OK scanner   running" + SGR.reset,
-              SGR.yellow + "!! writer    waiting" + SGR.reset,
-              SGR.cyan + ">> runner    spawning" + SGR.reset,
-            ].join(String.fromCharCode(13) + String.fromCharCode(10)),
-          ),
-        )
-        break
-      case "fail":
-        dispatchData(
-          emit(SGR.red + "x command exited with code 1: not found" + SGR.reset),
-        )
-        dispatchExit(1)
-        return
       case "exit":
         dispatchData(emit(SGR.dim + "session closed." + SGR.reset))
         dispatchExit(0)
         return
       default:
-        dispatchData(
-          emit(
-            SGR.red + "x command not found: " + cmd + SGR.reset +
-              " " + SGR.dim + "(try 'help')" + SGR.reset,
-          ),
-        )
+        dispatchData(emit(`${SGR.red}${cmd}: command not found${SGR.reset} ${SGR.dim}(try 'help')${SGR.reset}`))
+        dispatchExit(1)
+        return
     }
-    dispatchData(PROMPT)
+    dispatchData(getPrompt(cwd))
   }
 
   const pty: Pty = {
@@ -152,21 +272,18 @@ export function createMockPty(): Pty {
       listeners.data.add(cb)
       if (!started) {
         started = true
-        dispatchData(BANNER + ESC + "[0m")
-        dispatchData(PROMPT)
+        dispatchData(SGR.bold + "Eulinx browser shell" + SGR.reset + " " + SGR.dim + "(in-memory)" + SGR.reset + String.fromCharCode(13) + String.fromCharCode(10))
+        dispatchData(SGR.dim + "virtual filesystem at " + PTY_ROOT + SGR.reset + String.fromCharCode(13) + String.fromCharCode(10))
+        dispatchData(getPrompt(cwd))
       }
-      return () => {
-        listeners.data.delete(cb)
-      }
+      return () => { listeners.data.delete(cb) }
     },
     onExit(cb) {
       listeners.exit.add(cb)
-      return () => {
-        listeners.exit.delete(cb)
-      }
+      return () => { listeners.exit.delete(cb) }
     },
     resize(_cols: number, _rows: number): void {
-      // Mock PTY ignores geometry; a real bridge would forward to the slave.
+      // Mock PTY ignores geometry.
     },
     kill(): void {
       if (killed) return
