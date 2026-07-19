@@ -184,6 +184,21 @@
     font-weight: var(--font-weight-normal);
   }
 
+  button,
+  input,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;
   }
@@ -223,6 +238,44 @@
 }
 
 @layer components {
+  .app-chrome {
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0)),
+      var(--Eulinx-color-background);
+  }
+
+  .eulinx-control {
+    border: 1px solid color-mix(in srgb, var(--Eulinx-color-border) 86%, white 14%);
+    background: color-mix(in srgb, var(--Eulinx-color-surface) 82%, white 3%);
+    color: var(--Eulinx-color-text-secondary);
+    transition:
+      background-color var(--Eulinx-duration-hover) var(--Eulinx-ease-standard),
+      border-color var(--Eulinx-duration-hover) var(--Eulinx-ease-standard),
+      color var(--Eulinx-duration-hover) var(--Eulinx-ease-standard);
+  }
+
+  .eulinx-control:hover {
+    border-color: var(--Eulinx-color-border-strong);
+    background: var(--Eulinx-color-hover);
+    color: var(--Eulinx-color-text);
+  }
+
+  .eulinx-primary {
+    border: 1px solid color-mix(in srgb, var(--Eulinx-color-accent) 78%, white 22%);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--Eulinx-color-accent) 92%, white 8%), var(--Eulinx-color-accent));
+    color: #fff;
+    box-shadow: 0 8px 24px rgba(45, 127, 249, 0.18);
+  }
+
+  .eulinx-primary:hover {
+    background: color-mix(in srgb, var(--Eulinx-color-accent) 88%, white 12%);
+  }
+
+  .eulinx-surface-panel {
+    border: 1px solid var(--Eulinx-color-border);
+    background: color-mix(in srgb, var(--Eulinx-color-surface) 94%, white 2%);
+  }
+
   .text-balance {
     text-wrap: balance;
   }
