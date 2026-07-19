@@ -34,6 +34,7 @@ function projectNode(node: CanvasNode): CustomNodeType {
     data: {
       kind: toNodeKind(node.kind),
       label: node.label,
+      url: node.url,
     } satisfies CustomNodeData,
   }
 }

@@ -41,11 +41,6 @@ function changeBadgeTone(status: string): Tone {
   return CHANGE_BADGE_TONE[key] ?? "neutral"
 }
 
-const COMMIT_FILE_TONE: Record<"M" | "A", Tone> = {
-  M: "warning",
-  A: "success",
-}
-
 export function GitTab() {
   const { activeProject } = useProjects()
   const repo = activeProject?.path ?? ""

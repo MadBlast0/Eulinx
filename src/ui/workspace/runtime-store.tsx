@@ -18,7 +18,7 @@ export interface RuntimeService {
   readonly metric: string
   readonly metricLabel: string
   readonly pct: number
-  readonly icon: RN
+  readonly icon: ReactNode
 }
 
 const ICONS: Record<string, ReactNode> = {

@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useState } from "react"
 import {
   ChevronDown,
   Globe,
@@ -14,6 +15,8 @@ import {
 } from "lucide-react"
 import { ToolbarButton, ToolbarSep } from "./primitives"
 import { useWorkspace } from "./use-workspace"
+import { useProjects } from "./use-projects"
+import { useRunGraph } from "./orchestrator-run"
 import { ShellPicker } from "./terminal/shell-picker"
 
 export function TopBar() {
@@ -23,6 +26,27 @@ export function TopBar() {
     setOverlay,
     addNode,
   } = useWorkspace()
+
+  const { graph } = useProjects()
+  const { running, lastResult, run, reset } = useRunGraph()
+  const [noGraphMessage, setNoGraphMessage] = useState(false)
+
+  // Auto-reset to idle after a completed/errored run
+  useEffect(() => {
+    if (lastResult && !running) {
+      const timer = setTimeout(() => reset(), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [lastResult, running, reset])
+
+  const handleRun = useCallback(() => {
+    if (!graph) {
+      setNoGraphMessage(true)
+      setTimeout(() => setNoGraphMessage(false), 2000)
+      return
+    }
+    void run(graph)
+  }, [graph, run])
 
   return (
     <div
@@ -109,11 +133,17 @@ export function TopBar() {
 
         <button
           type="button"
-          aria-label="Run"
-          className="flex h-[30px] items-center gap-1.5 rounded-[var(--Eulinx-radius-sm)] bg-[color:var(--Eulinx-color-accent)] px-3 text-[12px] font-medium text-white transition-colors hover:bg-[color:var(--Eulinx-color-accent)]/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          aria-label={running ? "Running…" : "Run"}
+          disabled={running}
+          onClick={handleRun}
+          className="flex h-[30px] items-center gap-1.5 rounded-[var(--Eulinx-radius-sm)] bg-[color:var(--Eulinx-color-accent)] px-3 text-[12px] font-medium text-white transition-colors enabled:hover:bg-[color:var(--Eulinx-color-accent)]/90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
-          <Play className="h-3.5 w-3.5 fill-current" strokeWidth={0} />
-          Run
+          {running ? (
+            <RotateCw className="h-3.5 w-3.5 animate-spin" strokeWidth={2} />
+          ) : (
+            <Play className="h-3.5 w-3.5 fill-current" strokeWidth={0} />
+          )}
+          {running ? "Running…" : noGraphMessage ? "No graph" : "Run"}
         </button>
         <ToolbarButton tip="Sync">
           <RotateCw className="h-3.5 w-3.5" strokeWidth={1.5} />

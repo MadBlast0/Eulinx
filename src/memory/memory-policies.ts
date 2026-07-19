@@ -98,20 +98,38 @@ export function isPastRetention(record: MemoryRecord, retentionDays: number): bo
 // ---------------------------------------------------------------------------
 
 /**
- * Compress a list of records into a summary by concatenating and deduplicating.
- * This is a simple compression — in production, LLM-based summarization would be used.
+ * Compress a list of records into a structured summary.
+ * Groups by tag, deduplicates within each group, and produces
+ * a compact topic-grouped output. In production, LLM-based
+ * summarization would further condense each group.
  */
 export function compressRecords(records: readonly MemoryRecord[]): string {
   if (records.length === 0) return ""
 
-  const seen = new Set<string>()
-  const parts: string[] = []
+  const groups = new Map<string, { severity: string; contents: string[] }>()
 
   for (const record of records) {
     const content = record.summary ?? record.content
-    if (!seen.has(content)) {
-      seen.add(content)
-      parts.push(content)
+    const tags = record.tags.length > 0 ? record.tags : ["general"]
+
+    for (const tag of tags) {
+      let group = groups.get(tag)
+      if (!group) {
+        group = { severity: record.sensitivity, contents: [] }
+        groups.set(tag, group)
+      }
+      if (!group.contents.includes(content)) {
+        group.contents.push(content)
+      }
+    }
+  }
+
+  const parts: string[] = []
+  for (const [tag, group] of groups) {
+    const severityLabel = group.severity !== "normal" ? ` [${group.severity}]` : ""
+    parts.push(`# ${tag}${severityLabel}`)
+    for (const content of group.contents) {
+      parts.push(`- ${content}`)
     }
   }
 

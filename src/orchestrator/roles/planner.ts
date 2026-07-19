@@ -36,8 +36,6 @@ export interface PlannerGraphNode {
   readonly kind: string
 }
 
-const PHASE_BATCH_SIZE = 4
-
 export class PlannerOrchestrator extends BaseOrchestrator {
   private readonly plannerConfig: PlannerConfig
   private readonly goal: UserGoal
@@ -184,17 +182,24 @@ export class PlannerOrchestrator extends BaseOrchestrator {
     }))
   }
 
-  /** A phase bundles a batch of graph nodes. Without a graph we fall back to a
-   *  naive string split so the existing UserGoal flow keeps working. */
+  /** Groups graph nodes by their kind to produce one phase per distinct kind
+   *  category (e.g. "terminal", "browser", "worker"). When no graph nodes are
+   *  available we fall back to a naive string split on the goal description. */
   private extractPhaseIntents(goalDescription: string): { title: string; nodes: readonly PlannerGraphNode[] }[] {
     if (this.graphNodes.length > 0) {
-      const batches: PlannerGraphNode[][] = []
-      for (let i = 0; i < this.graphNodes.length; i += PHASE_BATCH_SIZE) {
-        batches.push(this.graphNodes.slice(i, i + PHASE_BATCH_SIZE))
+      // One phase per node kind — much more meaningful than fixed-size batches
+      const groups = new Map<string, PlannerGraphNode[]>()
+      for (const node of this.graphNodes) {
+        const group = groups.get(node.kind)
+        if (group) {
+          group.push(node)
+        } else {
+          groups.set(node.kind, [node])
+        }
       }
-      return batches.map((batch, index) => ({
-        title: `Phase ${index + 1}: ${batch.map((n) => n.label).join(", ")}`,
-        nodes: batch,
+      return Array.from(groups.entries()).map(([kind, nodes]) => ({
+        title: `${kind.charAt(0).toUpperCase() + kind.slice(1)}: ${nodes.map((n) => n.label).join(", ")}`,
+        nodes,
       }))
     }
 

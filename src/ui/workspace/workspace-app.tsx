@@ -9,6 +9,7 @@ import { SessionsProvider } from "./sessions-store"
 import { PromptsProvider } from "./prompts-store"
 import { SettingsProvider } from "./settings-store"
 import { WorkersProvider } from "./workers-store"
+import { CostProvider } from "./cost-store"
 import { TopBar } from "./top-bar"
 import { LeftSidebar } from "./left-sidebar"
 import { Canvas } from "./canvas"
@@ -174,9 +175,11 @@ export function WorkspaceApp() {
               <WorkspaceProvider>
                 <SettingsProvider>
                   <WorkersProvider>
-                    <KeymapProvider>
-                      <WorkspaceShell />
-                    </KeymapProvider>
+                    <CostProvider>
+                      <KeymapProvider>
+                        <WorkspaceShell />
+                      </KeymapProvider>
+                    </CostProvider>
                   </WorkersProvider>
                 </SettingsProvider>
               </WorkspaceProvider>

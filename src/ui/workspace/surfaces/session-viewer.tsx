@@ -3,7 +3,7 @@ import { TerminalSquare, MessageSquare, Clock, Hash } from "lucide-react"
 import { cn } from "@/utils/cn"
 import { PanelSurface, StateBadge, Dot } from "../primitives"
 import { type Tone } from "../state"
-import { useSessions, type Session, type SessionKind } from "../sessions-store"
+import { useSessions, type SessionKind } from "../sessions-store"
 
 const KIND_TONE: Record<SessionKind, Tone> = {
   synthetic: "neutral",
@@ -13,8 +13,9 @@ const KIND_TONE: Record<SessionKind, Tone> = {
 
 export default function SessionViewer() {
   const { sessions } = useSessions()
-  const [activeId, setActiveId] = useState<string>(sessions[0]!.id)
-  const active = sessions.find((s) => s.id === activeId) ?? sessions[0]!
+  const fallback = sessions[0]
+  const [activeId, setActiveId] = useState<string>(fallback?.id ?? "")
+  const active = sessions.find((s) => s.id === activeId) ?? fallback!
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

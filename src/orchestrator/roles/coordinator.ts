@@ -10,7 +10,7 @@
 import type { Result } from "@/core/result"
 import { err, ok } from "@/core/result"
 import { CoreError } from "@/core/error"
-import { brand } from "@/core/types"
+import { brand, type TaskId } from "@/core/types"
 
 import { BaseOrchestrator } from "../orchestrator-base"
 import type {
@@ -197,11 +197,32 @@ class PhaseOrchestratorStub extends BaseOrchestrator {
   }
 
   protected async onDelegate(): Promise<Result<void, CoreError>> {
-    this.logger.info(`Phase "${this.phaseNode.intent}" delegated (${this.getTaskNodes().length} tasks)`)
+    const taskNodes = this.getTaskNodes()
+    this.logger.info(`Phase "${this.phaseNode.intent}" delegating ${taskNodes.length} tasks`)
+
+    for (const task of taskNodes) {
+      this.addTask(task.id as TaskId)
+      const cost = Math.floor(this.config.budgetAllocated / Math.max(taskNodes.length, 1))
+      const result = this.spendBudget(cost)
+      if (!result.ok) {
+        this.logger.warn(`Budget exceeded during phase "${this.phaseNode.intent}"`)
+        break
+      }
+      this.logger.info(`Task "${task.intent}" launched (budget: $${(cost / 100).toFixed(2)})`)
+    }
+
+    this.emit("orchestrator.state_changed", {
+      phase: this.phaseNode.intent,
+      tasksDelegated: taskNodes.length,
+    })
+
     return ok(undefined)
   }
 
   protected async onComplete(): Promise<Result<void, CoreError>> {
+    this.logger.info(`Phase "${this.phaseNode.intent}" completed with ${this.getTaskNodes().length} tasks`)
+    const report = this.getProgress()
+    this.logger.info(`Progress: ${report.percentComplete}% complete, $${(report.budgetSpent / 100).toFixed(2)} spent`)
     return ok(undefined)
   }
 

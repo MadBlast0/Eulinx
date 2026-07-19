@@ -37,16 +37,83 @@ interface StoredArtifact {
 }
 
 // ---------------------------------------------------------------------------
+// Persistence helpers
+// ---------------------------------------------------------------------------
+
+const STORAGE_KEY = "eulinx.artifacts.v1"
+
+interface SerializableArtifact {
+  readonly meta: Artifact
+  readonly content: string
+}
+
+function serialize(store: Map<string, StoredArtifact>): string {
+  const entries: SerializableArtifact[] = []
+  for (const [id, stored] of store) {
+    const content = typeof stored.content === "string"
+      ? stored.content
+      : new TextDecoder("utf-8", { fatal: false }).decode(stored.content)
+    entries.push({ meta: stored.meta, content })
+  }
+  return JSON.stringify(entries)
+}
+
+function deserialize(json: string): Map<string, StoredArtifact> {
+  const store = new Map<string, StoredArtifact>()
+  try {
+    const entries: SerializableArtifact[] = JSON.parse(json)
+    for (const entry of entries) {
+      store.set(entry.meta.id, { meta: entry.meta, content: entry.content })
+    }
+  } catch {
+    // corrupt data — start fresh
+  }
+  return store
+}
+
+function loadFromStorage(): Map<string, StoredArtifact> {
+  try {
+    if (typeof localStorage !== "undefined") {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) return deserialize(raw)
+    }
+  } catch {
+    // localStorage unavailable
+  }
+  return new Map()
+}
+
+function saveToStorage(store: Map<string, StoredArtifact>): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(STORAGE_KEY, serialize(store))
+    }
+  } catch {
+    // storage full or unavailable — silently degrade to in-memory only
+  }
+}
+
+// ---------------------------------------------------------------------------
 // ArtifactStorage
 // ---------------------------------------------------------------------------
 
 export class ArtifactStorage {
-  private readonly store = new Map<string, StoredArtifact>()
+  private readonly store: Map<string, StoredArtifact>
   private readonly contentIndex = new Map<string, ArtifactId>() // hash -> id for dedup
   private readonly config: ArtifactStorageConfig
+  private persistTimer: ReturnType<typeof setTimeout> | null = null
 
   constructor(config: Partial<ArtifactStorageConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config }
+    this.store = loadFromStorage()
+    for (const [id, stored] of this.store) {
+      this.contentIndex.set(stored.meta.contentHash, id as ArtifactId)
+    }
+  }
+
+  private schedulePersist(): void {
+    if (this.persistTimer) clearTimeout(this.persistTimer)
+    this.persistTimer = setTimeout(() => saveToStorage(this.store), 300)
   }
 
   /** Compute content hash from bytes. */
@@ -118,6 +185,7 @@ export class ArtifactStorage {
   setArtifact(artifact: Artifact, content: string | Uint8Array): void {
     this.store.set(artifact.id, { meta: artifact, content })
     this.contentIndex.set(artifact.contentHash, artifact.id)
+    this.schedulePersist()
   }
 
   /** Get a stored artifact by ID. */
@@ -146,6 +214,7 @@ export class ArtifactStorage {
     if (!stored) return false
     this.contentIndex.delete(stored.meta.contentHash)
     this.store.delete(id)
+    this.schedulePersist()
     return true
   }
 

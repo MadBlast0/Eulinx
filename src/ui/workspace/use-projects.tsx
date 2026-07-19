@@ -206,7 +206,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           const removed = p.views.find((v) => v.id === viewId)
           const views = p.views.filter((v) => v.id !== viewId)
           const graphs = { ...(p.graphs ?? {}) }
-          if (removed?.graphId) delete graphs[removed.graphId]
+          if (removed?.graphId) { const { [removed.graphId]: _, ...rest } = graphs; Object.assign(graphs, rest) }
           const activeViewId =
             p.activeViewId === viewId ? views[0]?.id : p.activeViewId
           return { ...p, views, graphs, activeViewId }

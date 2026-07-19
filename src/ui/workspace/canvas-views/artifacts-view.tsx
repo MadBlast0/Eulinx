@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react"
 import { FileCode2, FileText, FileImage, FileType, Plus, Search, Trash2 } from "lucide-react"
-import { cn } from "@/utils/cn"
 import { ArtifactsProvider, useArtifacts, type Artifact, type ArtifactKind } from "../artifacts-store"
 
 const KIND_META: Record<ArtifactKind, { label: string; icon: typeof FileText }> = {
