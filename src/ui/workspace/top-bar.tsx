@@ -25,7 +25,7 @@ export function TopBar() {
 
   return (
     <div
-      className="flex items-center gap-2 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-toolbar)] px-3"
+      className="flex h-full items-center gap-2 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-toolbar)] px-3"
       style={{ WebkitAppRegion: "drag" }}
     >
       {/* Left group: logo, workspace selector, breadcrumb */}
