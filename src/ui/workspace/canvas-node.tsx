@@ -4,6 +4,7 @@ import { cn } from "@/utils/cn"
 import type { CanvasNode, NodeKind, TerminalLine } from "./types"
 import { Dot } from "./primitives"
 import { TerminalView } from "./terminal"
+import { useTerminal } from "./terminal/use-terminal"
 
 const NODE_TOKEN: Record<NodeKind, string> = {
   terminal: "var(--Eulinx-color-node-terminal)",
@@ -109,25 +110,10 @@ export function CanvasNodeCard({
         {node.kind === "terminal" &&
           (node.selected ? (
             <div className="min-h-[120px] flex-1 p-2">
-              <TerminalView ptyId={node.id} className="h-full" />
+              <TerminalView ptyId={node.id} shell={node.shell} className="h-full" />
             </div>
           ) : (
-            <div className="min-h-[120px] bg-[color:var(--Eulinx-color-background)] px-3 py-2 font-mono text-xs leading-relaxed">
-              {node.lines?.map((line, i) => (
-                <div key={i} className="flex gap-2">
-                  {line.prompt && (
-                    <span style={{ color: "var(--Eulinx-color-accent)" }}>{line.prompt}</span>
-                  )}
-                  {line.command && <span className="text-[color:var(--Eulinx-color-text)]">{line.command}</span>}
-                  {line.output && (
-                    <span style={{ color: OUTPUT_COLOR[line.outputColor ?? "muted"] }}>
-                      {line.output}
-                    </span>
-                  )}
-                  {line.cursor && <span className="wsx-cursor" />}
-                </div>
-              ))}
-            </div>
+            <CollapsedTerminal ptyId={node.id} shell={node.shell} />
           ))}
 
         {node.kind === "browser" && (
@@ -172,6 +158,30 @@ export function CanvasNodeCard({
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Collapsed terminal preview: shows the live tail of the PTY output so a node
+ * stays useful while collapsed. Reads the same PTY as the expanded view.
+ */
+function CollapsedTerminal({ ptyId, shell }: { ptyId: string; shell?: string }) {
+  const { lines } = useTerminal(ptyId, shell)
+  const tail = lines.slice(-6)
+  return (
+    <div className="min-h-[120px] flex-1 overflow-hidden bg-[color:var(--Eulinx-color-background)] px-3 py-2 font-mono text-xs leading-relaxed">
+      {tail.length === 0 ? (
+        <span className="text-[color:var(--Eulinx-color-text-muted)]">starting shell…</span>
+      ) : (
+        tail.map((line) => (
+          <div key={line.id} className="truncate">
+            <span style={{ color: OUTPUT_COLOR[line.kind === "error" ? "red" : line.kind === "success" ? "green" : "muted"] }}>
+              {line.text}
+            </span>
+          </div>
+        ))
+      )}
     </div>
   )
 }

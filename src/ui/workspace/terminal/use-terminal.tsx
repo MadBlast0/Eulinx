@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import type { Pty, PtyId, ExitCode } from "./pty"
-import { createMockPty } from "./pty"
+import { createMockPty, createNativePty } from "./pty"
+import { isTauri } from "@tauri-apps/api/core"
 
 export type TerminalLineKind = "input" | "output" | "error" | "success"
 
@@ -35,7 +36,8 @@ function nextId(): string {
 // ---------------------------------------------------------------------------
 // PTY registry. Terminal nodes reference a PTY by id; the registry owns the
 // single source of truth so multiple views (preview + selected) share it.
-// A real Tauri bridge would populate this from a native spawner call.
+// Under the Tauri runtime the PTY is a real OS shell (createNativePty); in the
+// plain browser it falls back to the in-memory mock so the UI stays usable.
 // ---------------------------------------------------------------------------
 
 const registry = new Map<PtyId, Pty>()
@@ -48,15 +50,19 @@ export function setPty(id: PtyId, pty: Pty): void {
   registry.set(id, pty)
 }
 
-export function ensureMockPty(id: PtyId): Pty {
+/** Spawn (or reuse) a PTY for `id`. `shell` selects the shell under Tauri. */
+export function ensurePty(id: PtyId, shell?: string): Pty {
   const existing = registry.get(id)
   if (existing) return existing
-  const mock = createMockPty()
-  registry.set(id, mock)
-  return mock
+  const pty = isTauri() ? createNativePty(shell) : createMockPty()
+  registry.set(id, pty)
+  return pty
 }
 
-export function useTerminal(ptyId: PtyId | undefined): UseTerminalResult {
+export function useTerminal(
+  ptyId: PtyId | undefined,
+  shell?: string,
+): UseTerminalResult {
   const ptyRef = useRef<Pty | null>(null)
 
   const [lines, setLines] = useState<readonly TerminalLine[]>([])
@@ -69,12 +75,14 @@ export function useTerminal(ptyId: PtyId | undefined): UseTerminalResult {
       setExitCode(null)
       return
     }
-    const pty = ensureMockPty(ptyId)
+    const pty = ensurePty(ptyId, shell)
     ptyRef.current = pty
 
     const buffer: TerminalLine[] = []
     const push = (line: Omit<TerminalLine, "id">): void => {
       buffer.push({ ...line, id: nextId() })
+      // Cap the collapsed-preview buffer so it cannot grow unbounded.
+      if (buffer.length > 500) buffer.splice(0, buffer.length - 500)
       setLines([...buffer])
     }
 
@@ -98,7 +106,7 @@ export function useTerminal(ptyId: PtyId | undefined): UseTerminalResult {
       offExit()
       ptyRef.current = null
     }
-  }, [ptyId])
+  }, [ptyId, shell])
 
   const write = useCallback((data: string) => {
     ptyRef.current?.write(data)

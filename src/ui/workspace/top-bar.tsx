@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import { ToolbarButton, ToolbarSep } from "./primitives"
 import { useWorkspace } from "./use-workspace"
+import { ShellPicker } from "./terminal/shell-picker"
 
 export function TopBar() {
   const {
@@ -87,6 +88,7 @@ export function TopBar() {
         <ToolbarButton tip="New terminal" onClick={() => addNode("terminal")}>
           <TerminalSquare className="h-3.5 w-3.5" strokeWidth={1.5} />
         </ToolbarButton>
+        <ShellPicker onPick={(shell) => addNode("terminal", shell)} />
         <ToolbarButton tip="New browser" onClick={() => addNode("browser")}>
           <Globe className="h-3.5 w-3.5" strokeWidth={1.5} />
         </ToolbarButton>

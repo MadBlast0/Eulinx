@@ -128,7 +128,7 @@ interface WorkspaceContextValue {
   closeContextMenu(): void
   selectNode(id: string): void
   moveNode(id: string, x: number, y: number): void
-  addNode(kind: NodeKind): void
+  addNode(kind: NodeKind, shell?: string): void
   removeNode(id: string): void
 }
 
@@ -156,7 +156,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const addNode = useCallback(
-    (kind: NodeKind) => {
+    (kind: NodeKind, shell?: string) => {
       const next = nodeCounter + 1
       setNodeCounter(next)
       const id = `node-new-${next}`
@@ -167,11 +167,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           ? {
               id,
               kind: "terminal",
-              label: "Terminal",
+              label: shell && shell.length > 0 ? `Terminal (${shell})` : "Terminal",
               x,
               y,
               width: 240,
               accent: "accent",
+              shell: shell && shell.length > 0 ? shell : undefined,
               lines: [{ prompt: "$", cursor: true }],
             }
           : kind === "browser"

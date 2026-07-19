@@ -1,6 +1,7 @@
 import { useEffect } from "react"
 import { Globe, LayoutGrid, Squircle, TerminalSquare } from "lucide-react"
 import { useWorkspace } from "./use-workspace"
+import { ShellPicker } from "./terminal/shell-picker"
 
 export function ContextMenu() {
   const { contextMenu, closeContextMenu, addNode } = useWorkspace()
@@ -20,7 +21,10 @@ export function ContextMenu() {
       style={{ left: contextMenu.x, top: contextMenu.y }}
       onClick={(e) => e.stopPropagation()}
     >
-      <Item icon={<TerminalSquare className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Add Terminal" shortcut="T" onClick={() => addNode("terminal")} />
+       <div className="flex items-center">
+         <Item icon={<TerminalSquare className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Add Terminal" shortcut="T" onClick={() => addNode("terminal")} />
+         <ShellPicker align="right" onPick={(shell) => addNode("terminal", shell)} />
+       </div>
       <Item icon={<Globe className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Add Browser" shortcut="B" onClick={() => addNode("browser")} />
       <Item icon={<Squircle className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Add Worker" shortcut="W" onClick={closeContextMenu} />
       <div className="my-1 h-px bg-[color:var(--Eulinx-color-border)]" />

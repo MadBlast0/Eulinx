@@ -10,6 +10,8 @@ export interface CanvasNode {
   accent?: "accent" | "green" | "amber" | "red" | "purple"
   lines?: readonly TerminalLine[]
   url?: string
+  /** Optional shell override for terminal nodes (e.g. "pwsh", "bash"). */
+  shell?: string
   selected?: boolean
 }
 

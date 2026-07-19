@@ -11,10 +11,11 @@ export {
   type UseTerminalResult,
   getPty,
   setPty,
-  ensureMockPty,
+  ensurePty,
 } from "./use-terminal"
 export {
   createMockPty,
+  createNativePty,
   type Pty,
   type PtyId,
   type ExitCode,

@@ -2,10 +2,14 @@
 //
 // A `Pty` is a line-discipline stream: you `write` bytes in, you receive
 // decoded `onData` chunks out, and you are notified `onExit` when the
-// process ends. The mock implementation is purely in-memory so the canvas
-// node preview can exercise the full theme/ANSI pipeline without a real
-// backend. A future Tauri bridge replaces `createMockPty` with a native
-// spawner that satisfies the same interface.
+// process ends. Two implementations satisfy this interface:
+//
+//  - `createMockPty`  — purely in-memory, used in the browser (`pnpm dev`)
+//    where no native runtime is present.
+//  - `createNativePty` — drives a real OS shell through the Tauri bridge
+//    (commands `pty_spawn` / `pty_write` / `pty_resize` / `pty_kill` and the
+//    `pty://<id>/data` + `pty://<id>/exit` event channels). Active under the
+//    Tauri desktop runtime.
 
 export type PtyId = string
 export type ExitCode = number | null
@@ -167,6 +171,106 @@ export function createMockPty(): Pty {
     kill(): void {
       if (killed) return
       killed = true
+      dispatchExit(null)
+    },
+  }
+
+  return pty
+}
+
+// ---------------------------------------------------------------------------
+// Native PTY bridge (Tauri)
+// ---------------------------------------------------------------------------
+
+import type { InvokeArgs } from "@tauri-apps/api/core"
+import { invoke } from "@tauri-apps/api/core"
+import { listen, type UnlistenFn } from "@tauri-apps/api/event"
+
+const SHELL_EVENT = (id: string) => `pty://${id}/data`
+const EXIT_EVENT = (id: string) => `pty://${id}/exit`
+
+interface NativePtyListeners {
+  readonly data: Set<(data: string) => void>
+  readonly exit: Set<(code: ExitCode) => void>
+}
+
+/**
+ * Spawn a real OS shell through the Rust bridge and stream its bytes. The
+ * interface is identical to the mock, so TerminalView/useTerminal need no
+ * changes. `shell` optionally overrides the OS default shell.
+ */
+export function createNativePty(shell?: string): Pty {
+  const id = "pty-" + Math.random().toString(36).slice(2, 10)
+  const listeners: NativePtyListeners = { data: new Set(), exit: new Set() }
+  let killed = false
+  let exited = false
+  let unlistenData: UnlistenFn | null = null
+  let unlistenExit: UnlistenFn | null = null
+
+  const dispatchData = (chunk: string): void => {
+    if (killed || exited) return
+    for (const cb of listeners.data) {
+      try {
+        cb(chunk)
+      } catch {
+        // A subscriber error must never break the stream.
+      }
+    }
+  }
+
+  const dispatchExit = (code: ExitCode): void => {
+    if (exited) return
+    exited = true
+    for (const cb of listeners.exit) {
+      try {
+        cb(code)
+      } catch {
+        // Ignore subscriber errors.
+      }
+    }
+  }
+
+  const args: InvokeArgs = { id, shell: shell && shell.length > 0 ? shell : null }
+  void invoke("pty_spawn", args)
+    .then(() => {
+      void listen<{ chunk: string }>(SHELL_EVENT(id), (e) => dispatchData(e.payload.chunk))
+        .then((fn) => (unlistenData = fn))
+      void listen<{ code: number | null }>(EXIT_EVENT(id), (e) => dispatchExit(e.payload.code))
+        .then((fn) => (unlistenExit = fn))
+    })
+    .catch((err: unknown) => {
+      // Surface spawn failure as an error line + non-zero exit.
+      dispatchData(`\x1b[31mfailed to spawn shell: ${String(err)}\x1b[0m\r\n`)
+      dispatchExit(1)
+    })
+
+  const pty: Pty = {
+    id,
+    write(data: string): void {
+      if (killed || exited) return
+      void invoke("pty_write", { id, data } as InvokeArgs)
+    },
+    onData(cb) {
+      listeners.data.add(cb)
+      return () => {
+        listeners.data.delete(cb)
+      }
+    },
+    onExit(cb) {
+      listeners.exit.add(cb)
+      return () => {
+        listeners.exit.delete(cb)
+      }
+    },
+    resize(cols: number, rows: number): void {
+      void invoke("pty_resize", { id, cols, rows } as InvokeArgs)
+    },
+    kill(): void {
+      if (killed) return
+      killed = true
+      unlistenData?.()
+      unlistenExit?.()
+      void invoke("pty_kill", { id } as InvokeArgs)
       dispatchExit(null)
     },
   }

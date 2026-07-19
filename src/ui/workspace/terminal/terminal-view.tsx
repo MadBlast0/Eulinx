@@ -25,6 +25,7 @@ export interface TerminalViewProps {
   readonly onPushLine?: (line: Omit<TerminalLine, "id">) => void
   readonly onClear?: () => void
   readonly onNew?: () => void
+  readonly shell?: string
   readonly className?: string
 }
 
@@ -106,10 +107,12 @@ function TerminalFallback({
 function TerminalXterm({
   ptyId,
   onNew,
+  shell,
   className,
 }: {
   ptyId: string
   onNew?: () => void
+  shell?: string
   className?: string
 }) {
   const { active: theme } = useTheme()
@@ -120,7 +123,7 @@ function TerminalXterm({
 
   const [searchOpen, setSearchOpen] = useState(false)
 
-  const { pty, clear, exitCode } = useTerminal(ptyId)
+  const { pty, clear, exitCode } = useTerminal(ptyId, shell)
 
   // Create terminal + addons once.
   useEffect(() => {
@@ -309,6 +312,7 @@ export const TerminalView = memo(function TerminalView({
   onPushLine,
   onClear,
   onNew,
+  shell,
   className,
 }: TerminalViewProps) {
   if (!ptyId) {
@@ -322,7 +326,7 @@ export const TerminalView = memo(function TerminalView({
       />
     )
   }
-  return <TerminalXterm ptyId={ptyId} onNew={onNew} className={className} />
+  return <TerminalXterm ptyId={ptyId} onNew={onNew} shell={shell} className={className} />
 })
 
 export default TerminalView
