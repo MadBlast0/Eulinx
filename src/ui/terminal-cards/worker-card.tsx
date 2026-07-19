@@ -331,8 +331,8 @@ export function WorkerCard(props: WorkerCardProps): ReactElement {
           justifyContent: "center",
           borderRadius: token("--Eulinx-radius-lg"),
           border: `var(--Eulinx-border-base) solid var(--Eulinx-color-state-failing)`,
-          background: token("--Eulinx-color-elevated"),
-          color: token("--Eulinx-color-text-primary"),
+          background: token("--Eulinx-color-surface"),
+          color: token("--Eulinx-color-text"),
         }}
       >
         <Icon name="status.error" size="lg" label="Subscription error" />
@@ -363,9 +363,9 @@ export function WorkerCard(props: WorkerCardProps): ReactElement {
     border: `var(--Eulinx-border-thin) solid ${
       isSelected ? token("--Eulinx-color-terminal-card-accent") : token("--Eulinx-color-terminal-card-border")
     }`,
-    background: token("--Eulinx-color-elevated"),
+    background: token("--Eulinx-color-surface"),
     boxShadow: token("--Eulinx-elev-sm"),
-    color: token("--Eulinx-color-text-primary"),
+    color: token("--Eulinx-color-text"),
     display: "flex",
     flexDirection: arrangement === "list" ? "row" : "column",
     alignItems: arrangement === "list" ? "center" : "stretch",
@@ -377,7 +377,7 @@ export function WorkerCard(props: WorkerCardProps): ReactElement {
     marginLeft: indent > 0 ? `${indent}px` : undefined,
     transition: reducedMotion
       ? "none"
-      : `border-color ${token("--Eulinx-duration-fast")} var(--Eulinx-ease-standard), box-shadow ${token("--Eulinx-duration-fast")} var(--Eulinx-ease-standard)`,
+      : `border-color ${token("--Eulinx-duration-hover")} var(--Eulinx-ease-standard), box-shadow ${token("--Eulinx-duration-hover")} var(--Eulinx-ease-standard)`,
   };
 
   const roleDisplay = roleLabel.length > 0 ? roleLabel : "unknown";
@@ -426,7 +426,7 @@ export function WorkerCard(props: WorkerCardProps): ReactElement {
         <span
           className="text-role-caption"
           style={{
-            color: state === "zombie" ? token("--Eulinx-color-danger") : token("--Eulinx-color-text-muted"),
+            color: state === "zombie" ? token("--Eulinx-color-error") : token("--Eulinx-color-text-muted"),
             fontVariantNumeric: "tabular-nums",
             opacity: state === "terminated" ? 0.5 : 1,
           }}
@@ -493,7 +493,7 @@ export function WorkerCard(props: WorkerCardProps): ReactElement {
             height: "16px",
             padding: `0 ${token("--Eulinx-space-2")}`,
             borderRadius: token("--Eulinx-radius-sm"),
-            background: token("--Eulinx-color-elevated-2"),
+            background: token("--Eulinx-color-surface-alt"),
             border: `var(--Eulinx-border-thin) solid ${token("--Eulinx-color-border")}`,
             color: token("--Eulinx-color-text-muted"),
             fontFamily: "var(--Eulinx-font-mono, monospace)",
@@ -547,7 +547,7 @@ export function WorkerCard(props: WorkerCardProps): ReactElement {
                 textOverflow: "ellipsis",
                 color:
                   line.stream === "stderr"
-                    ? token("--Eulinx-color-danger")
+                    ? token("--Eulinx-color-error")
                     : token("--Eulinx-color-text-muted"),
               }}
               title={line.text}
@@ -579,7 +579,7 @@ export function WorkerCard(props: WorkerCardProps): ReactElement {
         <span
           style={{
             marginLeft: "auto",
-            color: state === "zombie" ? token("--Eulinx-color-danger") : token("--Eulinx-color-text-muted"),
+            color: state === "zombie" ? token("--Eulinx-color-error") : token("--Eulinx-color-text-muted"),
             opacity: state === "terminated" ? 0.5 : 1,
           }}
           title={`elapsed in ${signal.label}`}
@@ -628,10 +628,10 @@ export function WorkerCard(props: WorkerCardProps): ReactElement {
             pointerEvents: "auto",
             transition: reducedMotion
               ? "none"
-              : `background-color ${token("--Eulinx-duration-fast")} var(--Eulinx-ease-standard)`,
+              : `background-color ${token("--Eulinx-duration-hover")} var(--Eulinx-ease-standard)`,
           }}
           onMouseEnter={(e) => {
-            if (!disabled) e.currentTarget.style.background = token("--Eulinx-color-elevated-2");
+            if (!disabled) e.currentTarget.style.background = token("--Eulinx-color-surface-alt");
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.background = "transparent";
@@ -655,7 +655,7 @@ function BudgetBar({ metrics, density }: { metrics: CardMetrics; density: CardDe
       ? token("--Eulinx-color-accent")
       : ratio < 0.9
         ? token("--Eulinx-color-warning")
-        : token("--Eulinx-color-danger");
+        : token("--Eulinx-color-error");
   const width = density === "compact" ? "40px" : "64px";
   return (
     <span
@@ -677,7 +677,7 @@ function BudgetBar({ metrics, density }: { metrics: CardMetrics; density: CardDe
           height: "100%",
           width: `${ratio * 100}%`,
           background: fillColor,
-          transition: `width ${token("--Eulinx-duration-base")} var(--Eulinx-ease-standard)`,
+          transition: `width ${token("--Eulinx-duration-card")} var(--Eulinx-ease-standard)`,
         }}
       />
     </span>

@@ -160,7 +160,7 @@ export function TerminalCards({ workerIds, source, onOpenTerminal, toolbarEnd, w
       aria-label="Worker terminal cards"
       data-density={density}
       data-arrangement={arrangement}
-      style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, background: token("--Eulinx-color-surface"), color: token("--Eulinx-color-text-primary") }}
+      style={{ display: "flex", flexDirection: "column", height: "100%", minHeight: 0, background: token("--Eulinx-color-surface"), color: token("--Eulinx-color-text") }}
     >
       <CardsToolbar
         arrangement={arrangement}
@@ -292,8 +292,8 @@ function ToolbarButton({
         padding: `0 ${token("--Eulinx-space-2")}`,
         borderRadius: token("--Eulinx-radius-md"),
         border: `var(--Eulinx-border-thin) solid ${active ? token("--Eulinx-color-terminal-card-accent") : token("--Eulinx-color-border")}`,
-        background: active ? token("--Eulinx-color-elevated-2") : "transparent",
-        color: active ? token("--Eulinx-color-text-primary") : token("--Eulinx-color-text-muted"),
+        background: active ? token("--Eulinx-color-surface-alt") : "transparent",
+        color: active ? token("--Eulinx-color-text") : token("--Eulinx-color-text-muted"),
         cursor: "pointer",
       }}
     >
