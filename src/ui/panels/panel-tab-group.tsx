@@ -98,13 +98,12 @@ export function PanelTabGroup({ group }: PanelTabGroupProps): ReactNode {
         ref={stripRef}
         role="tablist"
         aria-orientation="horizontal"
-        className="text-role-label"
+        className="flex items-center text-xs"
         style={{
-          display: "flex",
-          alignItems: "stretch",
-          gap: "var(--Eulinx-space-1)",
-          padding: "var(--Eulinx-space-1)",
-          backgroundColor: "var(--Eulinx-color-panel-header-bg)",
+          gap: "var(--Eulinx-space-0.5, 2px)",
+          padding: "0 var(--Eulinx-space-2)",
+          height: 32,
+          backgroundColor: "var(--Eulinx-color-surface)",
           borderBottom: "var(--Eulinx-border-thin) solid var(--Eulinx-color-border)",
         }}
       >
@@ -138,13 +137,15 @@ export function PanelTabGroup({ group }: PanelTabGroupProps): ReactNode {
                 alignItems: "center",
                 gap: "var(--Eulinx-space-1)",
                 padding: "var(--Eulinx-space-1) var(--Eulinx-space-2)",
+                height: 28,
                 borderRadius: "var(--Eulinx-radius-sm)",
                 border: grabbed
                   ? "var(--Eulinx-border-thin) dashed var(--Eulinx-color-accent)"
                   : "var(--Eulinx-border-thin) solid transparent",
-                backgroundColor: isActive ? "var(--Eulinx-color-surface)" : "transparent",
-                color: isActive ? "var(--Eulinx-color-text-primary)" : "var(--Eulinx-color-text-muted)",
+                backgroundColor: isActive ? "var(--Eulinx-color-surface-alt)" : "transparent",
+                color: isActive ? "var(--Eulinx-color-text)" : "var(--Eulinx-color-text-muted)",
                 cursor: "pointer",
+                transition: "background-color 100ms, color 100ms",
               }}
             >
               <Icon name={desc?.icon ?? "domain.panel"} size="sm" />
