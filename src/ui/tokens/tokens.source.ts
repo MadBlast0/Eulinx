@@ -715,6 +715,92 @@ const componentTokens: ComponentToken[] = [
     owner: "Sidebar",
     usage: "Background of the left navigation sidebar surface.",
   },
+
+  // ---- Unified UI language: status tints (bg + fg for badges/pills) ----
+  {
+    layer: "component",
+    category: "color",
+    name: "--Eulinx-color-status-success-bg",
+    binding: "--Eulinx-color-success",
+    owner: "Status",
+    usage: "Translucent background for success/positive status pills (use at low alpha).",
+  },
+  {
+    layer: "component",
+    category: "color",
+    name: "--Eulinx-color-status-warning-bg",
+    binding: "--Eulinx-color-warning",
+    owner: "Status",
+    usage: "Translucent background for warning/paused status pills.",
+  },
+  {
+    layer: "component",
+    category: "color",
+    name: "--Eulinx-color-status-error-bg",
+    binding: "--Eulinx-color-error",
+    owner: "Status",
+    usage: "Translucent background for error/failed status pills.",
+  },
+  {
+    layer: "component",
+    category: "color",
+    name: "--Eulinx-color-status-info-bg",
+    binding: "--Eulinx-color-info",
+    owner: "Status",
+    usage: "Translucent background for info/neutral status pills.",
+  },
+
+  // ---- Surface tints for differentiated panels/cards ----
+  {
+    layer: "component",
+    category: "color",
+    name: "--Eulinx-color-surface-raised",
+    binding: "--Eulinx-color-surface",
+    owner: "Surface",
+    usage: "Raised surface (cards, popovers) sitting above the base background.",
+  },
+  {
+    layer: "component",
+    category: "color",
+    name: "--Eulinx-color-surface-sunken",
+    binding: "--Eulinx-color-background",
+    owner: "Surface",
+    usage: "Sunken surface (inputs, code blocks) sitting below the base surface.",
+  },
+
+  // ---- Node-graph node type accents ----
+  {
+    layer: "component",
+    category: "color",
+    name: "--Eulinx-color-node-terminal",
+    binding: "--Eulinx-color-info",
+    owner: "NodeGraph",
+    usage: "Accent for terminal-type nodes.",
+  },
+  {
+    layer: "component",
+    category: "color",
+    name: "--Eulinx-color-node-browser",
+    binding: "--Eulinx-color-success",
+    owner: "NodeGraph",
+    usage: "Accent for browser/agent-type nodes.",
+  },
+  {
+    layer: "component",
+    category: "color",
+    name: "--Eulinx-color-node-map",
+    binding: "--Eulinx-color-warning",
+    owner: "NodeGraph",
+    usage: "Accent for map/relationship-type nodes.",
+  },
+  {
+    layer: "component",
+    category: "color",
+    name: "--Eulinx-color-node-worker",
+    binding: "--Eulinx-color-accent",
+    owner: "NodeGraph",
+    usage: "Accent for worker/spawn-type nodes.",
+  },
 ];
 
 // ---------------------------------------------------------------------------

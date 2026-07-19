@@ -14,7 +14,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "tokens": "tsx scripts/generate-tokens.ts"
+    "tokens": "node --experimental-strip-types scripts/generate-tokens.ts"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.16",

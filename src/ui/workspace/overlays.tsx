@@ -1,29 +1,40 @@
-import { useEffect, useRef } from "react"
+import { useEffect } from "react"
 import {
   Download,
   FolderOpen,
   GitBranch,
-  Keyboard,
-  LayoutGrid,
-  PanelLeft,
   Plus,
-  Search,
-  Settings as SettingsIcon,
-  Share2,
   Squircle,
-  TerminalSquare,
   X,
 } from "lucide-react"
+import { cn } from "@/utils/cn"
+import {
+  Button,
+  Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui"
+import { StateBadge } from "./primitives"
+import { type Tone } from "./state"
 import { useWorkspace } from "./use-workspace"
+import { CommandPalette, ShortcutHelpOverlay } from "./keyboard/discovery-overlay"
 
 export function Overlays() {
-  const { overlay } = useWorkspace()
+  const { overlay, setOverlay } = useWorkspace()
+  const close = () => setOverlay(null)
   return (
     <>
-      {overlay === "cmd" && <CommandPalette />}
+      {overlay === "cmd" && <CommandPalette onClose={close} />}
       {overlay === "welcome" && <WelcomeScreen />}
       {overlay === "settings" && <SettingsScreen />}
-      {overlay === "shortcuts" && <ShortcutsOverlay />}
+      {overlay === "shortcuts" && <ShortcutHelpOverlay onClose={close} />}
     </>
   )
 }
@@ -39,87 +50,14 @@ function useEscapeClose() {
   }, [setOverlay])
 }
 
-function CommandPalette() {
-  const { setOverlay } = useWorkspace()
-  const inputRef = useRef<HTMLInputElement>(null)
-  useEscapeClose()
-  useEffect(() => {
-    const t = setTimeout(() => inputRef.current?.focus(), 50)
-    return () => clearTimeout(t)
-  }, [])
-
-  return (
-    <div
-      className="fixed inset-0 z-[500] flex items-start justify-center bg-black/50 pt-[20vh]"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) setOverlay(null)
-      }}
-    >
-      <div className="w-[520px] overflow-hidden rounded-[var(--wsx-r-lg)] border border-[color:var(--wsx-border)] bg-[color:var(--wsx-bg-elevated)] shadow-[var(--wsx-shadow-lg)]">
-        <div className="flex items-center gap-2 border-b border-[color:var(--wsx-border)] px-4 py-3">
-          <Search className="h-4 w-4 text-[color:var(--wsx-text-muted)]" strokeWidth={1.5} />
-          <input
-            ref={inputRef}
-            type="text"
-            placeholder="Type a command or search..."
-            className="flex-1 text-sm text-[color:var(--wsx-text)]"
-          />
-        </div>
-        <div className="max-h-[320px] overflow-y-auto p-1">
-          <CmdGroup title="Navigation" />
-          <CmdItem icon={<LayoutGrid className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Toggle Canvas View" shortcut="Ctrl+1" />
-          <CmdItem icon={<TerminalSquare className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Toggle Terminal" shortcut="Ctrl+`" />
-          <CmdItem icon={<PanelLeft className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Toggle Left Sidebar" shortcut="Ctrl+B" />
-          <CmdGroup title="Workers" />
-          <CmdItem icon={<Squircle className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Spawn Worker" shortcut="Ctrl+Shift+W" />
-          <CmdGroup title="Workflow" />
-          <CmdItem icon={<Share2 className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Run Workflow" shortcut="Ctrl+Shift+P" />
-          <CmdGroup title="Application" />
-          <CmdItem icon={<SettingsIcon className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Open Settings" />
-          <CmdItem icon={<Keyboard className="h-3.5 w-3.5" strokeWidth={1.5} />} label="Show Keyboard Shortcuts" shortcut="Ctrl+/" />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function CmdGroup({ title }: { title: string }) {
-  return (
-    <div className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--wsx-text-muted)]">
-      {title}
-    </div>
-  )
-}
-
-function CmdItem({
-  icon,
-  label,
-  shortcut,
-}: {
-  icon: React.ReactNode
-  label: string
-  shortcut?: string
-}) {
-  return (
-    <button
-      type="button"
-      className="flex w-full items-center gap-2 rounded-[var(--wsx-r-sm)] px-3 py-2 text-[13px] text-[color:var(--wsx-text-sec)] transition-colors hover:bg-[color:var(--wsx-bg-hover)] hover:text-[color:var(--wsx-text)]"
-    >
-      <span className="text-[color:var(--wsx-text-muted)]">{icon}</span>
-      {label}
-      {shortcut && (
-        <span className="ml-auto font-mono text-[11px] text-[color:var(--wsx-text-muted)]">
-          {shortcut}
-        </span>
-      )}
-    </button>
-  )
-}
+/* ----------------------------------------------------------------------- */
+/* Shared overlay chrome                                                   */
+/* ----------------------------------------------------------------------- */
 
 function OverlayFull({ children }: { children: React.ReactNode }) {
   useEscapeClose()
   return (
-    <div className="fixed inset-0 z-[400] overflow-y-auto bg-[color:var(--wsx-bg-app)]">
+    <div className="fixed inset-0 z-[400] overflow-y-auto bg-[color:var(--Eulinx-color-background)]">
       {children}
     </div>
   )
@@ -130,13 +68,19 @@ function CloseButton() {
   return (
     <button
       type="button"
+      aria-label="Close"
+      title="Close"
       onClick={() => setOverlay(null)}
-      className="fixed right-4 top-4 z-[1] flex h-8 w-8 items-center justify-center rounded-[var(--wsx-r-sm)] text-[color:var(--wsx-text-muted)] transition-colors hover:bg-[color:var(--wsx-bg-hover)] hover:text-[color:var(--wsx-text)]"
+      className="fixed right-4 top-4 z-[1] flex h-8 w-8 items-center justify-center rounded-[var(--Eulinx-radius-sm)] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
       <X className="h-4 w-4" strokeWidth={1.5} />
     </button>
   )
 }
+
+/* ----------------------------------------------------------------------- */
+/* Welcome screen                                                          */
+/* ----------------------------------------------------------------------- */
 
 const WELCOME_ACTIONS = [
   { icon: <FolderOpen className="h-5 w-5" strokeWidth={1.5} />, title: "Open Folder", desc: "Open an existing project folder" },
@@ -146,9 +90,9 @@ const WELCOME_ACTIONS = [
 ] as const
 
 const RECENT = [
-  { name: "Eulinx Core", path: "~/Projects/eulinx-core", time: "2 hours ago" },
-  { name: "API Gateway", path: "~/Projects/api-gateway", time: "Yesterday" },
-  { name: "ML Pipeline", path: "~/Projects/ml-pipeline", time: "3 days ago" },
+  { name: "Eulinx Core", path: "~/Projects/eulinx-core", time: "2 hours ago", tone: "success" as Tone },
+  { name: "API Gateway", path: "~/Projects/api-gateway", time: "Yesterday", tone: "info" as Tone },
+  { name: "ML Pipeline", path: "~/Projects/ml-pipeline", time: "3 days ago", tone: "accent" as Tone },
 ] as const
 
 const WELCOME_SHORTCUTS = [
@@ -160,6 +104,14 @@ const WELCOME_SHORTCUTS = [
   { label: "Toggle Inspector", keys: "Ctrl Shift I" },
 ] as const
 
+function Kbd({ children }: { children: React.ReactNode }) {
+  return (
+    <kbd className="rounded-[var(--Eulinx-radius-xs)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-1.5 py-0.5 font-mono text-[11px] text-[color:var(--Eulinx-color-text-secondary)]">
+      {children}
+    </kbd>
+  )
+}
+
 function WelcomeScreen() {
   const { setOverlay } = useWorkspace()
   const close = () => setOverlay(null)
@@ -169,8 +121,13 @@ function WelcomeScreen() {
       <CloseButton />
       <div className="mx-auto max-w-[700px] px-6 py-8">
         <div className="mb-8">
-          <h1 className="mb-2 text-2xl font-semibold text-[color:var(--wsx-text)]">Welcome to Eulinx</h1>
-          <p className="text-sm leading-relaxed text-[color:var(--wsx-text-sec)]">
+          <div className="mb-3 flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-[var(--Eulinx-radius-md)] bg-[color:var(--Eulinx-color-accent)] text-white">
+              <Squircle className="h-5 w-5" strokeWidth={1.5} />
+            </span>
+            <h1 className="text-2xl font-semibold text-[color:var(--Eulinx-color-text)]">Welcome to Eulinx</h1>
+          </div>
+          <p className="text-sm leading-relaxed text-[color:var(--Eulinx-color-text-secondary)]">
             A local-first AI operating system for knowledge work. Open a project to get started.
           </p>
         </div>
@@ -181,14 +138,14 @@ function WelcomeScreen() {
               key={action.title}
               type="button"
               onClick={close}
-              className="flex items-center gap-3 rounded-[var(--wsx-r-md)] border border-[color:var(--wsx-border)] bg-[color:var(--wsx-bg-surface)] p-4 text-left transition-colors hover:border-[color:var(--wsx-accent-dim)] hover:bg-[color:var(--wsx-bg-elevated)]"
+              className="flex items-center gap-3 rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-4 text-left transition-colors hover:border-[color:var(--Eulinx-color-accent)] hover:bg-[color:var(--Eulinx-color-surface-raised)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
-              <span className="shrink-0 text-[color:var(--wsx-accent)]">{action.icon}</span>
+              <span className="shrink-0 text-[color:var(--Eulinx-color-accent)]">{action.icon}</span>
               <span>
-                <span className="block text-[13px] font-medium text-[color:var(--wsx-text)]">
+                <span className="block text-[13px] font-medium text-[color:var(--Eulinx-color-text)]">
                   {action.title}
                 </span>
-                <span className="mt-0.5 block text-[11px] text-[color:var(--wsx-text-muted)]">
+                <span className="mt-0.5 block text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
                   {action.desc}
                 </span>
               </span>
@@ -197,7 +154,7 @@ function WelcomeScreen() {
         </div>
 
         <div className="mb-8">
-          <div className="mb-3 text-xs font-semibold text-[color:var(--wsx-text-sec)]">
+          <div className="mb-3 text-xs font-semibold text-[color:var(--Eulinx-color-text-secondary)]">
             Recent Projects
           </div>
           {RECENT.map((item) => (
@@ -205,40 +162,38 @@ function WelcomeScreen() {
               key={item.name}
               type="button"
               onClick={close}
-              className="flex w-full items-center gap-3 rounded-[var(--wsx-r-sm)] p-3 text-left transition-colors hover:bg-[color:var(--wsx-bg-surface)]"
+              className="flex w-full items-center gap-3 rounded-[var(--Eulinx-radius-sm)] p-3 text-left transition-colors hover:bg-[color:var(--Eulinx-color-surface)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
-              <span className="flex h-8 w-8 items-center justify-center rounded-[var(--wsx-r-sm)] bg-[color:var(--wsx-bg-surface)] text-[color:var(--wsx-text-muted)]">
+              <span className="flex h-8 w-8 items-center justify-center rounded-[var(--Eulinx-radius-sm)] bg-[color:var(--Eulinx-color-surface)] text-[color:var(--Eulinx-color-text-muted)]">
                 <FolderOpen className="h-4 w-4" strokeWidth={1.5} />
               </span>
               <span>
-                <span className="block text-[13px] font-medium text-[color:var(--wsx-text)]">
+                <span className="block text-[13px] font-medium text-[color:var(--Eulinx-color-text)]">
                   {item.name}
                 </span>
-                <span className="block text-[11px] text-[color:var(--wsx-text-muted)]">
+                <span className="block text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
                   {item.path}
                 </span>
               </span>
-              <span className="ml-auto text-[11px] text-[color:var(--wsx-text-muted)]">
+              <StateBadge tone={item.tone} className="ml-auto">
                 {item.time}
-              </span>
+              </StateBadge>
             </button>
           ))}
         </div>
 
         <div>
-          <div className="mb-3 text-xs font-semibold text-[color:var(--wsx-text-sec)]">
+          <div className="mb-3 text-xs font-semibold text-[color:var(--Eulinx-color-text-secondary)]">
             Keyboard Shortcuts
           </div>
           <div className="grid grid-cols-2 gap-2">
             {WELCOME_SHORTCUTS.map((s) => (
               <div
                 key={s.label}
-                className="flex items-center justify-between p-2 text-xs text-[color:var(--wsx-text-muted)]"
+                className="flex items-center justify-between p-2 text-xs text-[color:var(--Eulinx-color-text-muted)]"
               >
                 <span>{s.label}</span>
-                <kbd className="rounded-[3px] border border-[color:var(--wsx-border)] bg-[color:var(--wsx-bg-surface)] px-1.5 py-0.5 font-mono text-[11px] text-[color:var(--wsx-text-sec)]">
-                  {s.keys}
-                </kbd>
+                <Kbd>{s.keys}</Kbd>
               </div>
             ))}
           </div>
@@ -248,158 +203,96 @@ function WelcomeScreen() {
   )
 }
 
-const SETTINGS_SECTIONS = [
-  {
-    title: "Appearance",
-    rows: [
-      { label: "Theme", options: ["Dark", "Light", "System"] },
-      { label: "Font Size", options: ["12px", "13px", "14px"] },
-      { label: "Font Family", options: ["Inter", "JetBrains Mono"] },
-    ],
-  },
-  {
-    title: "Editor",
-    rows: [
-      { label: "Tab Size", options: ["2", "4"] },
-      { label: "Word Wrap", options: ["On", "Off"] },
-    ],
-  },
-  {
-    title: "Terminal",
-    rows: [
-      { label: "Font Family", options: ["SF Mono", "Cascadia Code", "JetBrains Mono"] },
-      { label: "Cursor Style", options: ["Block", "Line", "Underline"] },
-    ],
-  },
+/* ----------------------------------------------------------------------- */
+/* Settings screen                                                         */
+/* ----------------------------------------------------------------------- */
+
+const SETTINGS_TABS = [
+  { value: "appearance", label: "Appearance" },
+  { value: "editor", label: "Editor" },
+  { value: "terminal", label: "Terminal" },
 ] as const
 
+const SETTINGS_CONTENT: Record<
+  (typeof SETTINGS_TABS)[number]["value"],
+  readonly { label: string; options: readonly string[] }[]
+> = {
+  appearance: [
+    { label: "Theme", options: ["Dark", "Light", "System"] },
+    { label: "Font Size", options: ["12px", "13px", "14px"] },
+    { label: "Font Family", options: ["Inter", "JetBrains Mono"] },
+  ],
+  editor: [
+    { label: "Tab Size", options: ["2", "4"] },
+    { label: "Word Wrap", options: ["On", "Off"] },
+  ],
+  terminal: [
+    { label: "Font Family", options: ["SF Mono", "Cascadia Code", "JetBrains Mono"] },
+    { label: "Cursor Style", options: ["Block", "Line", "Underline"] },
+  ],
+}
+
 function SettingsScreen() {
+  const { setOverlay } = useWorkspace()
   return (
     <OverlayFull>
       <CloseButton />
       <div className="mx-auto max-w-[600px] px-6 py-8">
-        <h1 className="mb-6 text-xl font-semibold text-[color:var(--wsx-text)]">Settings</h1>
+        <h1 className="mb-6 text-xl font-semibold text-[color:var(--Eulinx-color-text)]">Settings</h1>
 
-        {SETTINGS_SECTIONS.map((section) => (
-          <div key={section.title} className="mb-6">
-            <h3 className="mb-3 text-[13px] font-semibold text-[color:var(--wsx-text-sec)]">
-              {section.title}
-            </h3>
-            {section.rows.map((row, i) => (
-              <div
-                key={row.label}
-                className={
-                  i < section.rows.length - 1
-                    ? "flex items-center justify-between border-b border-[color:var(--wsx-border)] py-3"
-                    : "flex items-center justify-between py-3"
-                }
-              >
-                <label className="text-[13px] text-[color:var(--wsx-text)]">{row.label}</label>
-                <select className="rounded-[var(--wsx-r-sm)] border border-[color:var(--wsx-border)] bg-[color:var(--wsx-bg-surface)] px-3 py-2 text-xs text-[color:var(--wsx-text)]">
-                  {row.options.map((opt) => (
-                    <option key={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
+        <Tabs defaultValue="appearance">
+          <TabsList className="mb-6">
+            {SETTINGS_TABS.map((t) => (
+              <TabsTrigger key={t.value} value={t.value}>
+                {t.label}
+              </TabsTrigger>
             ))}
-          </div>
-        ))}
+          </TabsList>
 
-        <div className="mb-6">
-          <h3 className="mb-3 text-[13px] font-semibold text-[color:var(--wsx-text-sec)]">Layout</h3>
-          <div className="flex items-center justify-between py-3">
-            <label className="text-[13px] text-[color:var(--wsx-text)]">Reset Layout</label>
-            <button
-              type="button"
-              className="rounded-[var(--wsx-r-sm)] border border-[color:var(--wsx-border)] bg-[color:var(--wsx-bg-surface)] px-4 py-2 text-xs text-[color:var(--wsx-text-sec)] transition-colors hover:bg-[color:var(--wsx-bg-hover)] hover:text-[color:var(--wsx-text)]"
-            >
+          {SETTINGS_TABS.map((t) => (
+            <TabsContent key={t.value} value={t.value}>
+              <div className="rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-4 py-2">
+                {SETTINGS_CONTENT[t.value].map((row, i, arr) => (
+                  <div
+                    key={row.label}
+                    className={cn(
+                      "flex items-center justify-between py-3",
+                      i < arr.length - 1 && "border-b border-[color:var(--Eulinx-color-border)]",
+                    )}
+                  >
+                    <Label className="text-[13px] text-[color:var(--Eulinx-color-text)]">{row.label}</Label>
+                    <Select defaultValue={row.options[0]}>
+                      <SelectTrigger
+                        className="w-[180px] bg-[color:var(--Eulinx-color-surface)]"
+                        aria-label={row.label}
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {row.options.map((opt) => (
+                          <SelectItem key={opt} value={opt}>
+                            {opt}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+          ))}
+        </Tabs>
+
+        <div className="mt-6">
+          <h3 className="mb-3 text-[13px] font-semibold text-[color:var(--Eulinx-color-text-secondary)]">Layout</h3>
+          <div className="flex items-center justify-between rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-4 py-3">
+            <Label className="text-[13px] text-[color:var(--Eulinx-color-text)]">Reset Layout</Label>
+            <Button variant="outline" size="sm" onClick={() => setOverlay(null)}>
               Reset to Default
-            </button>
+            </Button>
           </div>
         </div>
       </div>
     </OverlayFull>
-  )
-}
-
-const SHORTCUT_GROUPS = [
-  {
-    title: "Navigation",
-    rows: [
-      { label: "Command Palette", keys: "Ctrl K" },
-      { label: "Toggle Left Sidebar", keys: "Ctrl B" },
-      { label: "Toggle Right Sidebar", keys: "Ctrl Shift B" },
-      { label: "Toggle Panel", keys: "Ctrl `" },
-    ],
-  },
-  {
-    title: "Canvas",
-    rows: [
-      { label: "Zoom to Fit", keys: "Ctrl Shift F" },
-      { label: "Auto Layout", keys: "Shift A" },
-      { label: "Toggle Minimap", keys: "Ctrl M" },
-    ],
-  },
-  {
-    title: "Terminal",
-    rows: [
-      { label: "New Terminal", keys: "Ctrl T" },
-      { label: "Split Terminal", keys: "Ctrl Shift T" },
-      { label: "Clear Terminal", keys: "Ctrl K" },
-    ],
-  },
-  {
-    title: "Workers",
-    rows: [
-      { label: "Spawn Worker", keys: "Ctrl Shift W" },
-      { label: "Pause Worker", keys: "Ctrl Shift P" },
-    ],
-  },
-] as const
-
-function ShortcutsOverlay() {
-  const { setOverlay } = useWorkspace()
-  useEscapeClose()
-
-  return (
-    <div
-      className="fixed inset-0 z-[500] flex items-center justify-center bg-black/60"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) setOverlay(null)
-      }}
-    >
-      <div className="max-h-[70vh] w-[600px] overflow-hidden rounded-[var(--wsx-r-lg)] border border-[color:var(--wsx-border)] bg-[color:var(--wsx-bg-elevated)] shadow-[var(--wsx-shadow-lg)]">
-        <div className="flex items-center justify-between border-b border-[color:var(--wsx-border)] p-4">
-          <h2 className="text-base font-semibold text-[color:var(--wsx-text)]">Keyboard Shortcuts</h2>
-          <button
-            type="button"
-            onClick={() => setOverlay(null)}
-            className="flex h-7 w-7 items-center justify-center rounded-[var(--wsx-r-sm)] text-[color:var(--wsx-text-muted)] hover:bg-[color:var(--wsx-bg-hover)] hover:text-[color:var(--wsx-text-sec)]"
-          >
-            <X className="h-3.5 w-3.5" strokeWidth={1.5} />
-          </button>
-        </div>
-        <div className="max-h-[calc(70vh-60px)] overflow-y-auto p-4">
-          {SHORTCUT_GROUPS.map((group) => (
-            <div key={group.title} className="mb-4">
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-[color:var(--wsx-text-muted)]">
-                {group.title}
-              </div>
-              {group.rows.map((row) => (
-                <div
-                  key={row.label}
-                  className="flex items-center justify-between py-2 text-xs text-[color:var(--wsx-text-sec)]"
-                >
-                  <span>{row.label}</span>
-                  <kbd className="rounded-[3px] border border-[color:var(--wsx-border)] bg-[color:var(--wsx-bg-surface)] px-1.5 py-0.5 font-mono text-[11px] text-[color:var(--wsx-text-sec)]">
-                    {row.keys}
-                  </kbd>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
   )
 }

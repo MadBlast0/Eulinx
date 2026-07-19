@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Globe,
+  Gauge,
   Keyboard,
   LayoutGrid,
   Map as MapIcon,
@@ -18,10 +19,12 @@ import {
   X,
   ZoomIn,
 } from "lucide-react"
+import { cn } from "@/utils/cn"
 import { ToolbarButton, ToolbarSep } from "./primitives"
 import { useWorkspace } from "./use-workspace"
+import type { SurfaceKey } from "./workspace-app"
 
-export function TopBar() {
+export function TopBar({ onOpenSurface }: { onOpenSurface: (key: SurfaceKey) => void }) {
   const {
     toggleLeftSidebar,
     toggleRightSidebar,
@@ -31,7 +34,7 @@ export function TopBar() {
 
   return (
     <div
-      className="flex items-center gap-0 border-b border-[color:var(--wsx-border)] bg-[color:var(--wsx-bg-panel)] px-2"
+      className="flex items-center gap-0 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-toolbar)] px-2"
       style={{ WebkitAppRegion: "drag" }}
     >
       <ToolbarButton tip="Eulinx">
@@ -55,7 +58,7 @@ export function TopBar() {
       <ToolbarSep />
 
       <span
-        className="whitespace-nowrap px-2 text-[11px] text-[color:var(--wsx-text-muted)]"
+        className="whitespace-nowrap px-2 text-[11px] text-[color:var(--Eulinx-color-text-muted)]"
         style={{ WebkitAppRegion: "no-drag" }}
       >
         Project 1
@@ -111,6 +114,9 @@ export function TopBar() {
       <ToolbarButton tip="Settings" onClick={() => setOverlay("settings")}>
         <Settings className="h-3.5 w-3.5" strokeWidth={1.5} />
       </ToolbarButton>
+      <ToolbarButton tip="Dashboard" onClick={() => onOpenSurface("dashboard")}>
+        <Gauge className="h-3.5 w-3.5" strokeWidth={1.5} />
+      </ToolbarButton>
 
       <ToolbarSep />
 
@@ -141,12 +147,15 @@ function WindowButton({
   return (
     <button
       type="button"
+      aria-label={label}
       title={label}
-      className={
+      className={cn(
+        "flex h-[var(--wsx-topbar-h)] w-9 items-center justify-center text-[color:var(--Eulinx-color-text-muted)] transition-colors",
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
         close
-          ? "flex h-[var(--wsx-topbar-h)] w-9 items-center justify-center text-[color:var(--wsx-text-muted)] transition-colors hover:bg-[color:var(--wsx-red)] hover:text-white"
-          : "flex h-[var(--wsx-topbar-h)] w-9 items-center justify-center text-[color:var(--wsx-text-muted)] transition-colors hover:bg-[color:var(--wsx-bg-hover)] hover:text-[color:var(--wsx-text)]"
-      }
+          ? "hover:bg-[color:var(--Eulinx-color-error)] hover:text-white"
+          : "hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]",
+      )}
     >
       {children}
     </button>

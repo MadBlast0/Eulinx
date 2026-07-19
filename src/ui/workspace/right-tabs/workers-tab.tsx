@@ -1,3 +1,6 @@
+import { Dot } from "../primitives"
+import type { Tone } from "../state"
+
 type WorkerStatus = "running" | "idle" | "error"
 
 interface Worker {
@@ -30,10 +33,10 @@ const WORKERS: readonly Worker[] = [
   },
 ]
 
-const DOT_STYLE: Record<WorkerStatus, React.CSSProperties> = {
-  running: { background: "var(--wsx-green)", boxShadow: "0 0 6px rgba(74,222,128,.4)" },
-  idle: { background: "var(--wsx-text-muted)" },
-  error: { background: "var(--wsx-red)" },
+const STATUS_TONE: Record<WorkerStatus, Tone> = {
+  running: "success",
+  idle: "neutral",
+  error: "error",
 }
 
 export function WorkersTab() {
@@ -42,27 +45,27 @@ export function WorkersTab() {
       {WORKERS.map((worker) => (
         <div
           key={worker.name}
-          className="mx-4 my-2 rounded-[var(--wsx-r-md)] border border-[color:var(--wsx-border)] bg-[color:var(--wsx-bg-surface)] p-3 transition-colors hover:border-[color:var(--wsx-border-strong)]"
+          className="mx-4 my-2 rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-3 transition-colors hover:border-[color:var(--Eulinx-color-border-strong)]"
         >
           <div className="mb-2 flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full" style={DOT_STYLE[worker.status]} />
-            <span className="flex-1 text-xs font-medium text-[color:var(--wsx-text)]">
+            <Dot tone={STATUS_TONE[worker.status]} />
+            <span className="flex-1 text-xs font-medium text-[color:var(--Eulinx-color-text)]">
               {worker.name}
             </span>
-            <span className="text-[10px] uppercase tracking-wide text-[color:var(--wsx-text-muted)]">
+            <span className="text-[10px] uppercase tracking-wide text-[color:var(--Eulinx-color-text-muted)]">
               {worker.status}
             </span>
           </div>
-          <div className="mb-2 text-[11px] text-[color:var(--wsx-text-muted)]">{worker.desc}</div>
+          <div className="mb-2 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">{worker.desc}</div>
           {worker.progress !== undefined && (
-            <div className="h-[3px] overflow-hidden rounded-[2px] bg-[color:var(--wsx-bg-elevated)]">
+            <div className="h-[3px] overflow-hidden rounded-[var(--Eulinx-radius-xs)] bg-[color:var(--Eulinx-color-surface-sunken)]">
               <div
-                className="h-full rounded-[2px]"
-                style={{ width: `${worker.progress}%`, background: "var(--wsx-accent)" }}
+                className="h-full rounded-[var(--Eulinx-radius-xs)] bg-[color:var(--Eulinx-color-accent)] transition-[width]"
+                style={{ width: `${worker.progress}%` }}
               />
             </div>
           )}
-          <div className="mt-2 flex items-center gap-3 text-[10px] text-[color:var(--wsx-text-muted)]">
+          <div className="mt-2 flex items-center gap-3 text-[10px] text-[color:var(--Eulinx-color-text-muted)]">
             {worker.meta.map((m, i) => (
               <span key={i}>{m}</span>
             ))}

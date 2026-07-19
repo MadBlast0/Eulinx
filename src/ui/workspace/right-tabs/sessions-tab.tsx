@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { ChevronRight, Search } from "lucide-react"
 import { cn } from "@/utils/cn"
+import { ListRow, StateBadge } from "../primitives"
 
 type Filter = "workspace" | "project" | "all"
 
@@ -35,17 +36,19 @@ export function SessionsTab() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="mx-4 mb-2 mt-3 flex overflow-hidden rounded-[var(--wsx-r-sm)] border border-[color:var(--wsx-border)] bg-[color:var(--wsx-bg-surface)]">
+      <div className="mx-4 mb-2 mt-3 flex overflow-hidden rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)]">
         {(["workspace", "project", "all"] as const).map((f) => (
           <button
             key={f}
             type="button"
+            aria-pressed={filter === f}
             onClick={() => setFilter(f)}
             className={cn(
               "flex-1 p-2 text-center text-xs capitalize transition-colors",
+              "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               filter === f
-                ? "bg-[color:var(--wsx-bg-elevated)] text-[color:var(--wsx-text)]"
-                : "text-[color:var(--wsx-text-muted)]",
+                ? "bg-[color:var(--Eulinx-color-selected)] text-[color:var(--Eulinx-color-text)]"
+                : "text-[color:var(--Eulinx-color-text-muted)] hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]",
             )}
           >
             {f}
@@ -53,44 +56,50 @@ export function SessionsTab() {
         ))}
       </div>
 
-      <div className="mx-4 mb-2 flex items-center gap-2 rounded-[var(--wsx-r-sm)] border border-[color:var(--wsx-border)] bg-[color:var(--wsx-bg-surface)] px-3 py-2 text-xs text-[color:var(--wsx-text-muted)]">
+      <div className="mx-4 mb-2 flex items-center gap-2 rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-3 py-2 text-xs text-[color:var(--Eulinx-color-text-muted)] transition-colors focus-within:border-[color:var(--Eulinx-color-ring)]">
         <Search className="h-3.5 w-3.5" strokeWidth={1.5} />
-        <input type="text" placeholder="Search sessions" className="w-full" />
+        <input
+          type="text"
+          placeholder="Search sessions"
+          aria-label="Search sessions"
+          className="w-full bg-transparent text-[color:var(--Eulinx-color-text)] placeholder:text-[color:var(--Eulinx-color-text-muted)] focus-visible:outline-none"
+        />
       </div>
 
-      <div className="flex items-center justify-between px-4 py-2 text-xs font-semibold text-[color:var(--wsx-text-sec)]">
+      <div className="flex items-center justify-between px-4 py-2 text-xs font-semibold text-[color:var(--Eulinx-color-text-secondary)]">
         <span className="flex items-center gap-1">
           <ChevronRight className="h-3 w-3" strokeWidth={1.5} />
           Coding/Cutsy
         </span>
-        <span className="rounded-[var(--wsx-r-sm)] bg-[color:var(--wsx-bg-elevated)] px-1.5 py-px text-[10px] font-medium text-[color:var(--wsx-text-muted)]">
+        <span className="rounded-[var(--Eulinx-radius-sm)] bg-[color:var(--Eulinx-color-surface-raised)] px-1.5 py-px text-[10px] font-medium text-[color:var(--Eulinx-color-text-muted)]">
           20
         </span>
       </div>
 
       {SESSIONS.map((session, i) => (
-        <button
+        <ListRow
           key={i}
-          type="button"
-          className="w-full border-b border-[color:var(--wsx-border)] px-4 py-3 text-left transition-colors hover:bg-[color:var(--wsx-bg-hover)]"
+          role="button"
+          tabIndex={0}
+          className="flex-col items-stretch border-b border-[color:var(--Eulinx-color-border)] px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
-          <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-[color:var(--wsx-text)]">
+          <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-[color:var(--Eulinx-color-text)]">
             {session.name}
           </div>
-          <div className="mt-0.5 line-clamp-2 text-[11px] text-[color:var(--wsx-text-muted)]">
+          <div className="mt-0.5 line-clamp-2 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
             {session.preview}
           </div>
-          <div className="mt-1 flex items-center gap-2 text-[10px] text-[color:var(--wsx-text-muted)]">
+          <div className="mt-1 flex items-center gap-2 text-[10px] text-[color:var(--Eulinx-color-text-muted)]">
             {session.badge && (
-              <span className="rounded-[3px] bg-[color:var(--wsx-bg-elevated)] px-1 text-[10px]">
+              <StateBadge tone="neutral" className="text-[10px]">
                 {session.badge}
-              </span>
+              </StateBadge>
             )}
             {session.meta.map((m, mi) => (
               <span key={mi}>{m}</span>
             ))}
           </div>
-        </button>
+        </ListRow>
       ))}
     </div>
   )
