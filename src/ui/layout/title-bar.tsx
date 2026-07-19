@@ -1,18 +1,16 @@
 /**
- * P18-UI-DASH — Custom Title Bar (WorkspaceLayout-Part02).
+ * TitleBar — minimal window chrome for Tauri.
  *
- * Draws Eulinx's own titlebar because Tauri runs with `decorations: false`.
- * Handles window drag, minimize / maximize / close, and double-click to
- * maximize. All Tauri calls go through `getCurrentWindow()` and are guarded so
- * the bar degrades gracefully in the browser dev server (buttons become
- * no-ops). The close path awaits the layout flush (Part04 flush-before-close)
- * before invoking `window_close`, so the final arrangement is never lost.
+ * Handles window drag, minimize / maximize / close. This is the slim bar
+ * at the very top of the window. The IDE-style TopBar with project info,
+ * breadcrumbs, and actions lives in the center workspace area.
+ *
+ * Height: 32px (slim). Just enough for window controls.
  */
 
 import { useCallback, type CSSProperties, type ReactNode } from "react"
 import { Icon } from "@/ui/icons"
 import { token } from "@/ui/tokens"
-import type { RegionId } from "@/stores/layout-store"
 
 /** True when running inside a Tauri window. */
 function hasTauri(): boolean {
@@ -32,26 +30,12 @@ async function withTauriWindow<T>(
 }
 
 export interface TitleBarProps {
-  /** The workspace name shown in the breadcrumb. */
-  readonly workspaceName?: string
-  /** The session name shown in the breadcrumb. */
-  readonly sessionName?: string
-  /** Called when the user presses the window drag region (pointer down). */
   readonly onPointerDownChrome?: (e: React.PointerEvent) => void
-  /** Callback to set the focused region (used when window controls are clicked). */
-  readonly onFocusRegion?: (id: RegionId) => void
-  /**
-   * Flush-before-close hook. The shell awaits this (then the Tauri close) so
-   * the final layout is persisted. Receives the resolved close function.
-   */
   readonly onBeforeClose?: () => Promise<void> | void
 }
 
 export function TitleBar({
-  workspaceName = "Eulinx",
-  sessionName,
   onPointerDownChrome,
-  onFocusRegion,
   onBeforeClose,
 }: TitleBarProps): ReactNode {
   const startDrag = useCallback(
@@ -76,29 +60,28 @@ export function TitleBar({
   }, [])
   const close = useCallback(() => {
     void (async () => {
-      // Flush the final layout BEFORE closing so it is never lost (Part04).
       try {
         await onBeforeClose?.()
       } catch {
-        /* never block the close on a persist failure */
+        /* never block the close */
       }
       await withTauriWindow((w) => w.close())
     })()
   }, [onBeforeClose])
 
   const chromeStyle: CSSProperties = {
-    height: token("--Eulinx-space-12"),
+    height: 32,
     background: token("--Eulinx-color-surface"),
     borderBottom: `var(--Eulinx-border-thin) solid ${token("--Eulinx-color-border")}`,
-    color: token("--Eulinx-color-text-primary"),
+    color: token("--Eulinx-color-text"),
     userSelect: "none",
   }
 
   const buttonStyle: CSSProperties = {
-    width: token("--Eulinx-space-12"),
-    height: token("--Eulinx-space-12"),
+    width: 32,
+    height: 32,
     color: token("--Eulinx-color-text-muted"),
-    transition: `background-color ${token("--Eulinx-duration-fast")} var(--Eulinx-ease-standard)`,
+    transition: `background-color ${token("--Eulinx-duration-hover")} var(--Eulinx-ease-standard)`,
   }
 
   return (
@@ -107,58 +90,46 @@ export function TitleBar({
       data-tauri-drag-region
       onPointerDown={startDrag}
       onDoubleClick={toggleMaximize}
-      className="flex shrink-0 select-none items-center px-3"
+      className="flex shrink-0 select-none items-center justify-between px-2"
       style={chromeStyle}
     >
-      <span className="mr-2 text-role-ui font-semibold" style={{ color: token("--Eulinx-color-text-primary") }}>
-        Eulinx
-      </span>
+      {/* App name */}
       <span
-        className="flex min-w-0 items-center gap-1 text-role-caption"
+        className="text-xs font-medium"
         style={{ color: token("--Eulinx-color-text-muted") }}
       >
-        <span className="truncate" style={{ maxWidth: token("--Eulinx-space-20") }}>
-          {workspaceName}
-        </span>
-        {sessionName !== undefined && (
-          <>
-            <Icon name="nav.chevron.right" size="xs" aria-hidden />
-            <span className="truncate" style={{ maxWidth: token("--Eulinx-space-20") }}>
-              {sessionName}
-            </span>
-          </>
-        )}
+        Eulinx
       </span>
 
-      <div className="ml-auto flex items-center" data-no-drag>
+      {/* Window controls */}
+      <div className="flex items-center" data-no-drag>
         <button
           type="button"
           aria-label="Minimize"
           onClick={minimize}
-          className="flex items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-elevated-2)]"
+          className="flex items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-surface-alt)]"
           style={buttonStyle}
         >
-          <Icon name="nav.collapse" size="sm" aria-hidden />
+          <Icon name="nav.collapse" size="xs" aria-hidden />
         </button>
         <button
           type="button"
           aria-label="Maximize"
           onClick={toggleMaximize}
           onDoubleClick={(e) => e.stopPropagation()}
-          className="flex items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-elevated-2)]"
+          className="flex items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-surface-alt)]"
           style={buttonStyle}
         >
-          <Icon name="nav.expand" size="sm" aria-hidden />
+          <Icon name="nav.expand" size="xs" aria-hidden />
         </button>
         <button
           type="button"
           aria-label="Close"
           onClick={close}
-          onPointerDown={() => onFocusRegion?.("titleBar")}
-          className="flex items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-danger)]"
+          className="flex items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-error)]"
           style={buttonStyle}
         >
-          <Icon name="nav.close" size="sm" aria-hidden />
+          <Icon name="nav.close" size="xs" aria-hidden />
         </button>
       </div>
     </div>

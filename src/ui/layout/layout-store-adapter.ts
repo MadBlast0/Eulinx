@@ -239,8 +239,8 @@ export function buildDefaultRegionStates(): Record<RegionId, RegionState> {
     titleBar: { id: "titleBar", visible: true, collapsed: false, size: 36, restoreSize: 36 },
     sidebar: { id: "sidebar", visible: true, collapsed: false, size: 240, restoreSize: 240 },
     canvas: { id: "canvas", visible: true, collapsed: false, size: 0, restoreSize: 0 },
-    inspector: { id: "inspector", visible: true, collapsed: false, size: 320, restoreSize: 320 },
-    panel: { id: "panel", visible: true, collapsed: false, size: 220, restoreSize: 220 },
+    inspector: { id: "inspector", visible: false, collapsed: true, size: 0, restoreSize: 320 },
+    panel: { id: "panel", visible: false, collapsed: true, size: 0, restoreSize: 220 },
     statusBar: { id: "statusBar", visible: true, collapsed: false, size: 24, restoreSize: 24 },
   }
 }

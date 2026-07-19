@@ -36,8 +36,8 @@ import { keymapRegistry } from "@/ui/keyboard/keymap-registry"
 import type { CommandId } from "@/ui/keyboard/keymap-types"
 import { computeCollapsePlan } from "@/ui/responsive/collapse-orchestrator"
 import { TitleBar } from "./title-bar"
+import { TopBar } from "./top-bar"
 import { ResizeHandle, type SizeMap, type SizableId } from "./resize-handle"
-import { WorkspaceTabs } from "./workspace-tabs"
 import { useRegionFocus } from "./use-region-focus"
 import { solveLayout, clamp, type ContainerSize } from "./region-solver"
 import {
@@ -52,6 +52,10 @@ import {
 
 export interface WorkspaceLayoutProps {
   readonly children?: ReactNode
+  readonly sidebar?: ReactNode
+  readonly inspector?: ReactNode
+  readonly panel?: ReactNode
+  readonly mode?: "welcome" | "workspace"
   /** Override the title bar workspace name. */
   readonly workspaceName?: string
   readonly sessionName?: string
@@ -303,6 +307,10 @@ export function WorkspaceLayoutProvider({
 
 export function WorkspaceLayout({
   children,
+  sidebar,
+  inspector,
+  panel,
+  mode = "workspace",
   workspaceName,
   sessionName,
   initialWindowSize,
@@ -310,7 +318,14 @@ export function WorkspaceLayout({
 }: WorkspaceLayoutProps): ReactNode {
   return (
     <WorkspaceLayoutProvider initialWindowSize={initialWindowSize} onAddTab={onAddTab}>
-      <Shell workspaceName={workspaceName} sessionName={sessionName}>
+      <Shell
+        sidebar={sidebar}
+        inspector={inspector}
+        panel={panel}
+        mode={mode}
+        workspaceName={workspaceName}
+        sessionName={sessionName}
+      >
         {children}
       </Shell>
     </WorkspaceLayoutProvider>
@@ -318,12 +333,16 @@ export function WorkspaceLayout({
 }
 
 interface ShellProps {
+  readonly sidebar?: ReactNode
+  readonly inspector?: ReactNode
+  readonly panel?: ReactNode
+  readonly mode: "welcome" | "workspace"
   readonly workspaceName?: string
   readonly sessionName?: string
   readonly children?: ReactNode
 }
 
-function Shell({ children, workspaceName, sessionName }: ShellProps): ReactNode {
+function Shell({ children, sidebar, inspector, panel, mode, workspaceName, sessionName: _sessionName }: ShellProps): ReactNode {
   const { layout, isLoading, updateRegion } = useLayoutStore()
   const api = useWorkspaceLayout()
   const announcer = useAnnouncerSafe()
@@ -355,6 +374,9 @@ function Shell({ children, workspaceName, sessionName }: ShellProps): ReactNode 
   const regions = layout.regions
   const solved = solveLayout(api.containerSize, layout.regions)
   const tooSmall = solved.tooSmall
+  const workspaceOpen = mode === "workspace"
+  const showInspector = workspaceOpen && visible.inspector && inspector !== undefined
+  const showPanel = workspaceOpen && visible.panel && panel !== undefined
 
   const announceResize = (id: SizableId) => {
     announcer?.announce("async_load", `${id} resized to ${Math.round(sizes[id])} pixels`)
@@ -385,14 +407,11 @@ function Shell({ children, workspaceName, sessionName }: ShellProps): ReactNode 
   return (
     <div
       className="flex h-screen w-screen flex-col overflow-hidden"
-      style={{ background: token("--Eulinx-color-surface"), color: token("--Eulinx-color-text-primary") }}
+      style={{ background: token("--Eulinx-color-surface"), color: token("--Eulinx-color-text") }}
     >
       {/* Title bar (fixed height, always present) */}
       <TitleBar
-        workspaceName={workspaceName ?? layout.workspaceId}
-        sessionName={sessionName}
         onBeforeClose={() => flushPersist(useLayoutStore.getState().layout as NonNullable<typeof layout>)}
-        onFocusRegion={(id) => api.focusRegion(id)}
       />
 
       {/* Main content row */}
@@ -403,7 +422,7 @@ function Shell({ children, workspaceName, sessionName }: ShellProps): ReactNode 
             <>
               <div style={{ width: sizes.sidebar, minWidth: 0 }}>
                 <SidebarSlot>
-                  <RegionPlaceholder region="sidebar" />
+                  {sidebar ?? <RegionPlaceholder region="sidebar" />}
                 </SidebarSlot>
               </div>
               <ResizeHandle
@@ -431,8 +450,8 @@ function Shell({ children, workspaceName, sessionName }: ShellProps): ReactNode 
             style={{
               width: REGION_CONSTRAINTS.sidebar.railSize,
               borderColor: token("--Eulinx-color-border"),
-              background: token("--Eulinx-color-elevated"),
-              transition: reducedMotion ? "none" : `background-color ${token("--Eulinx-duration-fast")} var(--Eulinx-ease-standard)`,
+              background: token("--Eulinx-color-surface"),
+              transition: reducedMotion ? "none" : `background-color ${token("--Eulinx-duration-hover")} var(--Eulinx-ease-standard)`,
             }}
           >
             <RailButton icon="domain.panel.left" label="Expand sidebar" />
@@ -446,19 +465,22 @@ function Shell({ children, workspaceName, sessionName }: ShellProps): ReactNode 
           onClick={() => api.focusRegion("canvas")}
           style={{ width: sizes.canvas }}
         >
-          <WorkspaceTabs
+          <TopBar
+            projectName={workspaceName || (workspaceOpen ? "Eulinx" : "Start")}
             tabs={tabs}
             activeTabId={activeTabId}
-            onSelect={api.selectTab}
-            onClose={api.closeTab}
-            onAdd={api.addTab}
+            onSelectTab={api.selectTab}
+            onCloseTab={api.closeTab}
+            onAddTab={api.addTab}
+            isConnected={true}
+            workspaceOpen={workspaceOpen}
             focusVisible={focusedRegion === "canvas" && focusVisible}
           />
           <div className="relative min-h-0 flex-1 overflow-hidden">{children}</div>
         </div>
 
         {/* Inspector */}
-        {visible.inspector &&
+        {showInspector &&
           renderRegion("inspector", focusedRegion, focusVisible, () => (
             <>
               <ResizeHandle
@@ -475,7 +497,7 @@ function Shell({ children, workspaceName, sessionName }: ShellProps): ReactNode 
               />
               <div style={{ width: sizes.inspector, minWidth: 0 }}>
                 <InspectorSlot>
-                  <RegionPlaceholder region="inspector" />
+                  {inspector ?? <RegionPlaceholder region="inspector" />}
                 </InspectorSlot>
               </div>
             </>
@@ -483,7 +505,7 @@ function Shell({ children, workspaceName, sessionName }: ShellProps): ReactNode 
       </div>
 
       {/* Panel (bottom) */}
-      {visible.panel &&
+      {showPanel &&
         renderRegion("panel", focusedRegion, focusVisible, () => (
           <div
             className="relative flex shrink-0 flex-col overflow-hidden border-t"
@@ -492,10 +514,10 @@ function Shell({ children, workspaceName, sessionName }: ShellProps): ReactNode 
             style={{
               height: sizes.panel,
               borderColor: token("--Eulinx-color-border"),
-              background: token("--Eulinx-color-elevated"),
+              background: token("--Eulinx-color-surface"),
               transition: reducedMotion
                 ? "none"
-                : `height ${token("--Eulinx-duration-base")} var(--Eulinx-ease-standard)`,
+                : `height ${token("--Eulinx-duration-card")} var(--Eulinx-ease-standard)`,
             }}
           >
             <ResizeHandle
@@ -510,7 +532,7 @@ function Shell({ children, workspaceName, sessionName }: ShellProps): ReactNode 
             />
             <div className="min-h-0 flex-1 overflow-hidden">
               <PanelSlot>
-                <RegionPlaceholder region="panel" />
+                {panel ?? <RegionPlaceholder region="panel" />}
               </PanelSlot>
             </div>
           </div>
@@ -518,7 +540,7 @@ function Shell({ children, workspaceName, sessionName }: ShellProps): ReactNode 
 
       {/* Status bar (fixed height, always present) */}
       <div
-        className="flex shrink-0 items-center gap-4 px-3 text-role-caption"
+        className="flex shrink-0 items-center justify-between px-3 text-[11px]"
         style={{
           height: sizes.statusBar,
           background: token("--Eulinx-color-surface"),
@@ -526,8 +548,24 @@ function Shell({ children, workspaceName, sessionName }: ShellProps): ReactNode 
           color: token("--Eulinx-color-text-muted"),
         }}
       >
-        <span>{tabs.length} tabs</span>
-        <span>ws: {layout.workspaceId}</span>
+        <div className="flex items-center gap-3">
+          <span className="flex items-center gap-1">
+            <span
+              style={{
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                background: token("--Eulinx-color-success"),
+              }}
+            />
+            Ready
+          </span>
+          <span>{workspaceOpen ? `ws: ${layout.workspaceId}` : "No workspace open"}</span>
+        </div>
+        <div className="flex items-center gap-3">
+          {workspaceOpen ? <span>{tabs.length} tabs</span> : null}
+          <span>v0.0.1</span>
+        </div>
       </div>
 
       {tooSmall && <WindowTooSmallOverlay size={api.containerSize} />}
@@ -542,7 +580,7 @@ function WindowTooSmallOverlay({ size }: { size: ContainerSize }): ReactNode {
       role="alertdialog"
       aria-label="Window too small"
       className="absolute inset-0 flex flex-col items-center justify-center gap-2"
-      style={{ background: token("--Eulinx-color-surface"), color: token("--Eulinx-color-text-primary") }}
+      style={{ background: token("--Eulinx-color-surface"), color: token("--Eulinx-color-text") }}
     >
       <Icon name="status.warning" size="xl" aria-hidden />
       <span className="text-role-body">Window too small</span>
@@ -590,7 +628,7 @@ export function SidebarSlot({ children }: { children: ReactNode }): ReactNode {
     <div
       data-eulinx-surface="sidebar"
       className="h-full overflow-y-auto"
-      style={{ background: token("--Eulinx-color-sidebar-bg") ?? token("--Eulinx-color-elevated") }}
+      style={{ background: token("--Eulinx-color-sidebar-bg") ?? token("--Eulinx-color-surface") }}
     >
       {children}
     </div>
@@ -634,7 +672,7 @@ function RegionPlaceholder({ region }: { region: RegionId }): ReactNode {
 
 function RailButton({ icon, label }: { icon: string; label: string }): ReactNode {
   return (
-    <span className="flex h-8 w-8 items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-elevated-2)]" aria-hidden>
+    <span className="flex h-8 w-8 items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-surface-2)]" aria-hidden>
       <Icon name={icon} size="md" aria-label={label} />
     </span>
   )
@@ -690,7 +728,7 @@ function registerLayoutCommands(): void {
 // ---------------------------------------------------------------------------
 
 function emptySizes(): Record<RegionId, number> {
-  return { titleBar: 36, sidebar: 240, canvas: 480, inspector: 320, panel: 220, statusBar: 24 }
+  return { titleBar: 32, sidebar: 260, canvas: 480, inspector: 320, panel: 240, statusBar: 24 }
 }
 function emptyVisible(): Record<RegionId, boolean> {
   return { titleBar: true, sidebar: true, canvas: true, inspector: true, panel: true, statusBar: true }

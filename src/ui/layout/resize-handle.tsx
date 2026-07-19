@@ -139,7 +139,7 @@ export function ResizeHandle({
     touchAction: "none",
     transition: reducedMotion
       ? "none"
-      : `background-color ${token("--Eulinx-duration-fast")} var(--Eulinx-ease-standard)`,
+      : `background-color ${token("--Eulinx-duration-hover")} var(--Eulinx-ease-standard)`,
   }
 
   if (axis === "width") {

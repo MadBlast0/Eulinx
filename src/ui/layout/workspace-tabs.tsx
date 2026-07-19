@@ -38,8 +38,8 @@ function tabStyle(active: boolean, focusVisible: boolean, reducedMotion: boolean
     paddingLeft: token("--Eulinx-space-3"),
     paddingRight: token("--Eulinx-space-2"),
     borderRadius: token("--Eulinx-radius-sm"),
-    background: active ? token("--Eulinx-color-elevated-2") : "transparent",
-    color: active ? token("--Eulinx-color-text-primary") : token("--Eulinx-color-text-muted"),
+    background: active ? token("--Eulinx-color-surface-alt") : "transparent",
+    color: active ? token("--Eulinx-color-text") : token("--Eulinx-color-text-muted"),
     display: "flex",
     alignItems: "center",
     gap: token("--Eulinx-space-1"),
@@ -47,7 +47,7 @@ function tabStyle(active: boolean, focusVisible: boolean, reducedMotion: boolean
     outlineOffset: focusVisible && active ? (FOCUS_RING_STYLE.outlineOffset as string) : undefined,
     transition: reducedMotion
       ? "none"
-      : `background-color ${token("--Eulinx-duration-fast")} var(--Eulinx-ease-standard)`,
+      : `background-color ${token("--Eulinx-duration-hover")} var(--Eulinx-ease-standard)`,
   }
 }
 
@@ -86,7 +86,7 @@ export function WorkspaceTabs({
             tabIndex={active ? 0 : -1}
             title={tab.title}
             onClick={() => onSelect(tab.tabId)}
-            className="cursor-pointer whitespace-nowrap text-role-caption transition-colors hover:bg-[color:var(--Eulinx-color-elevated)]"
+            className="cursor-pointer whitespace-nowrap text-role-caption transition-colors hover:bg-[color:var(--Eulinx-color-surface)]"
             style={tabStyle(active, focusVisible, reducedMotion)}
           >
             <Icon name={KIND_ICON[tab.kind] ?? "domain.graph"} size="xs" aria-hidden />
@@ -96,7 +96,7 @@ export function WorkspaceTabs({
                 type="button"
                 aria-label={`Close ${tab.title}`}
                 onClick={(e) => handleClose(e, tab.tabId)}
-                className="ml-1 flex items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-danger)]"
+                className="ml-1 flex items-center justify-center rounded hover:bg-[color:var(--Eulinx-color-error)]"
                 style={{ width: "var(--Eulinx-space-4)", height: "var(--Eulinx-space-4)" }}
               >
                 <Icon name="nav.close" size="xs" aria-hidden />
@@ -110,7 +110,7 @@ export function WorkspaceTabs({
         type="button"
         aria-label="New tab"
         onClick={onAdd}
-        className="flex items-center justify-center rounded transition-colors hover:bg-[color:var(--Eulinx-color-elevated)]"
+        className="flex items-center justify-center rounded transition-colors hover:bg-[color:var(--Eulinx-color-surface)]"
         style={{
           width: "var(--Eulinx-space-6)",
           height: "var(--Eulinx-space-6)",
