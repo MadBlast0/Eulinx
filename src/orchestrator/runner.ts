@@ -15,9 +15,12 @@ import { ProgrammerOrchestrator } from "@/orchestrator/roles/programmer"
 import { ReviewerOrchestrator } from "@/orchestrator/roles/reviewer"
 import { DebuggerOrchestrator } from "@/orchestrator/roles/debugger"
 import { DocumentationOrchestrator } from "@/orchestrator/roles/documentation"
+import { QAOrchestrator } from "@/orchestrator/roles/qa"
+import { ReleaseOrchestrator } from "@/orchestrator/roles/release"
 import type { PlannerGraphNode } from "@/orchestrator/roles/planner"
 import { RefinementLoopEngine } from "@/orchestrator/refinement-loop"
 import type { RefinementLoopInput, RoleExecutors } from "@/orchestrator/refinement-loop"
+import { RefinementVerifier } from "@/orchestrator/refinement-verify"
 import type {
   OrchestratorConfig,
   OrchestratorRole,
@@ -31,7 +34,6 @@ import type {
   ArtifactEntry,
   RunStatus,
 } from "./runner-types"
-import type { BuilderOutput } from "@/orchestrator/refinement-loop"
 
 export type { TaskContext, TaskResult, ArtifactEntry, RunStatus } from "./runner-types"
 
@@ -80,7 +82,7 @@ export class OrchestratorRunner {
       const config = this.buildConfig(goal, context)
       const graphNodes = this.extractGraphNodes(task)
 
-      const coordinator = new CoordinatorOrchestrator(config, goal, graphNodes)
+      const coordinator = new CoordinatorOrchestrator(config, goal, graphNodes, this.invoker)
       const startResult = await coordinator.start()
 
       if (!startResult.ok) {
@@ -132,7 +134,7 @@ export class OrchestratorRunner {
 
       const providerId = context?.providerId ?? "claude"
       const modelId = context?.modelProfileId ?? "claude-sonnet-4-20250514"
-      const executor = this.invoker.createExecutor({ providerId, modelId })
+      const executor = this.invoker.createExecutor({ providerId, model: modelId })
 
       const taskNodes = phase.childIds
         .map((id) => plan.nodes[id])
@@ -173,6 +175,12 @@ export class OrchestratorRunner {
         break
       case "documentation":
         await this.executeDocumentation(taskNode, plan, goal, executor)
+        break
+      case "qa":
+        await this.executeQA(taskNode, plan, goal, executor)
+        break
+      case "release":
+        await this.executeRelease(taskNode, plan, goal, executor)
         break
       default:
         this.logger.warn(`No handler for role: ${taskNode.ownerRole}`)
@@ -233,6 +241,22 @@ export class OrchestratorRunner {
     const childConfig = this.buildChildConfig(taskNode, goal, "programmer")
     const programmer = new ProgrammerOrchestrator(childConfig, taskNode, plan)
 
+    const artifactContents = new Map<string, string>()
+    const hasProvider = this.invoker.validateProvider(providerId)
+    const verifier = new RefinementVerifier({
+      workerId: `runner-${providerId}`,
+      aiVerify: hasProvider
+        ? async (prompt) => {
+            const r = await this.invoker.invoke({
+              providerId,
+              model: modelId,
+              messages: [{ role: "user", content: prompt }],
+            })
+            return r.content ? ok(r.content) : err(new CoreError("execution_failed", "Empty AI verification"))
+          }
+        : undefined,
+    })
+
     const executors: RoleExecutors = {
       build: async (input) => {
         const result = await this.invoker.invoke({
@@ -250,8 +274,13 @@ export class OrchestratorRunner {
           messages: [],
         }).cost
 
+        const artifactId = brand<string, "ArtifactId">(`art-prog-${Date.now()}`)
+        const content = result.content
+        artifactContents.set(artifactId, content)
+        verifier.recordArtifact(artifactId, content)
+
         return ok({
-          artifactId: brand(`art-prog-${Date.now()}`),
+          artifactId,
           artifactType: "code",
           changeNote: `Pass ${input.passNumber} build`,
           producedAt: new Date().toISOString() as IsoTimestamp,
@@ -261,16 +290,13 @@ export class OrchestratorRunner {
       },
       verify: async (input) => {
         this.logger.info(`Verifying artifact ${input.artifactId}`)
-        return ok({
-          passed: true,
-          checks: [
-            { name: "build", passed: true, details: "Build succeeded", checkType: "build" },
-            { name: "lint", passed: true, details: "Lint passed", checkType: "lint" },
-          ],
-          verifiedAt: new Date().toISOString() as IsoTimestamp,
-          tokenUsage: 100,
-          costMicroUsd: 0,
-        })
+        const verifyResult = await verifier.verify(input, goal.description)
+        if (!verifyResult.ok) {
+          return verifyResult
+        }
+        const output = verifyResult.value
+        this._totalTokens += output.tokenUsage
+        return ok(output)
       },
       critique: async (input) => {
         const result = await this.invoker.invoke({
@@ -397,6 +423,72 @@ export class OrchestratorRunner {
         label: taskNode.intent,
         role: "documentation",
       })
+    }
+  }
+
+  private async executeQA(
+    taskNode: PlanNode,
+    plan: Plan,
+    goal: UserGoal,
+    executor: (prompt: string) => Promise<Result<string, CoreError>>,
+  ): Promise<void> {
+    const childConfig = this.buildChildConfig(taskNode, goal, "qa")
+    const qa = new QAOrchestrator(childConfig, taskNode, plan)
+
+    const suite = this.buildTestSuite(taskNode)
+    const result = await qa.runTests(suite, async (command) => {
+      const r = await executor(`Run QA command: ${command}`)
+      this._totalTokens += 100
+      return r
+    })
+
+    if (result.ok) {
+      this._artifacts.push({
+        id: `art-qa-${Date.now()}`,
+        type: "test_report",
+        content: JSON.stringify(result.value),
+        label: taskNode.intent,
+        role: "qa",
+      })
+    }
+  }
+
+  private async executeRelease(
+    taskNode: PlanNode,
+    plan: Plan,
+    goal: UserGoal,
+    executor: (prompt: string) => Promise<Result<string, CoreError>>,
+  ): Promise<void> {
+    const childConfig = this.buildChildConfig(taskNode, goal, "release")
+    const release = new ReleaseOrchestrator(childConfig, taskNode, plan)
+
+    const versionMatch = goal.description.match(/v?\d+\.\d+\.\d+/)
+    const version = versionMatch ? versionMatch[0].replace(/^v/, "") : "0.1.0"
+
+    const result = await release.prepareRelease(version, "", async (command) => {
+      const r = await executor(`Run release command: ${command}`)
+      this._totalTokens += 100
+      return r
+    })
+
+    if (result.ok) {
+      this._artifacts.push({
+        id: `art-release-${Date.now()}`,
+        type: "review",
+        content: JSON.stringify(result.value),
+        label: taskNode.intent,
+        role: "release",
+      })
+    }
+  }
+
+  private buildTestSuite(taskNode: PlanNode) {
+    return {
+      name: `QA suite for ${taskNode.intent.slice(0, 40)}`,
+      tests: [
+        { name: "unit", command: "pnpm test --run" },
+        { name: "typecheck", command: "pnpm typecheck" },
+      ],
     }
   }
 

@@ -243,4 +243,32 @@ describe("RefinementLoopEngine", () => {
       expect(result.value.passHistory.length).toBeGreaterThan(0)
     }
   })
+
+  it("does not mark an iteration passing when verification fails", async () => {
+    let judgeCalled = false
+    const engine = new RefinementLoopEngine()
+    const result = await engine.run(
+      makeInput({ mode: "high" }),
+      makeExecutors({
+        verify: async () => ({ ok: true as const, value: makeVerifierOutput(false) }),
+        critique: async () => {
+          throw new Error("critic must not run on verification failure")
+        },
+        judge: async () => {
+          judgeCalled = true
+          return { ok: true as const, value: makeJudgeOutput("reject") }
+        },
+      }),
+    )
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      // No pass may be recorded as accepted; every verifier output must be failing.
+      for (const pass of result.value.passHistory) {
+        expect(pass.verifierOutput.passed).toBe(false)
+      }
+      expect(result.value.accepted).toBe(false)
+      // Judge is still consulted for the routing decision on hard failure.
+      expect(judgeCalled).toBe(true)
+    }
+  })
 })

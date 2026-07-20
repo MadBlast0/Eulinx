@@ -123,4 +123,76 @@ describe("PlannerOrchestrator", () => {
     const planner = new PlannerOrchestrator(makeConfig(), makeGoal())
     expect(planner.describe()).toContain("Planner")
   })
+
+  it("produces an LLM-driven plan when an executor is supplied", async () => {
+    const planner = new PlannerOrchestrator(makeConfig(), makeGoal())
+    const llmPlan = JSON.stringify({
+      phases: [
+        {
+          title: "Research auth options",
+          tasks: [
+            { intent: "Survey JWT libraries", ownerRole: "researcher", budget: 120000 },
+            { intent: "Design token schema", ownerRole: "architect", budget: 90000 },
+          ],
+        },
+        {
+          title: "Implement login",
+          tasks: [{ intent: "Write login handler", ownerRole: "programmer", budget: 150000 }],
+        },
+      ],
+    })
+    const executor = async () => ({ ok: true as const, value: llmPlan })
+    const result = await planner.planWithLlm(executor)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      const phases = Object.values(result.value.nodes).filter((n) => n.id.startsWith("phase-"))
+      expect(phases).toHaveLength(2)
+      const tasks = Object.values(result.value.nodes).filter((n) => n.id.includes("task"))
+      expect(tasks).toHaveLength(3)
+      // Owner roles come from the LLM, not the structural default.
+      expect(tasks.some((t) => t.ownerRole === "researcher")).toBe(true)
+      expect(tasks.some((t) => t.ownerRole === "architect")).toBe(true)
+      expect(planner.currentPlan).toBe(result.value)
+    }
+  })
+
+  it("falls back to structural planning when the LLM returns invalid JSON", async () => {
+    const planner = new PlannerOrchestrator(makeConfig(), makeGoal())
+    const executor = async () => ({ ok: true as const, value: "not json at all" })
+    const result = await planner.planWithLlm(executor)
+    // Fallback still yields a usable plan.
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      const phases = Object.values(result.value.nodes).filter((n) => n.id.startsWith("phase-"))
+      expect(phases.length).toBeGreaterThanOrEqual(1)
+    }
+  })
+
+  it("falls back to structural planning when the LLM executor errors", async () => {
+    const planner = new PlannerOrchestrator(makeConfig(), makeGoal())
+    const executor = async () => ({ ok: false as const, error: new Error("boom") as never })
+    const result = await planner.planWithLlm(executor)
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      const phases = Object.values(result.value.nodes).filter((n) => n.id.startsWith("phase-"))
+      expect(phases.length).toBeGreaterThanOrEqual(1)
+    }
+  })
+
+  it("revises a plan with LLM feedback", async () => {
+    const planner = new PlannerOrchestrator(makeConfig(), makeGoal())
+    await planner.start()
+    const phases = planner.getPhases()
+    const revised = JSON.stringify({
+      phases: [
+        {
+          title: phases[0].intent,
+          tasks: [{ intent: "Revised task from feedback", ownerRole: "programmer", budget: 100000 }],
+        },
+      ],
+    })
+    const executor = async () => ({ ok: true as const, value: revised })
+    const result = await planner.revisePlanWithLlm(phases[0].id, "add a setup step", executor)
+    expect(result.ok).toBe(true)
+  })
 })

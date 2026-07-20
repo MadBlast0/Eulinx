@@ -31,6 +31,7 @@ import { DebuggerOrchestrator } from "./debugger"
 import { DocumentationOrchestrator } from "./documentation"
 import { QAOrchestrator } from "./qa"
 import { ReleaseOrchestrator } from "./release"
+import type { ProviderInvoker } from "@/providers-ai/provider-invoker"
 
 // ---------------------------------------------------------------------------
 // Coordinator (Root Orchestrator)
@@ -39,6 +40,7 @@ import { ReleaseOrchestrator } from "./release"
 export class CoordinatorOrchestrator extends BaseOrchestrator {
   private readonly goal: UserGoal
   private readonly graphNodes: readonly PlannerGraphNode[]
+  private readonly invoker?: ProviderInvoker
   private planner: PlannerOrchestrator | null = null
   private plan: Plan | null = null
   private phaseOrchestrators: Map<OrchestratorId, BaseOrchestrator> = new Map()
@@ -47,10 +49,12 @@ export class CoordinatorOrchestrator extends BaseOrchestrator {
     config: OrchestratorConfig,
     goal: UserGoal,
     graphNodes?: readonly PlannerGraphNode[],
+    invoker?: ProviderInvoker,
   ) {
     super(config)
     this.goal = goal
     this.graphNodes = graphNodes ?? []
+    this.invoker = invoker
   }
 
   // -----------------------------------------------------------------------
@@ -95,9 +99,21 @@ export class CoordinatorOrchestrator extends BaseOrchestrator {
       undefined,
       this.graphNodes,
     )
-    const planResult = await this.planner.start()
-    if (!planResult.ok) {
-      return err(planResult.error)
+
+    if (this.invoker) {
+      const executor = this.invoker.createExecutor({
+        providerId: "claude",
+        model: this.config.modelProfileId ?? "claude-sonnet-4-20250514",
+      })
+      const llmResult = await this.planner.planWithLlm(executor)
+      if (!llmResult.ok) {
+        return err(llmResult.error)
+      }
+    } else {
+      const planResult = await this.planner.start()
+      if (!planResult.ok) {
+        return err(planResult.error)
+      }
     }
 
     this.plan = this.planner.currentPlan
