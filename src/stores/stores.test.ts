@@ -153,7 +153,7 @@ describe("LayoutStore", () => {
     const layout = useLayoutStore.getState().layout!
     expect(layout.workspaceId).toBe("ws1")
     expect(layout.schemaVersion).toBe(1)
-    expect(layout.regions.sidebar.size).toBe(240)
+    expect(layout.regions.sidebar.size).toBe(260)
   })
 })
 

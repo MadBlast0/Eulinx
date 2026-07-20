@@ -31,6 +31,8 @@ import {
   canSessionTransition,
   SESSION_TERMINAL,
 } from "@/state/session-state"
+import { getBus } from "@/ui/workspace/runtime-store"
+import { raiseNotification } from "@/event-bus/notification-bridge"
 
 // ---------------------------------------------------------------------------
 // Session Manager Configuration
@@ -135,6 +137,23 @@ export class SessionManager {
 
     const updated = transitionSessionState(state, newState as never, reason)
     this.sessions.set(sessionId, updated)
+
+    const terminalStates = new Set(["failed", "cancelled", "completed"])
+    if (terminalStates.has(newState)) {
+      const severity = newState === "completed" ? "info" : "error"
+      const message = newState === "completed"
+        ? `Session ${sessionId} completed`
+        : newState === "failed"
+          ? `Session ${sessionId} failed: ${reason}`
+          : `Session ${sessionId} cancelled: ${reason}`
+      void raiseNotification(getBus(), {
+        message,
+        severity,
+        subjectId: sessionId,
+        workspaceId: state.workspaceId,
+        sessionId,
+      })
+    }
   }
 
   /**
