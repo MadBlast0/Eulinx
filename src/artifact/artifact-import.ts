@@ -1,5 +1,5 @@
 /**
- * P10-ART-IMPORT — Artifact Import
+ * P10-ART-IMPORT â€” Artifact Import
  *
  * Import artifacts from external sources: files, URLs, other workspaces.
  * From MergeFlow-Part01 and ArtifactManager-Part03.
@@ -111,7 +111,7 @@ export class ArtifactImport {
 
   /**
    * Import an artifact from an export bundle.
-   * From MergeFlow-Part06 §GitIntegration.
+   * From MergeFlow-Part06 Â§GitIntegration.
    */
   importFromBundle(
     bundle: ArtifactExportBundle,
@@ -168,6 +168,7 @@ export class ArtifactImport {
         JSON.parse(source.content)
         return "json"
       } catch {
+        console.warn('eulinx: artifact-import : unexpected error in catch block')
         // Not JSON
       }
       if (source.content.startsWith("# ")) return "markdown"
@@ -233,3 +234,4 @@ export class ArtifactImport {
       : content.length
   }
 }
+

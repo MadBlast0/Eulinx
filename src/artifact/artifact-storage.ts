@@ -1,8 +1,8 @@
 /**
- * P10-ART-STORAGE — Artifact Content Storage
+ * P10-ART-STORAGE â€” Artifact Content Storage
  *
  * Handles content-addressed storage for artifact bytes. From
- * ArtifactArchitecture-Part03 §ContentAddressing and §StorageTiers.
+ * ArtifactArchitecture-Part03 Â§ContentAddressing and Â§StorageTiers.
  */
 
 import { createHash } from "node:crypto"
@@ -66,7 +66,8 @@ function deserialize(json: string): Map<string, StoredArtifact> {
       store.set(entry.meta.id, { meta: entry.meta, content: entry.content })
     }
   } catch {
-    // corrupt data — start fresh
+    console.warn('eulinx: artifact-storage : unexpected error in catch block')
+    // corrupt data â€” start fresh
   }
   return store
 }
@@ -78,6 +79,7 @@ function loadFromStorage(): Map<string, StoredArtifact> {
       if (raw) return deserialize(raw)
     }
   } catch {
+    console.warn('eulinx: artifact-storage : unexpected error in catch block')
     // localStorage unavailable
   }
   return new Map()
@@ -89,7 +91,8 @@ function saveToStorage(store: Map<string, StoredArtifact>): void {
       localStorage.setItem(STORAGE_KEY, serialize(store))
     }
   } catch {
-    // storage full or unavailable — silently degrade to in-memory only
+    console.warn('eulinx: artifact-storage : unexpected error in catch block')
+    // storage full or unavailable â€” silently degrade to in-memory only
   }
 }
 
@@ -243,3 +246,4 @@ export class ArtifactStorage {
     return total
   }
 }
+
