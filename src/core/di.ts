@@ -1,5 +1,5 @@
-/**
- * P01-CORE-DI — Dependency Injection Container
+﻿/**
+ * P01-CORE-DI â€” Dependency Injection Container
  *
  * Lightweight service container. Services are registered by token (string or symbol)
  * and resolved at runtime. Supports singleton and transient lifetimes.
@@ -158,3 +158,4 @@ export function createContainer(): Container {
 export function resetContainer(): void {
   globalContainer = undefined
 }
+

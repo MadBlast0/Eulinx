@@ -1,4 +1,4 @@
-/**
+﻿/**
  * P03-EVENT-ASYNC — Async Event Delivery
  *
  * Non-blocking event delivery implementation.
@@ -15,6 +15,8 @@
 import type { EulinxEventUnion } from "./event-types"
 import type { SubscriptionEntry } from "./event-subscriptions"
 import type { EventBusConfig } from "./event-bus-config"
+import { createLogger } from "@/core/logger"
+import type { Logger } from "@/core/logger"
 
 // ---------------------------------------------------------------------------
 // Delivery result
@@ -65,6 +67,8 @@ export function isSourceRateLimited(
 // Delivery engine
 // ---------------------------------------------------------------------------
 
+const log: Logger = createLogger("EventAsync")
+
 /**
  * Deliver an event to all matching subscribers.
  *
@@ -114,6 +118,7 @@ export async function deliverEvent(
       )
     } catch {
       // Should never reach here if withPanicBoundary is correct
+      log.warn("Unreachable catch in deliverEvent — withPanicBoundary should have caught all errors")
       panicked++
       onPanic?.(sub.subscriptionId, event.type, undefined)
     }
@@ -157,12 +162,18 @@ export function deliverToCore(
   try {
     // In a real implementation this would be a send().await on a channel.
     // Here we invoke the handler directly (TypeScript is single-threaded).
-    sub.handler(event).catch(() => {})
+    sub.handler(event).catch(() => {
+      log.warn("Core subscriber handler promise rejected", { subscriptionId: sub.subscriptionId })
+    })
     sub.deliveredCount++
     sub.lastDeliveredSequence = event.sequence
     return "delivered"
   } catch {
     sub.consecutivePanics++
+    log.warn("Core subscriber threw synchronously", {
+      subscriptionId: sub.subscriptionId,
+      consecutivePanics: sub.consecutivePanics,
+    })
     if (sub.consecutivePanics >= 3) {
       sub.state = "quarantined"
     }
@@ -181,13 +192,19 @@ export function deliverToPlugin(
   if (sub.state === "quarantined") return "dropped"
 
   try {
-    sub.handler(event).catch(() => {})
+    sub.handler(event).catch(() => {
+      log.warn("Plugin subscriber handler promise rejected", { subscriptionId: sub.subscriptionId })
+    })
     sub.deliveredCount++
     sub.lastDeliveredSequence = event.sequence
     return "delivered"
   } catch {
     sub.consecutiveAbandoned++
     sub.consecutivePanics++
+    log.warn("Plugin subscriber threw synchronously", {
+      subscriptionId: sub.subscriptionId,
+      consecutivePanics: sub.consecutivePanics,
+    })
     if (sub.consecutivePanics >= 3) {
       sub.state = "quarantined"
     }

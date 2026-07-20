@@ -142,7 +142,7 @@ export class ProgrammerOrchestrator extends BaseOrchestrator {
   validateArtifactType(content: string, expectedType: string): boolean {
     switch (expectedType) {
       case "json":
-        try { JSON.parse(content); return true } catch { return false }
+        try { JSON.parse(content); return true } catch { console.warn('eulinx: programmer: invalid JSON content'); return false }
       case "markdown":
         return content.trim().length > 0
       case "code":

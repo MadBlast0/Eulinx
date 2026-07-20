@@ -1,4 +1,4 @@
-/**
+﻿/**
  * P03-EVENT-BUS — The EventBus Core
  *
  * The single nervous system of the Runtime.
@@ -37,6 +37,8 @@ import { EventRegistry, getDefaultRegistry } from "./event-registry"
 import { matchesFilter, isValidTopicPattern, PLUGIN_SUBSCRIPTION_LIMIT } from "./event-subscriptions"
 import { generateId } from "@/core/uuid"
 import { invoke, isTauri } from "@tauri-apps/api/core"
+import { createLogger } from "@/core/logger"
+import type { Logger } from "@/core/logger"
 
 // ---------------------------------------------------------------------------
 // EventBus
@@ -53,11 +55,12 @@ export class EventBus {
   private readonly _eventRegistry: EventRegistry
   private readonly config: EventBusConfig
   private metrics: EventBusMetrics
+  private readonly log: Logger
 
   // Log write failures counter
   private consecutiveLogFailures = 0
 
-  private readonly log: EulinxEventUnion[] = []
+  private readonly eventLog: EulinxEventUnion[] = []
   private flushTimer: ReturnType<typeof setInterval> | null = null
   private static readonly FLUSH_INTERVAL_MS = 5000
   private static readonly FLUSH_THRESHOLD = 50
@@ -67,6 +70,7 @@ export class EventBus {
     config: Partial<EventBusConfig> = {},
     onBatchFlush?: (batch: import("./event-batcher").EventBatch) => void,
   ) {
+    this.log = createLogger("EventBus")
     this.config = { ...DEFAULT_EVENT_BUS_CONFIG, ...config }
     this.metrics = createInitialMetrics()
     this.coreQueue = new EventQueue("core", this.config.coreQueueCapacity)
@@ -231,6 +235,7 @@ export class EventBus {
         this.consecutiveLogFailures = 0
       } catch {
         this.consecutiveLogFailures++
+        this.log.warn("Failed to write replay-grade event to log", { consecutiveFailures: this.consecutiveLogFailures })
         // EventBus-Part05 §Log Write Failure step 5
         if (this.consecutiveLogFailures >= 3) {
           this.state = "failed"
@@ -417,8 +422,15 @@ export class EventBus {
       sub.consecutivePanics = 0
     } catch {
       sub.consecutivePanics++
+      this.log.warn("Core subscriber threw during delivery", {
+        subscriptionId: sub.subscriptionId,
+        consecutivePanics: sub.consecutivePanics,
+      })
       if (sub.consecutivePanics >= this.config.maxConsecutivePanics) {
         sub.state = "quarantined"
+        this.log.warn("Core subscriber quarantined after max consecutive panics", {
+          subscriptionId: sub.subscriptionId,
+        })
       }
     }
   }
@@ -437,17 +449,24 @@ export class EventBus {
     } catch {
       sub.consecutiveAbandoned++
       sub.consecutivePanics++
+      this.log.warn("Plugin subscriber threw during delivery", {
+        subscriptionId: sub.subscriptionId,
+        consecutivePanics: sub.consecutivePanics,
+      })
       if (sub.consecutivePanics >= this.config.maxConsecutivePanics) {
         sub.state = "quarantined"
+        this.log.warn("Plugin subscriber quarantined after max consecutive panics", {
+          subscriptionId: sub.subscriptionId,
+        })
       }
       sub.droppedCount++
     }
   }
 
   public async flushLog(): Promise<void> {
-    if (this.log.length === 0) return
+    if (this.eventLog.length === 0) return
 
-    const batch = this.log.splice(0)
+    const batch = this.eventLog.splice(0)
     if (isTauri()) {
       for (const event of batch) {
         try {
@@ -455,6 +474,7 @@ export class EventBus {
         } catch {
           // Individual write failures are non-fatal at flush time;
           // the original publish() already handled the error path.
+          this.log.warn("Flush: individual event log write failed (non-fatal)")
         }
       }
     } else {
@@ -464,37 +484,38 @@ export class EventBus {
         stored.push(...batch)
         localStorage.setItem(EventBus.LOG_STORAGE_KEY, JSON.stringify(stored))
       } catch {
-        // localStorage may be full or unavailable; silently drop.
+        this.log.warn("Flush: localStorage log write failed (non-fatal)")
       }
     }
   }
 
   public getLog(): EulinxEventUnion[] {
-    return [...this.log]
+    return [...this.eventLog]
   }
 
   public clearLog(): void {
-    this.log.length = 0
+    this.eventLog.length = 0
     if (!isTauri()) {
       try {
         localStorage.removeItem(EventBus.LOG_STORAGE_KEY)
       } catch {
-        // ignore
+        this.log.warn("Failed to clear event log from localStorage")
       }
     }
   }
 
   private async writeToLog(event: EulinxEventUnion): Promise<void> {
-    this.log.push(event)
+    this.eventLog.push(event)
 
     if (isTauri()) {
       try {
         await invoke("event_log_write", { event })
-      } catch {
+      } catch (err) {
+        this.log.error("Failed to write event to Tauri backend", { error: String(err) })
         throw new Error("Failed to write event to Tauri backend")
       }
     } else {
-      if (this.log.length >= EventBus.FLUSH_THRESHOLD) {
+      if (this.eventLog.length >= EventBus.FLUSH_THRESHOLD) {
         await this.flushLog()
       }
     }
