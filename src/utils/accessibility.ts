@@ -1,10 +1,10 @@
-const FOCUSABLE_SELECTOR = [
+﻿const FOCUSABLE_SELECTOR = [
   "a[href]",
   "button:not([disabled])",
   "input:not([disabled])",
   "textarea:not([disabled])",
   "select:not([disabled])",
-  "[tabindex]:not([tabindex=\"-1\"])",
+  "[tabindex]:not([tabindex="-1"])",
   "details",
   "summary",
   "[contenteditable]",
@@ -51,6 +51,7 @@ export function getFocusableElements(container: HTMLElement): HTMLElement[] {
       return rect.width > 0 && rect.height > 0
     })
   } catch {
+    console.warn("eulinx: getFocusableElements failed — invalid container or query")
     return []
   }
 }

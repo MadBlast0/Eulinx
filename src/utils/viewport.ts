@@ -1,4 +1,4 @@
-import type { ViewportInfo, ViewportSize, DeviceType } from "@/types/design-system"
+﻿import type { ViewportInfo, ViewportSize, DeviceType } from "@/types/design-system"
 import { BREAKPOINTS, DEVICE_BREAKPOINTS, VIEWPORT_SIZE_ORDER } from "@/constants/viewport"
 
 const DEFAULT_VIEWPORT_INFO: ViewportInfo = {
@@ -38,6 +38,7 @@ function readSafeArea(property: string): number {
     document.body.removeChild(el)
     return isNaN(value) ? 0 : value
   } catch {
+    console.warn("eulinx: failed to read safe area inset '" + property + "'")
     return 0
   }
 }
@@ -102,7 +103,7 @@ function notifySubscribers(info: ViewportInfo): void {
       try {
         cb(info)
       } catch {
-        /* swallow subscriber errors */
+        console.warn("eulinx: viewport subscriber threw during notification")
       }
     }
   }
@@ -129,7 +130,7 @@ export function subscribe(cb: (info: ViewportInfo) => void): () => void {
     try {
       cb(currentInfo)
     } catch {
-      /* swallow */
+      console.warn("eulinx: viewport subscriber threw during initial callback")
     }
   }
 

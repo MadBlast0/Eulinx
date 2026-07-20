@@ -1,5 +1,5 @@
 /**
- * P08-WORKER-MANAGER — Worker Manager
+ * P08-WORKER-MANAGER â€” Worker Manager
  *
  * Manages the runtime pool of active Workers. Tracks state, metrics,
  * health, and provides query API for the Scheduler, Orchestrators, and UI.
@@ -408,6 +408,7 @@ export class WorkerManager {
       try {
         handler(event)
       } catch {
+        console.warn('eulinx: worker-manager : unexpected error in catch block')
         // Event handlers must not throw
       }
     }
@@ -417,3 +418,4 @@ export class WorkerManager {
     return new Date().toISOString() as IsoTimestamp
   }
 }
+

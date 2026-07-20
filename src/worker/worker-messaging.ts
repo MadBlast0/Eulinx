@@ -1,5 +1,5 @@
 /**
- * P08-WORKER-MSG — Worker Messaging
+ * P08-WORKER-MSG â€” Worker Messaging
  *
  * WorkerCommunication-Part01 through Part08: envelope-based, parent-child-only
  * messaging. Messages travel along hierarchy edges only, mediated by the runtime.
@@ -13,7 +13,7 @@ import type { SessionId, WorkspaceId, IsoTimestamp } from "@/core/types"
 import type { HierarchyNodeId } from "./worker-types"
 
 // ---------------------------------------------------------------------------
-// Message Priority (WorkerCommunication-Part01 §MessageKinds)
+// Message Priority (WorkerCommunication-Part01 Â§MessageKinds)
 // ---------------------------------------------------------------------------
 
 export type MessagePriority = "low" | "normal" | "high" | "control"
@@ -25,7 +25,7 @@ export type MessagePriority = "low" | "normal" | "high" | "control"
 export type MessageDirection = "down" | "up"
 
 // ---------------------------------------------------------------------------
-// Message Kinds (WorkerCommunication-Part01 §MessageKinds)
+// Message Kinds (WorkerCommunication-Part01 Â§MessageKinds)
 // ---------------------------------------------------------------------------
 
 export type MessageKind =
@@ -40,7 +40,7 @@ export type MessageKind =
   | "cancel"
 
 // ---------------------------------------------------------------------------
-// Message Envelope (WorkerCommunication-Part01 §MessageEnvelope)
+// Message Envelope (WorkerCommunication-Part01 Â§MessageEnvelope)
 // ---------------------------------------------------------------------------
 
 export interface MessageEnvelope<K extends MessageKind = MessageKind> {
@@ -121,7 +121,7 @@ export interface CancelPayload {
 }
 
 // ---------------------------------------------------------------------------
-// Channel (WorkerCommunication-Part03 §Channels)
+// Channel (WorkerCommunication-Part03 Â§Channels)
 // ---------------------------------------------------------------------------
 
 export interface MessageChannel {
@@ -135,7 +135,7 @@ export interface MessageChannel {
 }
 
 // ---------------------------------------------------------------------------
-// Message Router (WorkerCommunication-Part03 §MediatedRouting)
+// Message Router (WorkerCommunication-Part03 Â§MediatedRouting)
 // ---------------------------------------------------------------------------
 
 export interface MessageValidationResult {
@@ -171,7 +171,7 @@ export class WorkerMessageRouter {
     }
 
     // M10: cannot deliver if ancestor is paused/cancelled/failed
-    // (simplified — full check would walk ancestors)
+    // (simplified â€” full check would walk ancestors)
 
     // M11: payload validation (simplified)
 
@@ -221,6 +221,7 @@ export class WorkerMessageRouter {
       try {
         handler(sequencedEnvelope)
       } catch {
+        console.warn('eulinx: worker-messaging : unexpected error in catch block')
         // Handlers must not throw
       }
     }
@@ -293,3 +294,4 @@ export class WorkerMessageRouter {
     }
   }
 }
+

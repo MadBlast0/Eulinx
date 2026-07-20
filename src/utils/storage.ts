@@ -1,10 +1,11 @@
-function isStorageAvailable(): boolean {
+﻿function isStorageAvailable(): boolean {
   try {
     const key = "__eulinx_storage_test__"
     localStorage.setItem(key, "1")
     localStorage.removeItem(key)
     return true
   } catch {
+    // localStorage unavailable (e.g. incognito, SSR) — expected, not an error
     return false
   }
 }
@@ -19,6 +20,7 @@ export function getItem<T>(key: string, fallback: T): T {
     const parsed = JSON.parse(raw) as T
     return parsed
   } catch {
+    console.warn("eulinx: failed to parse stored value for key '" + key + "', using fallback")
     return fallback
   }
 }
@@ -34,6 +36,8 @@ export function setItem<T>(key: string, value: T): void {
       console.warn("eulinx: localStorage quota exceeded")
     } else if (err instanceof TypeError) {
       console.warn("eulinx: circular reference in storage value")
+    } else {
+      console.warn("eulinx: failed to set localStorage item '" + key + "'", err)
     }
   }
 }
@@ -44,7 +48,7 @@ export function removeItem(key: string): void {
   try {
     localStorage.removeItem(key)
   } catch {
-    /* storage unavailable */
+    console.warn("eulinx: failed to remove localStorage item '" + key + "'")
   }
 }
 
@@ -54,6 +58,6 @@ export function clear(): void {
   try {
     localStorage.clear()
   } catch {
-    /* storage unavailable */
+    console.warn("eulinx: failed to clear localStorage")
   }
 }

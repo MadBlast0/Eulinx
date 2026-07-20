@@ -1,4 +1,4 @@
-type NetworkSubscriber = (online: boolean) => void
+﻿type NetworkSubscriber = (online: boolean) => void
 
 let networkSubscribers: Set<NetworkSubscriber> | null = null
 
@@ -7,6 +7,7 @@ function getNetworkType(): string | undefined {
     const connection = (navigator as { connection?: { effectiveType?: string } }).connection
     return connection?.effectiveType
   } catch {
+    console.warn('eulinx: failed to read network connection type')
     return undefined
   }
 }
@@ -24,7 +25,7 @@ function notifyNetworkSubscribers(online: boolean): void {
     try {
       cb(online)
     } catch {
-      /* swallow */
+      console.warn('eulinx: network subscriber threw during notification')
     }
   }
 }
@@ -32,8 +33,8 @@ function notifyNetworkSubscribers(online: boolean): void {
 export function subscribeNetworkStatus(cb: (online: boolean) => void): () => void {
   if (!networkSubscribers) {
     networkSubscribers = new Set()
-    window.addEventListener("online", () => notifyNetworkSubscribers(true), { passive: true })
-    window.addEventListener("offline", () => notifyNetworkSubscribers(false), { passive: true })
+    window.addEventListener('online', () => notifyNetworkSubscribers(true), { passive: true })
+    window.addEventListener('offline', () => notifyNetworkSubscribers(false), { passive: true })
   }
 
   networkSubscribers.add(cb)
@@ -41,16 +42,17 @@ export function subscribeNetworkStatus(cb: (online: boolean) => void): () => voi
   try {
     cb(navigator.onLine)
   } catch {
-    /* swallow */
+    console.warn('eulinx: network subscriber threw during initial callback')
   }
 
   return () => {
     if (!networkSubscribers) return
     networkSubscribers.delete(cb)
     if (networkSubscribers.size === 0) {
-      window.removeEventListener("online", () => notifyNetworkSubscribers(true))
-      window.removeEventListener("offline", () => notifyNetworkSubscribers(false))
+      window.removeEventListener('online', () => notifyNetworkSubscribers(true))
+      window.removeEventListener('offline', () => notifyNetworkSubscribers(false))
       networkSubscribers = null
     }
   }
 }
+

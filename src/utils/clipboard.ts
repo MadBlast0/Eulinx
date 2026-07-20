@@ -1,11 +1,11 @@
-export async function copyToClipboard(text: string): Promise<boolean> {
+﻿export async function copyToClipboard(text: string): Promise<boolean> {
   try {
     if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
       await navigator.clipboard.writeText(text)
       return true
     }
   } catch {
-    /* fall through to fallback */
+    console.warn("eulinx: clipboard writeText failed, trying fallback")
   }
 
   return copyToClipboardFallback(text)
@@ -18,7 +18,7 @@ export async function readFromClipboard(): Promise<string | null> {
       return text
     }
   } catch {
-    /* permission denied or unavailable */
+    console.warn("eulinx: clipboard readText failed (permission denied or unavailable)")
   }
   return null
 }
@@ -40,12 +40,14 @@ export function copyToClipboardFallback(text: string): boolean {
     try {
       success = document.execCommand("copy")
     } catch {
+      console.warn("eulinx: execCommand copy failed")
       success = false
     }
 
     document.body.removeChild(textarea)
     return success
   } catch {
+    console.warn("eulinx: clipboard fallback mechanism failed")
     return false
   }
 }
