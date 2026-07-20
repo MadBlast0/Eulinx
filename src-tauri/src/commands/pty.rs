@@ -18,19 +18,28 @@ use std::io::Write;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
 
 #[derive(Default)]
 pub struct PtyState {
     /// Live child processes keyed by PTY id. Stdin kept for writes; Child kept
     /// so kill() can terminate it.
-    children: Mutex<HashMap<String, PtyHandle>>,
+    pub children: Mutex<HashMap<String, PtyHandle>>,
 }
 
-struct PtyHandle {
-    child: Mutex<Option<Child>>,
-    stdin: Mutex<Option<ChildStdin>>,
+pub(crate) struct PtyHandle {
+    pub child: Mutex<Option<Child>>,
+    pub stdin: Mutex<Option<ChildStdin>>,
+    /// Current terminal dimensions (cols, rows). Updated on resize.
+    pub cols: Mutex<(u32, u32)>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+struct PtyResizePayload {
+    id: String,
+    cols: u32,
+    rows: u32,
 }
 
 type ChildStdin = std::process::ChildStdin;
@@ -100,6 +109,7 @@ pub fn pty_spawn(app: AppHandle, id: String, shell: Option<String>) -> Result<St
         PtyHandle {
             child: Mutex::new(Some(child)),
             stdin: Mutex::new(Some(stdin)),
+            cols: Mutex::new((80, 24)),
         },
     );
     std::thread::spawn(move || {
@@ -156,10 +166,39 @@ pub fn pty_write(app: AppHandle, id: String, data: String) -> Result<(), String>
     Ok(())
 }
 
-/// Resize is a no-op for the piped-process bridge (no PTY geometry). Kept for
-/// interface parity so a future ConPTY backend can implement it.
+/// Resize the terminal dimensions. Since this is a piped-process bridge (no PTY
+/// geometry), we can't resize the PTY directly. Instead we:
+///   - Store the new dimensions in PtyHandle for child processes to inherit
+///   - Send SIGWINCH to the child process on Unix so it re-queries term size
+///   - Emit a resize event to the frontend
 #[tauri::command]
-pub fn pty_resize(_app: AppHandle, _id: String, _cols: u32, _rows: u32) -> Result<(), String> {
+pub fn pty_resize(app: AppHandle, id: String, cols: u32, rows: u32) -> Result<(), String> {
+    let state = app.state::<PtyState>();
+    let guard = state.children.lock().unwrap();
+    if let Some(handle) = guard.get(&id) {
+        let mut dims = handle.cols.lock().unwrap();
+        *dims = (cols, rows);
+        drop(dims);
+
+        // On Unix, send SIGWINCH so the child process re-queries terminal size
+        #[cfg(unix)]
+        if let Some(child) = handle.child.lock().unwrap().as_ref() {
+            unsafe {
+                libc::kill(child.id() as i32, libc::SIGWINCH);
+            }
+        }
+    }
+
+    let _ = app.emit(
+        &format!("pty://{id}/resize"),
+        PtyResizePayload {
+            id: id.clone(),
+            cols,
+            rows,
+        },
+    );
+
+    println!("[pty] resize id={id} cols={cols} rows={rows}");
     Ok(())
 }
 
