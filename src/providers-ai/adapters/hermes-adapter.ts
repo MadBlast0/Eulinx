@@ -137,6 +137,7 @@ export class HermesAdapter extends BaseProviderAdapter {
                 yield { type: "text_delta", delta: delta.content }
               }
             } catch {
+              console.warn('eulinx: hermes-adapter : unexpected error in catch block')
               // Skip malformed events
             }
           }

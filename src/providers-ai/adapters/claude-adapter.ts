@@ -141,6 +141,7 @@ export class ClaudeAdapter extends BaseProviderAdapter {
                 yield { type: "text_delta", delta: event.delta?.text ?? "" }
               }
             } catch {
+              console.warn('eulinx: claude-adapter: malformed SSE event, skipping')
               // Skip malformed events
             }
           }

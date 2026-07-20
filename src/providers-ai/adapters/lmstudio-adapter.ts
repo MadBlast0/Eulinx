@@ -133,6 +133,7 @@ export class LMStudioAdapter extends BaseProviderAdapter {
                 yield { type: "text_delta", delta: delta.content }
               }
             } catch {
+              console.warn('eulinx: lmstudio-adapter : unexpected error in catch block')
               // Skip malformed events
             }
           }

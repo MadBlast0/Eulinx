@@ -133,6 +133,7 @@ export class OllamaAdapter extends BaseProviderAdapter {
               return
             }
           } catch {
+            console.warn('eulinx: ollama-adapter : unexpected error in catch block')
             // Skip malformed events
           }
         }

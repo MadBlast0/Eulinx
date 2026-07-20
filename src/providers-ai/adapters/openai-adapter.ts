@@ -137,6 +137,7 @@ export class OpenAIAdapter extends BaseProviderAdapter {
                 yield { type: "text_delta", delta: delta.content }
               }
             } catch {
+              console.warn('eulinx: openai-adapter : unexpected error in catch block')
               // Skip malformed events
             }
           }

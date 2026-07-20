@@ -132,6 +132,7 @@ export class GeminiAdapter extends BaseProviderAdapter {
                 yield { type: "text_delta", delta: text }
               }
             } catch {
+              console.warn('eulinx: gemini-adapter : unexpected error in catch block')
               // Skip malformed events
             }
           }
