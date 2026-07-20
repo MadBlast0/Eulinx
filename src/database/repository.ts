@@ -123,36 +123,64 @@ class LocalStorageAdapter implements StorageAdapter {
 
 let tauriAdapter: StorageAdapter | null = null
 
+/// Shape of a single operation passed to the Rust `db_transaction` command.
+export interface DbStatement {
+  table: string
+  action: 'insert' | 'update' | 'delete'
+  data: Record<string, unknown>
+}
+
+/// The real SQLite-backed adapter used in the Tauri (native) runtime. It calls
+/// the Rust `db_*` commands via `@tauri-apps/api/core`'s `invoke`.
+///
+/// `transaction` optimistically runs the closure. The Rust `db_transaction`
+/// command executes a list of statements atomically with rollback-on-error;
+/// because JavaScript closures are not serializable across the IPC boundary,
+/// callers that need true atomic multi-row writes should batch `DbStatement`s
+/// and call `invoke('db_transaction', { statements })` directly.
+export class TauriStorageAdapter implements StorageAdapter {
+  constructor(
+    private readonly invokeFn: <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>,
+  ) {}
+
+  async query<T extends Record<string, unknown>>(table: string, filter?: Record<string, unknown>): Promise<T[]> {
+    return this.invokeFn<T[]>('db_query', { table, filter: filter ?? null })
+  }
+
+  async findById<T extends Record<string, unknown>>(table: string, id: IdType): Promise<T | null> {
+    return this.invokeFn<T | null>('db_find_by_id', { table, id })
+  }
+
+  async insert<T extends Record<string, unknown>>(table: string, data: Record<string, unknown>): Promise<T> {
+    return this.invokeFn<T>('db_insert', { table, data })
+  }
+
+  async update<T extends Record<string, unknown>>(table: string, id: IdType, data: Record<string, unknown>): Promise<T> {
+    return this.invokeFn<T>('db_update', { table, id, data })
+  }
+
+  async remove(table: string, id: IdType): Promise<void> {
+    await this.invokeFn('db_delete', { table, id })
+  }
+
+  async transaction<T>(fn: () => Promise<T>): Promise<T> {
+    return this.invokeFn<T>('db_transaction', { statements: [] as unknown[] }).then(() => fn())
+  }
+
+  /** Low-level helper mirroring the Rust `db_transaction` statement batch. */
+  async runStatements<T>(statements: DbStatement[]): Promise<T[]> {
+    return this.invokeFn<T[]>('db_transaction', { statements })
+  }
+}
+
 async function getTauriAdapter(): Promise<StorageAdapter> {
   if (tauriAdapter) return tauriAdapter
 
   const { invoke } = await import('@tauri-apps/api/core')
-
-  tauriAdapter = new (class TauriAdapter implements StorageAdapter {
-    async query<T extends Record<string, unknown>>(table: string, filter?: Record<string, unknown>): Promise<T[]> {
-      return invoke<T[]>('db_query', { table, filter: filter ?? null })
-    }
-
-    async findById<T extends Record<string, unknown>>(table: string, id: IdType): Promise<T | null> {
-      return invoke<T | null>('db_find_by_id', { table, id })
-    }
-
-    async insert<T extends Record<string, unknown>>(table: string, data: Record<string, unknown>): Promise<T> {
-      return invoke<T>('db_insert', { table, data })
-    }
-
-    async update<T extends Record<string, unknown>>(table: string, id: IdType, data: Record<string, unknown>): Promise<T> {
-      return invoke<T>('db_update', { table, id, data })
-    }
-
-    async remove(table: string, id: IdType): Promise<void> {
-      await invoke('db_delete', { table, id })
-    }
-
-    async transaction<T>(fn: () => Promise<T>): Promise<T> {
-      return invoke<T>('db_transaction', { fn: fn.toString() })
-    }
-  })()
+  tauriAdapter = new TauriStorageAdapter(
+    (<T>(cmd: string, args?: Record<string, unknown>) => invoke<T>(cmd, args)) as
+      <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>,
+  )
 
   return tauriAdapter
 }

@@ -1,5 +1,6 @@
 import { createLogger } from "@/core/logger"
-import { type StorageAdapter, LocalStorageAdapter } from "./repository"
+import { type StorageAdapter, type IdType } from "./repository"
+import type { Store } from "@tauri-apps/plugin-store"
 import {
   WorkspaceRepository,
   ProjectRepository,
@@ -39,39 +40,143 @@ export interface WorkspaceExport {
 
 const BACKUP_PREFIX = 'eulinx:backup:'
 
-function getBackupKey(workspaceId: string, backupId: string): string {
-  return `${BACKUP_PREFIX}${workspaceId}:${backupId}`
-}
-
-function getBackupListKey(workspaceId: string): string {
-  return `${BACKUP_PREFIX}list:${workspaceId}`
-}
+const BACKUP_STORE_PATH = 'eulinx_backups.json'
 
 let adapter: StorageAdapter | null = null
 
+function isBrowser(): boolean {
+  try {
+    return typeof window !== 'undefined' && window.__TAURI_INTERNALS__ === undefined
+  } catch {
+    return true
+  }
+}
+
+export class TauriBackupAdapter implements StorageAdapter {
+  private storePromise: Promise<Store> | null = null
+
+  private getStore(): Promise<Store> {
+    if (!this.storePromise) {
+      this.storePromise = (async (): Promise<Store> => {
+        const { Store } = await import('@tauri-apps/plugin-store')
+        return Store.load(BACKUP_STORE_PATH, { defaults: {} })
+      })()
+    }
+    return this.storePromise
+  }
+
+  async query<T extends Record<string, unknown>>(): Promise<T[]> {
+    return this.entries<T>()
+  }
+
+  async findById<T extends Record<string, unknown>>(_table: string, id: IdType): Promise<T | null> {
+    const key = id.toString()
+    const store = await this.getStore()
+    const value = await store.get<T>(key)
+    return value ?? null
+  }
+
+  async insert<T extends Record<string, unknown>>(_table: string, data: Record<string, unknown>): Promise<T> {
+    const store = await this.getStore()
+    const key = (data.id as string | number | undefined)?.toString()
+    if (!key) throw new Error('Backup entry requires an id')
+    await store.set(key, data)
+    await store.save()
+    return data as unknown as T
+  }
+
+  async update<T extends Record<string, unknown>>(_table: string, id: IdType, data: Record<string, unknown>): Promise<T> {
+    const store = await this.getStore()
+    const key = id.toString()
+    const existing = await store.get<Record<string, unknown>>(key)
+    if (!existing) throw new Error(`Backup not found: ${key}`)
+    const merged = { ...existing, ...data, id: existing.id ?? data.id }
+    await store.set(key, merged)
+    await store.save()
+    return merged as unknown as T
+  }
+
+  async remove(_table: string, id: IdType): Promise<void> {
+    const store = await this.getStore()
+    await store.delete(id.toString())
+    await store.save()
+  }
+
+  async transaction<T>(fn: () => Promise<T>): Promise<T> {
+    return fn()
+  }
+
+  async entries<T extends Record<string, unknown>>(): Promise<T[]> {
+    const store = await this.getStore()
+    const all = await store.entries<Record<string, unknown>>()
+    return all
+      .map(([, value]) => value as T)
+      .filter((row): row is T => row !== undefined)
+  }
+}
+
+class BrowserBackupAdapter implements StorageAdapter {
+  async query<T extends Record<string, unknown>>(): Promise<T[]> {
+    return this.all<T>()
+  }
+
+  async findById<T extends Record<string, unknown>>(_table: string, id: IdType): Promise<T | null> {
+    const raw = localStorage.getItem(id.toString())
+    return raw ? (JSON.parse(raw) as T) : null
+  }
+
+  async insert<T extends Record<string, unknown>>(_table: string, data: Record<string, unknown>): Promise<T> {
+    localStorage.setItem((data.id as string | number).toString(), JSON.stringify(data))
+    return data as unknown as T
+  }
+
+  async update<T extends Record<string, unknown>>(_table: string, id: IdType, data: Record<string, unknown>): Promise<T> {
+    const key = id.toString()
+    const raw = localStorage.getItem(key)
+    if (!raw) throw new Error(`Backup not found: ${key}`)
+    const merged = { ...JSON.parse(raw), ...data, id: JSON.parse(raw).id ?? data.id }
+    localStorage.setItem(key, JSON.stringify(merged))
+    return merged as unknown as T
+  }
+
+  async remove(_table: string, id: IdType): Promise<void> {
+    localStorage.removeItem(id.toString())
+  }
+
+  async transaction<T>(fn: () => Promise<T>): Promise<T> {
+    return fn()
+  }
+
+  private all<T extends Record<string, unknown>>(): T[] {
+    const result: T[] = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (!key) continue
+      const raw = localStorage.getItem(key)
+      if (raw) result.push(JSON.parse(raw) as T)
+    }
+    return result
+  }
+}
+
 async function getAdapter(): Promise<StorageAdapter> {
   if (adapter) return adapter
-  try {
-    if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__ === undefined) {
-      adapter = new LocalStorageAdapter()
-      return adapter
-    }
-    const { invoke } = await import('@tauri-apps/api/core')
-    adapter = new (class TauriBackupAdapter implements StorageAdapter {
-      async query<T extends Record<string, unknown>>(): Promise<T[]> { return [] }
-      async findById<T extends Record<string, unknown>>(): Promise<T | null> { return null }
-      async insert<T extends Record<string, unknown>>(table: string, data: Record<string, unknown>): Promise<T> {
-        return invoke<T>('db_insert', { table, data })
-      }
-      async update<T extends Record<string, unknown>>(): Promise<T> { throw new Error('not implemented') }
-      async remove(): Promise<void> { }
-      async transaction<T>(fn: () => Promise<T>): Promise<T> { return fn() }
-    })()
-    return adapter
-  } catch {
-    adapter = new LocalStorageAdapter()
+  if (isBrowser()) {
+    adapter = new BrowserBackupAdapter()
     return adapter
   }
+  try {
+    adapter = new TauriBackupAdapter()
+    return adapter
+  } catch (e) {
+    log.warn('Failed to initialize Tauri backup adapter, falling back to localStorage', { error: e })
+    adapter = new BrowserBackupAdapter()
+    return adapter
+  }
+}
+
+function sortByTimestampDesc(a: BackupEntry, b: BackupEntry): number {
+  return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
 }
 
 export async function exportWorkspace(workspaceId: string): Promise<WorkspaceExport> {
@@ -175,63 +280,22 @@ export async function createBackup(workspaceId: string): Promise<string> {
   const a = await getAdapter()
   await a.insert(BACKUP_PREFIX, entry as unknown as Record<string, unknown>)
 
-  try {
-    if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__ === undefined) {
-      const key = getBackupKey(workspaceId, backupId)
-      localStorage.setItem(key, JSON.stringify(entry))
-
-      const listKey = getBackupListKey(workspaceId)
-      const listRaw = localStorage.getItem(listKey)
-      const list: string[] = listRaw ? JSON.parse(listRaw) : []
-      list.push(backupId)
-      localStorage.setItem(listKey, JSON.stringify(list))
-    }
-  } catch (e) {
-    log.error('Failed to persist backup metadata', { error: e })
-  }
-
   log.info(`Backup created: ${backupId} for workspace ${workspaceId}`)
   return backupId
 }
 
 export async function listBackups(workspaceId: string): Promise<BackupEntry[]> {
-  try {
-    if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__ === undefined) {
-      const listKey = getBackupListKey(workspaceId)
-      const listRaw = localStorage.getItem(listKey)
-      if (!listRaw) return []
-      const list: string[] = JSON.parse(listRaw)
-      const backups: BackupEntry[] = []
-      for (const backupId of list) {
-        const key = getBackupKey(workspaceId, backupId)
-        const raw = localStorage.getItem(key)
-        if (raw) {
-          backups.push(JSON.parse(raw) as BackupEntry)
-        }
-      }
-      return backups.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-    }
-  } catch (e) {
-    log.error('Failed to list backups', { error: e })
-  }
-
-  return []
+  const a = await getAdapter()
+  const all = await a.query(BACKUP_PREFIX) as unknown as BackupEntry[]
+  return all
+    .filter((b) => b.workspaceId === workspaceId)
+    .sort(sortByTimestampDesc)
 }
 
 export async function restoreBackup(workspaceId: string, backupId: string): Promise<void> {
-  let entry: BackupEntry | null = null
-
-  try {
-    if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__ === undefined) {
-      const key = getBackupKey(workspaceId, backupId)
-      const raw = localStorage.getItem(key)
-      if (raw) {
-        entry = JSON.parse(raw) as BackupEntry
-      }
-    }
-  } catch (e) {
-    log.error('Failed to read backup', { error: e })
-  }
+  const a = await getAdapter()
+  const raw = await a.findById(BACKUP_PREFIX, backupId)
+  const entry = raw as unknown as BackupEntry | null
 
   if (!entry) {
     throw new Error(`Backup not found: ${backupId}`)
