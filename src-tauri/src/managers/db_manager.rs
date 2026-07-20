@@ -444,6 +444,18 @@ impl DbManager {
         Ok(results)
     }
 
+    pub fn write_event_log(&self, request: crate::ipc::EventLogWriteRequest) -> Result<(), AppError> {
+        let conn = self.conn.lock().map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+        let data = serde_json::to_string(&request.payload)
+            .map_err(|e| AppError::Internal(format!("serialize payload failed: {e}")))?;
+        conn.execute(
+            "INSERT INTO event_log (table_name, row_id, action, data, timestamp) VALUES (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![request.workspace_id, request.workspace_id, request.event_type, data, request.timestamp],
+        )
+        .map_err(|e| AppError::Internal(format!("write event log failed: {e}")))?;
+        Ok(())
+    }
+
     fn validate_table(&self, table: &str) -> Result<(), AppError> {
         if !entity_tables().contains(&table) {
             return Err(AppError::InvalidInput(format!("unknown table: {table}")));
@@ -485,10 +497,6 @@ fn format_iso8601(millis: u64) -> String {
         "{:04}-{:02}-{:02}T{:02}:{:02}:{:02}.{:03}Z",
         year, month, day, hour, minute, second, ms
     )
-}
-
-fn is_leap(y: i64) -> bool {
-    (y % 4 == 0 && y % 100 != 0) || y % 400 == 0
 }
 
 fn ymd_from_days(days: i64) -> (i64, u32, u32) {

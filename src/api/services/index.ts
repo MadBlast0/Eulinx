@@ -50,3 +50,6 @@ export type { McpService, McpServer } from "./mcp-service"
 
 export { pluginService } from "./plugin-service"
 export type { PluginService, Plugin } from "./plugin-service"
+
+export { ptyService } from "./pty-service"
+export type { PtyService } from "./pty-service"

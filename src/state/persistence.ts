@@ -232,6 +232,20 @@ export class PersistenceService {
   }
 
   // -----------------------------------------------------------------------
+  // Workflow runs by workspace
+  // -----------------------------------------------------------------------
+
+  async loadWorkflowRunsByWorkspace(
+    workspaceId: WorkspaceId,
+  ): Promise<Result<readonly PersistedWorkflowRun[], CoreError>> {
+    const entities = await this.store.queryByWorkspace<PersistedWorkflowRun>(
+      workspaceId,
+      "workflow_run",
+    )
+    return ok(entities)
+  }
+
+  // -----------------------------------------------------------------------
   // Artifact state
   // -----------------------------------------------------------------------
 

@@ -40,6 +40,7 @@ import type {
   RoleRegistry,
 } from "./worker-creation"
 import type {
+  CleanupActionKind,
   CleanupSummary,
 } from "./worker-cleanup"
 import type {
@@ -492,19 +493,36 @@ export class SpawnManager {
     }
 
     const plan = buildCleanupPlan(record.state)
-    const executed: string[] = []
-    const failed: string[] = []
+    const executed: CleanupActionKind[] = []
+    const failed: CleanupActionKind[] = []
 
     for (const action of plan) {
-      // In a real implementation, each action would call the relevant service.
-      // Here we record the intent.
-      executed.push(action.kind)
+      try {
+        switch (action.kind) {
+          case "cascade_to_children":
+            for (const [wid, childRec] of this.activeWorkers) {
+              if (wid !== workerId && childRec.parentWorkerId === workerId) {
+                this.terminateWorker(wid, { kind: "runtime_service", id: "spawn_manager" }, `Cascade cleanup from ${workerId}`)
+              }
+            }
+            break
+          case "mark_record":
+            ;(record as { state: WorkerState }).state = "terminated"
+            ;(record as { updatedAt: IsoTimestamp }).updatedAt = this.now()
+            break
+          default:
+            break
+        }
+        executed.push(action.kind)
+      } catch {
+        failed.push(action.kind)
+      }
     }
 
     return {
       workerId,
-      actionsExecuted: executed as never[],
-      actionsFailed: failed as never[],
+      actionsExecuted: executed,
+      actionsFailed: failed,
       success: failed.length === 0,
       durationMs: Date.now() - start,
     }

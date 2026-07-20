@@ -6,56 +6,64 @@
 
 import type { CliCommand, CliConfig, CliResult } from "../cli-types"
 import { success, info, table, fail } from "../cli-output"
-
-interface PromptEntry {
-  readonly id: string
-  readonly name: string
-  readonly scope: string
-  readonly tokens: number
-  readonly body: string
-}
-
-const prompts: PromptEntry[] = [
-  { id: "p1", name: "System — base agent", scope: "system", tokens: 412, body: "You are Eulinx, a local-first AI operating system." },
-  { id: "p2", name: "Worker — build agent", scope: "worker", tokens: 188, body: "Role: compile and bundle the workspace." },
-  { id: "p3", name: "Session — research synth", scope: "session", tokens: 256, body: "Synthesize conversation into structured notes." },
-]
+import { PromptManager } from "@/prompts/prompt-manager"
+import type { IsoTimestamp } from "@/core/types"
 
 async function handler(args: { positional: string[]; flags: Record<string, unknown> }, _config: CliConfig): Promise<CliResult> {
   const subcommand = args.positional[0]
+  const promptManager = new PromptManager()
 
   switch (subcommand) {
-    case "list":
-      return table("Prompts", ["ID", "Name", "Scope", "Tokens", "Body"],
-        prompts.map((p) => [p.id, p.name, p.scope, String(p.tokens), p.body.slice(0, 60)]))
+    case "list": {
+      const ids = promptManager.listTemplates()
+      const rows = ids.map((id) => {
+        const t = promptManager.getTemplate(id)
+        return [t?.id ?? id, t?.name ?? "", t?.type ?? "", String(t?.version ?? 0), (t?.template ?? "").slice(0, 60)]
+      })
+      return table("Prompts", ["ID", "Name", "Type", "Version", "Body"], rows)
+    }
     case "show": {
       const id = args.positional[1]
       if (!id) return fail("missing_id", "Prompt ID required", "eulinx prompt show <prompt-id>")
-      const prompt = prompts.find((p) => p.id === id)
-      if (!prompt) return fail("not_found", `Prompt ${id} not found`)
-      return info(`Prompt: ${id}`, { name: prompt.name, scope: prompt.scope, tokens: prompt.tokens, body: prompt.body })
+      const template = promptManager.getTemplate(id)
+      if (!template) return fail("not_found", `Prompt ${id} not found`)
+      return info(`Prompt: ${id}`, { name: template.name, type: template.type, version: template.version, body: template.template })
     }
     case "create": {
       const name = args.positional[1]
       if (!name) return fail("missing_name", "Prompt name required", "eulinx prompt create <name>")
       const id = `prompt_${Date.now().toString(36)}`
-      prompts.push({ id, name, scope: "session", tokens: 0, body: "" })
+      const result = promptManager.registerTemplate({
+        id,
+        name,
+        type: "system",
+        version: 1,
+        tags: [],
+        template: "",
+        requiredVariables: [],
+        cacheable: false,
+        createdAt: new Date().toISOString() as IsoTimestamp,
+      })
+      if (!result.ok) return fail("create_failed", `Failed to create prompt: ${result.error.message}`)
       return success(`Prompt ${name} created`, { id })
     }
     case "test": {
       const id = args.positional[1]
       if (!id) return fail("missing_id", "Prompt ID required", "eulinx prompt test <prompt-id>")
-      const prompt = prompts.find((p) => p.id === id)
-      if (!prompt) return fail("not_found", `Prompt ${id} not found`)
-      return success(`Prompt ${id} test passed`, { tokens: prompt.tokens, cost: (prompt.tokens * 0.000015).toFixed(6) })
+      const template = promptManager.getTemplate(id)
+      if (!template) return fail("not_found", `Prompt ${id} not found`)
+      const tokens = Math.ceil(template.template.length / 4)
+      return success(`Prompt ${id} test passed`, { tokens, cost: (tokens * 0.000015).toFixed(6) })
     }
     case "optimize": {
       const id = args.positional[1]
       if (!id) return fail("missing_id", "Prompt ID required", "eulinx prompt optimize <prompt-id>")
-      const prompt = prompts.find((p) => p.id === id)
-      if (!prompt) return fail("not_found", `Prompt ${id} not found`)
-      const optimized = Math.max(1, Math.floor(prompt.tokens * 0.8))
-      return success(`Prompt ${id} optimized`, { before: prompt.tokens, after: optimized, savings: "20%" })
+      const result = await promptManager.optimize(id)
+      if (!result.ok) return fail("optimize_failed", result.error.message)
+      const before = result.value.originalLength
+      const after = result.value.optimizedLength
+      const savingsPct = before > 0 ? `${Math.round((1 - after / before) * 100)}%` : "0%"
+      return success(`Prompt ${id} optimized`, { before, after, savings: savingsPct })
     }
     default:
       return fail("unknown_subcommand", `Unknown prompt subcommand: ${subcommand ?? "(none)"}`, "Use: list, show, create, test, optimize")

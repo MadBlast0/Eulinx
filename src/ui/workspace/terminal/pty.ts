@@ -299,14 +299,7 @@ export function createMockPty(): Pty {
 // Native PTY bridge (Tauri)
 // ---------------------------------------------------------------------------
 
-// TODO(ADR-025): route `pty_spawn`/`pty_write`/`pty_resize`/`pty_kill` and the
-// `pty://<id>/data|exit` listeners through a dedicated `ptyService` in
-// `@/api/services` so this file no longer calls `invoke`/`listen` directly.
-// The Pty interface is shared with the mock, so this is deferred until the
-// service module can own the listener lifecycle.
-
-import type { InvokeArgs } from "@tauri-apps/api/core"
-import { invoke } from "@tauri-apps/api/core"
+import { ptyService } from "@/api/services"
 import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 
 const SHELL_EVENT = (id: string) => `pty://${id}/data`
@@ -355,8 +348,7 @@ export function createNativePty(shell?: string): Pty {
     }
   }
 
-  const args: InvokeArgs = { id, shell: shell && shell.length > 0 ? shell : null }
-  void invoke("pty_spawn", args)
+  void ptyService.spawn(id, shell && shell.length > 0 ? shell : undefined)
     .then(() => {
       void listen<{ chunk: string }>(SHELL_EVENT(id), (e) => dispatchData(e.payload.chunk))
         .then((fn) => (unlistenData = fn))
@@ -373,7 +365,7 @@ export function createNativePty(shell?: string): Pty {
     id,
     write(data: string): void {
       if (killed || exited) return
-      void invoke("pty_write", { id, data } as InvokeArgs)
+      void ptyService.write(id, data)
     },
     onData(cb) {
       listeners.data.add(cb)
@@ -388,14 +380,14 @@ export function createNativePty(shell?: string): Pty {
       }
     },
     resize(cols: number, rows: number): void {
-      void invoke("pty_resize", { id, cols, rows } as InvokeArgs)
+      void ptyService.resize(id, cols, rows)
     },
     kill(): void {
       if (killed) return
       killed = true
       unlistenData?.()
       unlistenExit?.()
-      void invoke("pty_kill", { id } as InvokeArgs)
+      void ptyService.kill(id)
       dispatchExit(null)
     },
   }

@@ -5,12 +5,6 @@ pub mod pty_manager;
 pub mod secure_store_manager;
 pub mod window_manager;
 
-pub use dialog_manager::DialogManagerImpl;
-pub use fs_manager::FsManagerImpl;
-pub use pty_manager::PtyManagerImpl;
-pub use secure_store_manager::SecureStoreManagerImpl;
-pub use window_manager::WindowManagerImpl;
-
 use crate::ipc::ApiResult;
 
 /// Native filesystem operations.

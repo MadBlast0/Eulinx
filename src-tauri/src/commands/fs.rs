@@ -6,8 +6,11 @@
 use std::path::Path;
 
 use tauri::AppHandle;
+use tauri::State;
 use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_fs::FsExt;
+
+use crate::state::AppState;
 
 /// Read a UTF-8 file at `path`.
 #[tauri::command]
@@ -38,6 +41,17 @@ pub fn fs_exists(_app: AppHandle, path: String) -> Result<bool, String> {
     Ok(Path::new(&path).exists())
 }
 
+/// Pure implementation of `fs_create_dir`, independent of Tauri, for testing.
+fn create_dir_impl(path: &str) -> Result<(), String> {
+    std::fs::create_dir_all(Path::new(path)).map_err(|e| format!("create dir failed: {e}"))
+}
+
+/// Create a directory at `path`, including parent directories.
+#[tauri::command]
+pub fn fs_create_dir(_app: AppHandle, path: String) -> Result<(), String> {
+    create_dir_impl(&path)
+}
+
 /// Open the native folder picker. Returns the chosen absolute path, or `None`
 /// if the user cancelled.
 #[tauri::command]
@@ -62,6 +76,24 @@ pub struct FileEntry {
 #[tauri::command]
 pub fn fs_list_dir(_app: AppHandle, path: String) -> Result<Vec<FileEntry>, String> {
     list_dir_impl(&path)
+}
+
+/// Start watching a filesystem path for changes.
+#[tauri::command]
+pub async fn fs_watch_path(app: AppHandle, state: State<'_, AppState>, path: String) -> Result<String, String> {
+    state.watch_path(path, app).await
+}
+
+/// Stop watching a previously registered path.
+#[tauri::command]
+pub async fn fs_unwatch_path(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    state.unwatch_path(&id).await
+}
+
+/// List all active watchers.
+#[tauri::command]
+pub async fn fs_list_watchers(state: State<'_, AppState>) -> Result<Vec<(String, String)>, String> {
+    Ok(state.list_watchers().await)
 }
 
 /// Pure implementation of `fs_list_dir`, independent of Tauri, for testing.
@@ -162,5 +194,33 @@ mod tests {
         let missing = std::env::temp_dir().join("eulinx_fs_does_not_exist_xyz");
         let result = list_dir_impl(&missing.to_string_lossy());
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn create_dir_single_directory() {
+        let dir = temp_dir("create_single");
+        let path = dir.join("newdir").to_string_lossy().to_string();
+        create_dir_impl(&path).expect("create single dir");
+        assert!(Path::new(&path).is_dir());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn create_dir_nested_directories() {
+        let dir = temp_dir("create_nested");
+        let path = dir.join("a").join("b").join("c").to_string_lossy().to_string();
+        create_dir_impl(&path).expect("create nested dirs");
+        assert!(Path::new(&path).is_dir());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn create_dir_existing_succeeds() {
+        let dir = temp_dir("create_existing");
+        let path = dir.join("exists").to_string_lossy().to_string();
+        create_dir_impl(&path).expect("create first time");
+        create_dir_impl(&path).expect("create second time (should succeed)");
+        assert!(Path::new(&path).is_dir());
+        std::fs::remove_dir_all(&dir).ok();
     }
 }

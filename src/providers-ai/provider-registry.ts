@@ -280,7 +280,7 @@ export class ProviderRegistry {
       id: "openai" as ProviderId,
       name: "OpenAI",
       models: OPENAI_MODELS,
-      enabled: false,
+      enabled: true,
     })
     this.registerAdapter("openai" as ProviderId, openaiAdapter)
 
@@ -288,7 +288,7 @@ export class ProviderRegistry {
       id: "gemini" as ProviderId,
       name: "Gemini",
       models: GEMINI_MODELS,
-      enabled: false,
+      enabled: true,
     })
     this.registerAdapter("gemini" as ProviderId, geminiAdapter)
 
@@ -297,7 +297,7 @@ export class ProviderRegistry {
       name: "Ollama",
       models: OLLAMA_MODELS,
       baseUrl: "http://localhost:11434",
-      enabled: false,
+      enabled: true,
     })
     this.registerAdapter("ollama" as ProviderId, ollamaAdapter)
 
@@ -306,7 +306,7 @@ export class ProviderRegistry {
       name: "LM Studio",
       models: LMSTUDIO_MODELS,
       baseUrl: "http://localhost:1234",
-      enabled: false,
+      enabled: true,
     })
     this.registerAdapter("lmstudio" as ProviderId, lmstudioAdapter)
 
@@ -314,7 +314,7 @@ export class ProviderRegistry {
       id: "openrouter" as ProviderId,
       name: "OpenRouter",
       models: OPENROUTER_MODELS,
-      enabled: false,
+      enabled: true,
     })
     this.registerAdapter("openrouter" as ProviderId, openrouterAdapter)
 
@@ -322,7 +322,7 @@ export class ProviderRegistry {
       id: "hermes" as ProviderId,
       name: "Hermes",
       models: HERMES_MODELS,
-      enabled: false,
+      enabled: true,
     })
     this.registerAdapter("hermes" as ProviderId, hermesAdapter)
   }

@@ -103,6 +103,7 @@ function saveToStorage(store: Map<string, StoredArtifact>): void {
 export class ArtifactStorage {
   private readonly store: Map<string, StoredArtifact>
   private readonly contentIndex = new Map<string, ArtifactId>() // hash -> id for dedup
+  private readonly contentCache = new Map<string, string | Uint8Array>() // ref path -> content
   private readonly config: ArtifactStorageConfig
   private persistTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -151,19 +152,19 @@ export class ArtifactStorage {
       scheme,
       path: `${scheme}://${this.config.storageRoot}/${id}`,
     }
-    // Store in memory (in production, would persist to SQLite/filesystem)
     const existing = this.store.get(id)
     if (existing) {
       // Immutability: cannot overwrite existing content
       return existing.meta.contentRef
     }
+    this.contentCache.set(contentRef.path, content)
     return contentRef
   }
 
   /** Retrieve content by content reference. Returns undefined if not found. */
   retrieveContent(ref: ContentRef): string | Uint8Array | undefined {
-    // In a real implementation, would resolve the contentRef scheme
-    // For now, iterate the store to find by ref
+    const cached = this.contentCache.get(ref.path)
+    if (cached !== undefined) return cached
     for (const stored of this.store.values()) {
       if (
         stored.meta.contentRef.scheme === ref.scheme &&
@@ -188,6 +189,7 @@ export class ArtifactStorage {
   setArtifact(artifact: Artifact, content: string | Uint8Array): void {
     this.store.set(artifact.id, { meta: artifact, content })
     this.contentIndex.set(artifact.contentHash, artifact.id)
+    this.contentCache.delete(artifact.contentRef.path)
     this.schedulePersist()
   }
 

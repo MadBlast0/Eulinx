@@ -17,9 +17,12 @@ use std::collections::HashMap;
 use std::io::Write;
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, Manager};
+
+use crate::state::{AppState, PtySessionState};
 
 #[derive(Default)]
 pub struct PtyState {
@@ -79,7 +82,7 @@ fn resolve_shell(shell: Option<&str>) -> (String, String) {
 /// Spawn a real shell. `shell` overrides the OS default (e.g. "pwsh", "bash").
 /// Returns the PTY id used for write/resize/kill and event channels.
 #[tauri::command]
-pub fn pty_spawn(app: AppHandle, id: String, shell: Option<String>) -> Result<String, String> {
+pub fn pty_spawn(app: AppHandle, state: tauri::State<'_, AppState>, id: String, shell: Option<String>) -> Result<String, String> {
     let (program, flag) = resolve_shell(shell.as_deref());
 
     let mut command = Command::new(&program);
@@ -89,6 +92,7 @@ pub fn pty_spawn(app: AppHandle, id: String, shell: Option<String>) -> Result<St
     command.stderr(Stdio::piped());
 
     let mut child = command.spawn().map_err(|e| format!("spawn failed: {e}"))?;
+    let pid = child.id();
     let stdin = child.stdin.take().ok_or("no stdin handle")?;
 
     let app_owned = app.clone();
@@ -109,8 +113,8 @@ pub fn pty_spawn(app: AppHandle, id: String, shell: Option<String>) -> Result<St
     // it out under lock so kill() and wait() never race on the same instance.
     let exit_id = id.clone();
     let exit_app = app_owned.clone();
-    let state = app_owned.state::<PtyState>();
-    state.children.lock().unwrap().insert(
+    let pty_state = app_owned.state::<PtyState>();
+    pty_state.children.lock().unwrap().insert(
         id.clone(),
         PtyHandle {
             child: Mutex::new(Some(child)),
@@ -118,6 +122,16 @@ pub fn pty_spawn(app: AppHandle, id: String, shell: Option<String>) -> Result<St
             cols: Mutex::new((80, 24)),
         },
     );
+
+    let started_at = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis().to_string())
+        .unwrap_or_default();
+    state
+        .pty_sessions
+        .blocking_write()
+        .insert(id.clone(), PtySessionState { pid, started_at, cmd: program });
+
     std::thread::spawn(move || {
         let code = {
             let state = exit_app.state::<PtyState>();
@@ -260,12 +274,13 @@ mod tests {
 
 /// Kill the shell process.
 #[tauri::command]
-pub fn pty_kill(app: AppHandle, id: String) -> Result<(), String> {
-    let state = app.state::<PtyState>();
-    if let Some(handle) = state.children.lock().unwrap().remove(&id) {
+pub fn pty_kill(app: AppHandle, state: tauri::State<'_, AppState>, id: String) -> Result<(), String> {
+    let pty_state = app.state::<PtyState>();
+    if let Some(handle) = pty_state.children.lock().unwrap().remove(&id) {
         if let Some(mut child) = handle.child.lock().unwrap().take() {
             let _ = child.kill();
         }
     }
+    state.pty_sessions.blocking_write().remove(&id);
     Ok(())
 }

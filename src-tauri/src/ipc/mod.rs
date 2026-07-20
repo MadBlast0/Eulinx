@@ -16,6 +16,16 @@ impl std::fmt::Display for ApiError {
 
 impl std::error::Error for ApiError {}
 
+impl From<String> for ApiError {
+    fn from(msg: String) -> Self {
+        Self {
+            code: "ERR".into(),
+            message: msg,
+            context: None,
+        }
+    }
+}
+
 /// Generic result wrapper for IPC responses.
 pub type ApiResult<T> = Result<T, ApiError>;
 

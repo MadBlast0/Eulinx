@@ -19,7 +19,7 @@
  */
 
 import type { JsonValue, ArtifactId, ArtifactKind, SessionId } from "@/core/types"
-import type { WorkflowNodeResult, NodeFailure } from "../workflow-types"
+import type { WorkflowNodeResult } from "../workflow-types"
 import {
   type ExecutorInput,
   type NodeExecutor,
@@ -125,7 +125,3 @@ export function createBuilderExecutor(deps: BuilderExecutorDeps): NodeExecutor {
   }
 }
 
-/** Default failure shape helper retained for typing symmetry. */
-export function builderFailure(_f: NodeFailure): NodeFailure {
-  return _f
-}

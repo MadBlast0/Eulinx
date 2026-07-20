@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use serde_json::Value;
-use tauri::State;
+use tauri::{AppHandle, Manager, State};
 
 use crate::managers::db_manager::{DbManager, DbStatement};
 
@@ -46,6 +46,12 @@ pub fn db_update(db: State<DbManager>, table: String, id: Value, data: Value) ->
 pub fn db_delete(db: State<DbManager>, table: String, id: Value) -> Result<(), String> {
     let id_str = coerce_id(&id)?;
     db.delete(&table, &id_str).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn db_write_event_log(app: AppHandle, request: crate::ipc::EventLogWriteRequest) -> Result<(), String> {
+    let db = app.state::<DbManager>();
+    db.write_event_log(request).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

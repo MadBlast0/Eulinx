@@ -13,6 +13,7 @@ import { PermissionManager } from "@/security/permission-manager"
 import { MemoryManager } from "@/memory/memory-manager"
 import { ArtifactManager } from "@/artifact/artifact-manager"
 import { ToolRegistry } from "@/tools/tool-registry"
+import { registerBuiltInDefinitions } from "@/tools/built-in"
 import { Scheduler } from "@/scheduler/scheduler"
 import type { WorkspaceId } from "@/core/types"
 import { WorkspaceManager } from "@/runtime/services/workspace-manager"
@@ -217,6 +218,11 @@ export function bootstrapServiceRegistry(
   // Phase 4 — Capability Services
   // -----------------------------------------------------------------------
   registry.setInstance("ToolRegistry", new ToolRegistry())
+  // Register all built-in tool definitions
+  const toolRegistry = registry.getInstance<ToolRegistry>("ToolRegistry")
+  if (toolRegistry) {
+    registerBuiltInDefinitions(toolRegistry)
+  }
   const processLifecycle = new ProcessLifecycle(eventBus)
   registry.setInstance("ProcessLifecycle", processLifecycle)
   registry.setInstance("WorkerSpawner", new WorkerSpawner(processLifecycle, eventBus))

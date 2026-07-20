@@ -295,10 +295,14 @@ export class RecoveryService {
    * List all runs needing recovery in a workspace.
    */
   async findRunsNeedingRecovery(
-    _workspaceId: WorkspaceId,
+    workspaceId: WorkspaceId,
   ): Promise<Result<readonly PersistedWorkflowRun[], CoreError>> {
-    // This would query the store for all runs in non-terminal states
-    // For now, return empty — the actual query goes through the store
-    return ok([])
+    const result = await this.persistence.loadWorkflowRunsByWorkspace(workspaceId)
+    if (!result.ok) {
+      return err(result.error)
+    }
+    const runs = result.value
+    const needingRecovery = runs.filter(run => this.needsRecovery(run))
+    return ok(needingRecovery)
   }
 }

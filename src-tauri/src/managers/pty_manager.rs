@@ -6,6 +6,7 @@ use tauri::{AppHandle, Manager};
 use crate::commands::pty::PtyState;
 use crate::ipc::{ApiError, ApiResult};
 use crate::managers::PtyManager;
+use crate::state::AppState;
 
 pub struct PtyManagerImpl {
     app: AppHandle,
@@ -26,7 +27,10 @@ impl PtyManager for PtyManagerImpl {
         let id = workspace_id.to_string();
         let cmd_str = if cmd.is_empty() { None } else { Some(cmd.to_string()) };
 
-        crate::commands::pty::pty_spawn(self.app.clone(), id.clone(), cmd_str)
+        let handle = self.app.clone();
+        let handle2 = handle.clone();
+        let app_state = handle2.state::<AppState>();
+        crate::commands::pty::pty_spawn(handle, app_state, id.clone(), cmd_str)
             .map_err(|e| ApiError { code: "PTY_SPAWN".into(), message: e, context: None })?;
 
         let state = self.app.state::<PtyState>();
@@ -92,7 +96,10 @@ impl PtyManager for PtyManagerImpl {
                 context: None,
             })?;
 
-        crate::commands::pty::pty_kill(self.app.clone(), id)
+        let handle = self.app.clone();
+        let handle2 = handle.clone();
+        let app_state = handle2.state::<AppState>();
+        crate::commands::pty::pty_kill(handle, app_state, id)
             .map_err(|e| ApiError { code: "PTY_KILL".into(), message: e, context: None })
     }
 }

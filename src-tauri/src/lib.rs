@@ -8,7 +8,13 @@ use std::path::PathBuf;
 
 use commands::pty::PtyState;
 use managers::db_manager::DbManager;
+use managers::dialog_manager::DialogManagerImpl;
+use managers::fs_manager::FsManagerImpl;
+use managers::pty_manager::PtyManagerImpl;
+use managers::secure_store_manager::SecureStoreManagerImpl;
+use managers::window_manager::WindowManagerImpl;
 use state::AppState;
+use tauri::Manager;
 
 /// Resolve a stable directory for the on-disk SQLite database.
 ///
@@ -47,15 +53,29 @@ pub fn run() {
         .manage(PtyState::default())
         .manage(AppState::new(true))
         .manage(db)
+        .setup(|app| {
+            let handle = app.handle().clone();
+            app.manage(Box::new(FsManagerImpl::new(handle.clone())) as Box<dyn crate::managers::FsManager>);
+            app.manage(Box::new(PtyManagerImpl::new(handle.clone())) as Box<dyn crate::managers::PtyManager>);
+            app.manage(Box::new(WindowManagerImpl::new(handle.clone())) as Box<dyn crate::managers::WindowManager>);
+            app.manage(Box::new(SecureStoreManagerImpl::new(handle.clone())) as Box<dyn crate::managers::SecureStoreManager>);
+            app.manage(Box::new(DialogManagerImpl::new(handle)) as Box<dyn crate::managers::DialogManager>);
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::pty::pty_spawn,
             commands::pty::pty_write,
             commands::pty::pty_resize,
             commands::pty::pty_kill,
+            commands::fs::dialog_pick_folder,
+            commands::fs::fs_exists,
+            commands::fs::fs_list_dir,
             commands::fs::fs_read_text,
             commands::fs::fs_write_text,
-            commands::fs::fs_exists,
-            commands::fs::dialog_pick_folder,
+            commands::fs::fs_create_dir,
+            commands::fs::fs_watch_path,
+            commands::fs::fs_unwatch_path,
+            commands::fs::fs_list_watchers,
             commands::git::git_status,
             commands::git::git_stage_all,
             commands::git::git_commit,
@@ -66,6 +86,7 @@ pub fn run() {
             commands::db::db_update,
             commands::db::db_delete,
             commands::db::db_transaction,
+            commands::db::db_write_event_log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

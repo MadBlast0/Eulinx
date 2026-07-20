@@ -45,7 +45,7 @@ async function handler(args: { positional: string[]; flags: Record<string, unkno
       })
     }
     case "cleanup":
-      return success("Sessions cleaned up", { removed: 0 })
+      return info("Session Cleanup", { removed: 0, note: "Depends on RuntimeManager — not yet wired" })
     default:
       return fail("unknown_subcommand", `Unknown session subcommand: ${subcommand ?? "(none)"}`, "Use: list, create, history, cleanup")
   }
