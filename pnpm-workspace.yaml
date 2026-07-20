@@ -1,3 +1,9 @@
 allowBuilds:
   "@swc/core": true
   esbuild: true
+
+allowedDeprecatedVersions:
+  tsconfck: "*"
+
+overrides:
+  uuid: "^11"
