@@ -9,8 +9,6 @@
 import type { SessionId, WorkspaceId, WorkerId, IsoTimestamp } from "@/core/types"
 import type {
   MemoryRecord,
-  MemoryKind,
-  MemoryScope,
   MemorySearchQuery,
   MemorySearchResult,
   MemoryPolicy,
@@ -19,12 +17,12 @@ import type {
   LtmRecord,
   EpisodicRecord,
   SemanticRecord,
-  WorkingMemoryRecord,
   LtmCategory,
 } from "./memory-types"
 import { ShortTermMemoryStore, WorkingMemoryStore } from "./memory-stm"
 import { LongTermMemoryStore, EpisodicMemoryStore, SemanticMemoryStore } from "./memory-ltm"
 import { VectorMemoryStore, MemorySearchEngine } from "./memory-vector"
+import { KnowledgeBase, type IngestKind, type IngestOptions, type IngestResult } from "./knowledge-base"
 import { DEFAULT_MEMORY_POLICY, redactSecrets, isScopeViolation, isUnsafeForInjection } from "./memory-policies"
 
 // ---------------------------------------------------------------------------
@@ -39,6 +37,7 @@ export class MemoryManager {
   readonly working: WorkingMemoryStore
   readonly vector: VectorMemoryStore
   readonly search: MemorySearchEngine
+  readonly knowledgeBase: KnowledgeBase
   readonly policy: MemoryPolicy
 
   private readonly policies: Map<string, MemoryPolicy> = new Map()
@@ -52,6 +51,20 @@ export class MemoryManager {
     this.working = new WorkingMemoryStore()
     this.vector = new VectorMemoryStore()
     this.search = new MemorySearchEngine(this.vector)
+    this.knowledgeBase = new KnowledgeBase(this.vector)
+  }
+
+  /**
+   * Ingest a knowledge source (markdown/text/url/repo/pdf) into vector memory.
+   * Delegates to {@link KnowledgeBase.ingest}.
+   */
+  ingest(
+    kind: IngestKind,
+    source: string | ArrayBuffer,
+    workspaceId: WorkspaceId,
+    options?: IngestOptions,
+  ): Promise<IngestResult> {
+    return this.knowledgeBase.ingest(kind, source, workspaceId, options)
   }
 
   // ---------------------------------------------------------------------------

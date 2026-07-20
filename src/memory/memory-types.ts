@@ -148,6 +148,8 @@ export interface VectorRecord {
   readonly embeddingModel: string
   readonly chunkText: string
   readonly vectorRef: string
+  /** Real dense embedding vector for the chunk text. */
+  readonly vector: readonly number[]
   readonly sensitivity: SensitivityLevel
   readonly metadata: Record<string, unknown>
   readonly createdAt: IsoTimestamp

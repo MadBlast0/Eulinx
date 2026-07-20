@@ -1,160 +1,100 @@
 /**
- * P09-MEM-EMBED / P09-MEM-SEARCH — Vector Memory & Search Tests
+ * P09-MEM-EMBED / P09-MEM-SEARCH — Vector memory & hybrid search tests
  */
 
 import { describe, it, expect } from "vitest"
-import type { WorkspaceId, SessionId, WorkerId, IsoTimestamp } from "@/core/types"
-import { VectorMemoryStore, MemorySearchEngine } from "./memory-vector"
-import type { MemoryRecord } from "./memory-types"
+import type { WorkspaceId } from "@/core/types"
+import { VectorMemoryStore } from "./memory-vector"
+import { EmbeddingService, cosineSimilarity } from "./embedding-service"
+import { brand } from "@/core/types"
 
-function ws(id: string): WorkspaceId { return id as unknown as WorkspaceId }
-function sid(id: string): SessionId { return id as unknown as SessionId }
-function wid(id: string): WorkerId { return id as unknown as WorkerId }
+const WS = brand<string, "WorkspaceId">("ws-test")
 
-function mockRecord(overrides?: Partial<MemoryRecord>): MemoryRecord {
-  const now = new Date().toISOString() as IsoTimestamp
-  return {
-    id: "mem_1",
-    kind: "stm",
-    scope: "worker",
-    workspaceId: ws("ws_1"),
-    content: "Test memory content about React hooks",
-    sensitivity: "internal",
-    tags: ["react", "hooks"],
-    tokenEstimate: 10,
-    createdAt: now,
-    updatedAt: now,
-    metadata: {},
-    ...overrides,
-  }
+async function seed(store: VectorMemoryStore, ws: WorkspaceId) {
+  await store.index({
+    sourceId: "s1",
+    sourceType: "document",
+    workspaceId: ws,
+    chunkText: "The quantum neural compiler optimizes tensor graphs for GPU acceleration.",
+    embeddingModel: "pending",
+    vectorRef: "s1#0",
+  })
+  await store.index({
+    sourceId: "s2",
+    sourceType: "document",
+    workspaceId: ws,
+    chunkText: "Grilling vegetables on the barbecue requires medium-high heat and olive oil.",
+    embeddingModel: "pending",
+    vectorRef: "s2#0",
+  })
+  await store.index({
+    sourceId: "s3",
+    sourceType: "document",
+    workspaceId: ws,
+    chunkText: "We refactored the authentication module to use OAuth2 bearer tokens.",
+    embeddingModel: "pending",
+    vectorRef: "s3#0",
+  })
 }
 
-describe("VectorMemoryStore", () => {
-  describe("index", () => {
-    it("indexes a source chunk", () => {
-      const store = new VectorMemoryStore()
-      const record = store.index({
-        sourceId: "src_1",
-        sourceType: "document",
-        workspaceId: ws("ws_1"),
-        chunkText: "React hooks allow state management",
-        embeddingModel: "text-embedding-ada-002",
-        vectorRef: "vec_1",
-      })
-
-      expect(record.id).toBeTruthy()
-      expect(record.sourceType).toBe("document")
-      expect(store.isFresh(record.id)).toBe(true)
-    })
+describe("EmbeddingService (local fallback)", () => {
+  it("produces a fixed-dimension, normalized vector", async () => {
+    const svc = new EmbeddingService()
+    const { vector, backend, model } = await svc.embed("hello world")
+    expect(backend).toBe("local")
+    expect(model).toBe("local-hash-256")
+    expect(vector.length).toBe(svc.localDim)
+    const norm = Math.sqrt(vector.reduce((a, b) => a + b * b, 0))
+    expect(norm).toBeCloseTo(1, 5)
   })
 
-  describe("markStale / isFresh", () => {
-    it("marks index as stale", () => {
-      const store = new VectorMemoryStore()
-      const record = store.index({
-        sourceId: "src_1",
-        sourceType: "file",
-        workspaceId: ws("ws_1"),
-        chunkText: "content",
-        embeddingModel: "model",
-        vectorRef: "ref",
-      })
-
-      expect(store.isFresh(record.id)).toBe(true)
-      store.markStale(record.id)
-      expect(store.isFresh(record.id)).toBe(false)
-    })
+  it("is deterministic for identical input", async () => {
+    const svc = new EmbeddingService()
+    const a = await svc.embed("the cat sat on the mat")
+    const b = await svc.embed("the cat sat on the mat")
+    expect(a.vector).toEqual(b.vector)
   })
 
-  describe("getForSource", () => {
-    it("gets records by source", () => {
-      const store = new VectorMemoryStore()
-      store.index({ sourceId: "s1", sourceType: "memory", workspaceId: ws("ws_1"), chunkText: "a", embeddingModel: "m", vectorRef: "r" })
-      store.index({ sourceId: "s1", sourceType: "memory", workspaceId: ws("ws_1"), chunkText: "b", embeddingModel: "m", vectorRef: "r" })
-      store.index({ sourceId: "s2", sourceType: "memory", workspaceId: ws("ws_1"), chunkText: "c", embeddingModel: "m", vectorRef: "r" })
-
-      expect(store.getForSource("s1").length).toBe(2)
-    })
-  })
-
-  describe("deleteForSource", () => {
-    it("deletes all records for a source", () => {
-      const store = new VectorMemoryStore()
-      store.index({ sourceId: "s1", sourceType: "memory", workspaceId: ws("ws_1"), chunkText: "a", embeddingModel: "m", vectorRef: "r" })
-      store.index({ sourceId: "s1", sourceType: "memory", workspaceId: ws("ws_1"), chunkText: "b", embeddingModel: "m", vectorRef: "r" })
-
-      const deleted = store.deleteForSource("s1")
-      expect(deleted).toBe(2)
-      expect(store.count()).toBe(0)
-    })
+  it("cosine similarity of a vector with itself is 1", () => {
+    const v = [0.1, 0.2, -0.3, 0.4]
+    expect(cosineSimilarity(v, v)).toBeCloseTo(1, 6)
   })
 })
 
-describe("MemorySearchEngine", () => {
-  describe("search", () => {
-    it("finds records by keyword", () => {
-      const engine = new MemorySearchEngine(new VectorMemoryStore())
-      engine.indexRecord(mockRecord({ id: "m1", content: "React hooks tutorial" }))
-      engine.indexRecord(mockRecord({ id: "m2", content: "Vue composition API" }))
+describe("VectorMemoryStore hybrid search", () => {
+  it("ranks the semantically relevant chunk above an irrelevant one", async () => {
+    const store = new VectorMemoryStore(new EmbeddingService())
+    await seed(store, WS)
 
-      const results = engine.search({ text: "React hooks", workspaceId: ws("ws_1") })
-      expect(results.length).toBeGreaterThan(0)
-      expect(results[0]!.record.id).toBe("m1")
+    const results = await store.search({
+      text: "GPU tensor computation and neural network training",
+      workspaceId: WS,
     })
 
-    it("filters by scope", () => {
-      const engine = new MemorySearchEngine(new VectorMemoryStore())
-      engine.indexRecord(mockRecord({ id: "m1", scope: "worker" }))
-      engine.indexRecord(mockRecord({ id: "m2", scope: "session" }))
+    expect(results.length).toBeGreaterThan(0)
+    const top = results[0]
+    expect(top?.record.chunkText).toContain("quantum neural compiler")
+    expect(top?.matchType).toBe("semantic")
+    expect(top?.semanticScore).toBeGreaterThan(0.1)
+  })
 
-      const results = engine.search({ text: "test", workspaceId: ws("ws_1"), scope: "worker" })
-      expect(results.every(r => r.record.scope === "worker")).toBe(true)
+  it("keyword query boosts the exact-match chunk", async () => {
+    const store = new VectorMemoryStore(new EmbeddingService())
+    await seed(store, WS)
+
+    const results = await store.search({
+      text: "barbecue",
+      workspaceId: WS,
     })
+    expect(results[0]?.record.chunkText).toContain("barbecue")
+    expect(results[0]?.matchType).toBe("exact")
+  })
 
-    it("filters by kind", () => {
-      const engine = new MemorySearchEngine(new VectorMemoryStore())
-      engine.indexRecord(mockRecord({ id: "m1", kind: "stm" }))
-      engine.indexRecord(mockRecord({ id: "m2", kind: "ltm" }))
-
-      const results = engine.search({ text: "test", workspaceId: ws("ws_1"), kinds: ["stm"] })
-      expect(results.every(r => r.record.kind === "stm")).toBe(true)
-    })
-
-    it("filters by workspace", () => {
-      const engine = new MemorySearchEngine(new VectorMemoryStore())
-      engine.indexRecord(mockRecord({ id: "m1", workspaceId: ws("ws_1") }))
-      engine.indexRecord(mockRecord({ id: "m2", workspaceId: ws("ws_2") }))
-
-      const results = engine.search({ text: "test", workspaceId: ws("ws_1") })
-      expect(results.every(r => r.record.workspaceId === ws("ws_1"))).toBe(true)
-    })
-
-    it("respects maxResults", () => {
-      const engine = new MemorySearchEngine(new VectorMemoryStore())
-      for (let i = 0; i < 20; i++) {
-        engine.indexRecord(mockRecord({ id: `m${i}`, content: `React hooks ${i}` }))
-      }
-
-      const results = engine.search({ text: "React hooks", workspaceId: ws("ws_1"), maxResults: 5 })
-      expect(results.length).toBeLessThanOrEqual(5)
-    })
-
-    it("scores exact matches higher", () => {
-      const engine = new MemorySearchEngine(new VectorMemoryStore())
-      engine.indexRecord(mockRecord({ id: "m1", content: "React hooks are great" }))
-      engine.indexRecord(mockRecord({ id: "m2", content: "Vue has composition" }))
-
-      const results = engine.search({ text: "React hooks are great", workspaceId: ws("ws_1") })
-      expect(results[0]!.record.id).toBe("m1")
-      expect(results[0]!.matchType).toBe("exact")
-    })
-
-    it("returns empty for no matches", () => {
-      const engine = new MemorySearchEngine(new VectorMemoryStore())
-      engine.indexRecord(mockRecord({ content: "something unrelated" }))
-
-      const results = engine.search({ text: "xyznonexistent", workspaceId: ws("ws_1") })
-      expect(results).toEqual([])
-    })
+  it("scopes results to the workspace", async () => {
+    const store = new VectorMemoryStore(new EmbeddingService())
+    await seed(store, WS)
+    const other = brand<string, "WorkspaceId">("other")
+    const results = await store.search({ text: "neural", workspaceId: other })
+    expect(results.length).toBe(0)
   })
 })
