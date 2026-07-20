@@ -5,7 +5,12 @@ import {
   type ValidationResult,
   type PluginInstance,
   type DeclaredPermission,
+  type PluginCapability,
 } from "./plugin-types"
+import type { WorkspaceId } from "@/core/types"
+import { brand } from "@/core/types"
+import type { PermissionManager } from "@/security/permission-manager"
+import { readTextFile } from "@tauri-apps/plugin-fs"
 
 const log = createLogger("plugin-lifecycle")
 
@@ -39,7 +44,10 @@ export class PluginLifecycleManager {
     return manifest
   }
 
-  async validate(manifest: PluginManifest): Promise<ValidationResult> {
+  async validate(
+    manifest: PluginManifest,
+    options?: { permissionManager?: PermissionManager; workspaceId?: WorkspaceId },
+  ): Promise<ValidationResult> {
     this.setState(manifest.id, PluginState.Validating)
 
     const errors: string[] = []
@@ -96,6 +104,42 @@ export class PluginLifecycleManager {
       }
     }
 
+    // Fail-closed capability authorization against the PermissionManager
+    // (ADR-019): if a permission manager is supplied, every declared
+    // capability must be explicitly allowed. The absence of a capability in
+    // the grant set is treated as denied — never silently granted.
+    const grantRecord = manifest.capabilities.map((c: DeclaredPermission) => ({
+      capability: c.capability,
+      scope: c.scope,
+      granted: false,
+    }))
+
+    if (options?.permissionManager && manifest.capabilities.length > 0) {
+      const workspaceId = options.workspaceId ?? brand<string, "WorkspaceId">("default")
+      for (const cap of manifest.capabilities) {
+        const request = {
+          requestId: `cap-${manifest.id}-${cap.capability}-${Date.now()}`,
+          actorId: manifest.id,
+          actorType: "plugin" as const,
+          workspaceId,
+          action: capabilityToAction(cap.capability),
+          resourceType: capabilityToResource(cap.capability),
+          riskLevel: capabilityToRisk(cap.capability),
+          reason: cap.reason,
+          requestedAt: new Date().toISOString(),
+        }
+        const decision = options.permissionManager.evaluate(request)
+        const granted = decision.decision === "allow"
+        const record = grantRecord.find((g) => g.capability === cap.capability)
+        if (record) record.granted = granted
+        if (!granted) {
+          errors.push(
+            `Capability ${cap.capability} denied by policy: ${decision.reason}`,
+          )
+        }
+      }
+    }
+
     const valid = errors.length === 0
     const newState = valid ? PluginState.Validated : PluginState.Error
 
@@ -105,11 +149,7 @@ export class PluginLifecycleManager {
     const instance: PluginInstance = {
       manifest,
       state: newState,
-      grantRecord: manifest.capabilities.map((c: DeclaredPermission) => ({
-        capability: c.capability,
-        scope: c.scope,
-        granted: true,
-      })),
+      grantRecord,
       failureCount: 0,
       lastFailure: null,
       installedAt: new Date().toISOString(),
@@ -255,17 +295,79 @@ export class PluginLifecycleManager {
         return JSON.parse(source) as PluginManifest
       }
 
-      if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__ === undefined) {
+      if (typeof window !== 'undefined' && (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ === undefined) {
         const raw = localStorage.getItem(`eulinx:plugin:${source}`)
         if (raw) return JSON.parse(raw) as PluginManifest
       }
 
-      const { invoke } = await import('@tauri-apps/api/core')
-      const manifestStr: string = await invoke('read_plugin_manifest', { path: source })
+      // Tauri: read the plugin's manifest.json via the fs plugin (the Rust
+      // side owns only native FS access). Resolves relative to the plugin
+      // directory; `source` is treated as a path to manifest.json.
+      const manifestStr: string = await readTextFile(source)
       return JSON.parse(manifestStr) as PluginManifest
     } catch (e) {
       log.error('Failed to parse plugin manifest', { error: e, source })
       throw new Error(`Failed to parse plugin manifest: ${e instanceof Error ? e.message : String(e)}`)
     }
+  }
+}
+
+/** Map a plugin capability to a PermissionAction for the PermissionManager. */
+function capabilityToAction(capability: PluginCapability): "read" | "write" | "execute" | "network" | "secrets" | "spawn" | "merge" | "approve" | "delete" | "git" {
+  switch (capability) {
+    case 'fs.read': return 'read'
+    case 'fs.write': return 'write'
+    case 'net.http':
+    case 'net.ws': return 'network'
+    case 'process.spawn':
+    case 'process.self_terminate': return 'spawn'
+    case 'db.query': return 'read'
+    case 'storage.kv': return 'read'
+    case 'event.emit': return 'execute'
+    case 'tool.invoke': return 'execute'
+    case 'hook.register': return 'execute'
+    case 'ui.notify':
+    case 'ui.panel': return 'execute'
+    default: return 'execute'
+  }
+}
+
+/** Map a plugin capability to a ResourceType for the PermissionManager. */
+function capabilityToResource(capability: PluginCapability): "filesystem" | "terminal" | "network" | "database" | "git" | "worker" | "session" | "artifact" | "memory" | "secret" | "tool" | "plugin" {
+  switch (capability) {
+    case 'fs.read':
+    case 'fs.write': return 'filesystem'
+    case 'net.http':
+    case 'net.ws': return 'network'
+    case 'process.spawn':
+    case 'process.self_terminate': return 'terminal'
+    case 'db.query': return 'database'
+    case 'storage.kv': return 'memory'
+    case 'tool.invoke': return 'tool'
+    case 'hook.register': return 'plugin'
+    case 'event.emit': return 'plugin'
+    case 'ui.notify':
+    case 'ui.panel': return 'plugin'
+    default: return 'plugin'
+  }
+}
+
+/** Map a plugin capability to a RiskLevel for the PermissionManager. */
+function capabilityToRisk(capability: PluginCapability): "low" | "medium" | "high" | "critical" {
+  switch (capability) {
+    case 'fs.read':
+    case 'storage.kv':
+    case 'ui.notify':
+    case 'ui.panel': return 'low'
+    case 'fs.write':
+    case 'db.query':
+    case 'event.emit': return 'medium'
+    case 'net.http':
+    case 'net.ws':
+    case 'tool.invoke':
+    case 'hook.register': return 'high'
+    case 'process.spawn':
+    case 'process.self_terminate': return 'critical'
+    default: return 'medium'
   }
 }

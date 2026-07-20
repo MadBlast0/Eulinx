@@ -6,6 +6,9 @@ import type {
   UnsubscribeFn,
   PluginCapability,
 } from "./plugin-types"
+import { brand } from "@/core/types"
+import type { ToolRegistry } from "@/tools/tool-registry"
+import type { PluginTool, ToolState } from "@/tools/tool-types"
 
 const log = createLogger("plugin-sdk")
 
@@ -14,6 +17,7 @@ export class PluginHost {
   private hooks: Map<string, HookRegistration[]> = new Map()
   private eventSubscriptions: Map<string, Set<EventHandler>> = new Map()
   private permissions: Map<PluginCapability, boolean> = new Map()
+  private registry: ToolRegistry | undefined
 
   getPluginId(): string {
     return this.pluginId
@@ -22,10 +26,44 @@ export class PluginHost {
   constructor(private readonly pluginId: string) {
   }
 
+  /** Bind the host to the shared tool registry so plugin tools flow through. */
+  bindRegistry(registry: ToolRegistry): void {
+    this.registry = registry
+  }
+
   registerTool(descriptor: ToolDescriptor): void {
     const toolId = `${this.pluginId}/${descriptor.name}`
     this.tools.set(toolId, { ...descriptor, id: toolId, pluginId: this.pluginId })
     log.info(`Tool registered: ${toolId}`)
+
+    // Forward into the shared registry so the model can discover it.
+    if (this.registry) {
+      const pluginTool = this.toPluginTool(descriptor, toolId, "enabled")
+      this.registry.registerPluginTool(pluginTool)
+    }
+  }
+
+  /** Build a registry-compatible PluginTool from a descriptor. */
+  toPluginTool(descriptor: ToolDescriptor, toolId: string, state: ToolState): PluginTool {
+    const id = brand<string, "PluginId">(this.pluginId)
+    return {
+      toolId,
+      pluginId: id,
+      pluginVersion: "0.0.0",
+      localName: descriptor.name,
+      definition: {
+        name: toolId,
+        description: descriptor.description,
+        parameters: descriptor.schema as PluginTool["definition"]["parameters"],
+        result: { type: "object" },
+      },
+      sideEffect: { kind: "read_only", idempotent: false, network: false },
+      requiredPermissions: [],
+      execution: { timeoutMs: 30000, maxConcurrent: 1, cancellable: true, onTimeout: "abort_and_error" },
+      handlerRef: { module: "plugin", export: "handler" },
+      state,
+      registeredAt: new Date().toISOString(),
+    }
   }
 
   unregisterTool(name: string): void {

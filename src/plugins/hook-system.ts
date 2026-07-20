@@ -139,9 +139,10 @@ export class HookSystem {
   listHooks(): Map<string, { hookType: HookType; pluginCount: number }> {
     const result = new Map<string, { hookType: HookType; pluginCount: number }>()
     for (const [hookName, handlers] of this.hooks.entries()) {
-      if (handlers.length > 0) {
+      const first = handlers[0]
+      if (first) {
         result.set(hookName, {
-          hookType: handlers[0].hookType,
+          hookType: first.hookType,
           pluginCount: handlers.length,
         })
       }

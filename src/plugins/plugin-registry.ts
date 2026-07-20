@@ -2,6 +2,7 @@ import { createLogger } from "@/core/logger"
 import { PluginLifecycleManager } from "./plugin-lifecycle"
 import { PluginHost } from "./plugin-sdk"
 import type { PluginManifest, PluginInstance, PluginState } from "./plugin-types"
+import type { ToolRegistry } from "@/tools/tool-registry"
 
 const log = createLogger("plugin-registry")
 
@@ -9,32 +10,52 @@ export class PluginRegistry {
   private lifecycle: PluginLifecycleManager
   private hosts: Map<string, PluginHost> = new Map()
   private pluginMap: Map<string, PluginInstance> = new Map()
+  private toolRegistry: ToolRegistry | undefined
 
-  constructor() {
-    this.lifecycle = new PluginLifecycleManager()
+  constructor(lifecycle?: PluginLifecycleManager, toolRegistry?: ToolRegistry) {
+    this.lifecycle = lifecycle ?? new PluginLifecycleManager()
+    this.toolRegistry = toolRegistry
+  }
+
+  /** Bind the shared tool registry so plugin tools flow through. */
+  bindToolRegistry(registry: ToolRegistry): void {
+    this.toolRegistry = registry
+    for (const host of this.hosts.values()) {
+      host.bindRegistry(registry)
+    }
+  }
+
+  /** Whether a tool registry is currently bound. */
+  hasToolRegistry(): boolean {
+    return this.toolRegistry !== undefined
   }
 
   getLifecycle(): PluginLifecycleManager {
     return this.lifecycle
   }
 
-  getHost(pluginId: string): PluginHost | undefined {
+  getHost(pluginId: string): PluginHost {
     let host = this.hosts.get(pluginId)
     if (!host) {
       host = new PluginHost(pluginId)
+      if (this.toolRegistry) host.bindRegistry(this.toolRegistry)
       this.hosts.set(pluginId, host)
     }
     return host
   }
 
   async register(manifest: PluginManifest): Promise<PluginInstance> {
-    const instance: PluginInstance = {
+    // Adopt the lifecycle manager's live instance (whose state is driven by
+    // install/activate) so the registry reflects the real plugin state instead
+    // of an orphaned 'discovered' copy.
+    const existing = this.lifecycle.getInstance(manifest.id)
+    const instance: PluginInstance = existing ?? {
       manifest,
       state: 'discovered' as PluginState,
       grantRecord: manifest.capabilities.map((c) => ({
         capability: c.capability,
         scope: c.scope,
-        granted: true,
+        granted: false,
       })),
       failureCount: 0,
       lastFailure: null,
@@ -46,7 +67,8 @@ export class PluginRegistry {
 
     const host = this.getHost(manifest.id)
     for (const cap of manifest.capabilities) {
-      host.setPermission(cap.capability, true)
+      const granted = instance.grantRecord.find((g) => g.capability === cap.capability)?.granted ?? false
+      host.setPermission(cap.capability, granted)
     }
 
     await this.persistState()
@@ -85,7 +107,7 @@ export class PluginRegistry {
         installedAt: instance.installedAt,
       }))
 
-      if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__ === undefined) {
+      if (typeof window !== 'undefined' && (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ === undefined) {
         localStorage.setItem('eulinx:plugin_registry', JSON.stringify(data))
       }
     } catch (e) {
@@ -95,7 +117,7 @@ export class PluginRegistry {
 
   async loadPersistedState(): Promise<void> {
     try {
-      if (typeof window !== 'undefined' && window.__TAURI_INTERNALS__ === undefined) {
+      if (typeof window !== 'undefined' && (window as { __TAURI_INTERNALS__?: unknown }).__TAURI_INTERNALS__ === undefined) {
         const raw = localStorage.getItem('eulinx:plugin_registry')
         if (!raw) return
         const data = JSON.parse(raw) as Array<{
@@ -136,9 +158,11 @@ export class PluginRegistry {
 
 let instance: PluginRegistry | null = null
 
-export function getPluginRegistry(): PluginRegistry {
+export function getPluginRegistry(toolRegistry?: ToolRegistry): PluginRegistry {
   if (!instance) {
-    instance = new PluginRegistry()
+    instance = new PluginRegistry(undefined, toolRegistry)
+  } else if (toolRegistry && !instance.hasToolRegistry()) {
+    instance.bindToolRegistry(toolRegistry)
   }
   return instance
 }
