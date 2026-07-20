@@ -100,12 +100,30 @@ export { RunContext } from "./run-context"
 // Workflow Engine
 export type {
   WorkflowEventEmitter,
-  SchedulerAdapter,
-  ExecutionEngineAdapter,
-  PersistenceAdapter,
+  SchedulerAdapter as SchedulerAdapterIface,
+  ExecutionEngineAdapter as ExecutionEngineAdapterIface,
+  PersistenceAdapter as PersistenceAdapterIface,
 } from "./workflow-engine"
 export { WorkflowEngine } from "./workflow-engine"
 
 // Workflow Manager
 export type { WorkflowDefinition } from "./workflow-manager"
 export { WorkflowManager } from "./workflow-manager"
+
+// Node Executors
+export type {
+  NodeExecutor,
+  ExecutorInput,
+  ExecutorServices,
+  McpToolProvider,
+  BuilderBackend,
+  VerifierExecutorDeps,
+} from "./node-executors/types"
+export { NodeExecutorRegistry } from "./node-executors"
+export { evaluateExpression, compileExpression } from "./node-executors/expression"
+
+// Adapters (production)
+export { SchedulerAdapter } from "./adapters"
+export { ExecutionEngineAdapter } from "./adapters"
+export { PersistenceAdapter } from "./adapters"
+export { createRealWorkflowEngine } from "./adapters"

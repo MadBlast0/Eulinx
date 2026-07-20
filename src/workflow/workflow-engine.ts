@@ -37,6 +37,7 @@ import type {
 } from "./workflow-types"
 import { isRunTerminal, isNodeTerminal, DEFAULT_RETRY_POLICY } from "./workflow-types"
 import { RunContext } from "./run-context"
+import type { NodeExecutorRegistry } from "./node-executors"
 import {
   buildMirror,
   stateKey,
@@ -125,6 +126,7 @@ export class WorkflowEngine {
   private readonly scheduler: SchedulerAdapter
   private readonly executor: ExecutionEngineAdapter
   private readonly persistence: PersistenceAdapter
+  private readonly nodeExecutors?: NodeExecutorRegistry
 
   // Active runs: runId -> mirror
   private readonly mirrors = new Map<string, GraphMirror>()
@@ -141,6 +143,7 @@ export class WorkflowEngine {
     persistence: PersistenceAdapter,
     emitter: WorkflowEventEmitter,
     config?: Partial<WorkflowEngineConfig>,
+    nodeExecutors?: NodeExecutorRegistry,
   ) {
     this.logger = createLogger("WorkflowEngine")
     this.config = { ...DEFAULT_ENGINE_CONFIG, ...config }
@@ -148,6 +151,7 @@ export class WorkflowEngine {
     this.scheduler = scheduler
     this.executor = executor
     this.persistence = persistence
+    this.nodeExecutors = nodeExecutors
   }
 
   // -------------------------------------------------------------------------
@@ -454,7 +458,9 @@ export class WorkflowEngine {
 
     // Execute
     try {
-      const result = await this.executor.execute(request)
+      const result = this.nodeExecutors
+        ? await this.nodeExecutors.dispatch(request, context ?? new RunContext(run.runId, run.workflowVersion))
+        : await this.executor.execute(request)
       await this.onResult(run, mirror, result)
     } catch (error) {
       await this.onResult(run, mirror, {
