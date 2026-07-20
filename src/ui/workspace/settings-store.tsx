@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
+﻿import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { isTauri } from "@tauri-apps/api/core"
 import { invoke } from "@tauri-apps/api/core"
 import type { InvokeArgs } from "@tauri-apps/api/core"
@@ -9,7 +9,7 @@ import { appConfigDir } from "@tauri-apps/api/path"
 //
 // Persists user settings to a JSON file in the app config dir (Tauri) or to
 // localStorage (browser). All settings are rehydrated on mount and written on
-// every change. The API key is stored locally only — never transmitted here.
+// every change. The API key is stored locally only â€” never transmitted here.
 // ---------------------------------------------------------------------------
 
 export interface SettingsState {
@@ -63,6 +63,7 @@ async function loadSettings(): Promise<SettingsState> {
       const raw = await invoke<string>("fs_read_text", { path } as InvokeArgs)
       return coerce(JSON.parse(raw))
     } catch {
+      console.warn("eulinx: failed to load settings from Tauri fs, using defaults")
       return structuredClone(DEFAULTS)
     }
   }
@@ -70,6 +71,7 @@ async function loadSettings(): Promise<SettingsState> {
     try {
       return coerce(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null"))
     } catch {
+      console.warn("eulinx: failed to parse settings from localStorage, using defaults")
       return structuredClone(DEFAULTS)
     }
   }
@@ -83,7 +85,7 @@ async function persistSettings(state: SettingsState): Promise<void> {
       const path = await SETTINGS_PATH_PROMISE
       await invoke("fs_write_text", { path, contents: payload } as InvokeArgs)
     } catch {
-      // best-effort; ignore write failures
+      console.warn("eulinx: failed to persist settings to Tauri fs")
     }
     return
   }
@@ -149,3 +151,4 @@ export function useSettings(): SettingsContextValue {
   if (!ctx) throw new Error("useSettings must be used within a SettingsProvider")
   return ctx
 }
+

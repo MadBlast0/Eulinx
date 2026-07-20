@@ -3,8 +3,8 @@
  *
  * Builds a UserGoal from the active node graph, constructs a
  * CoordinatorOrchestrator, and runs its state machine (start → onPlan →
- * onDelegate). Decomposition is fully structural (no LLM / API key required),
- * so a run always produces a real Plan derived from the graph's nodes.
+ * onDelegate). Uses the OrchestratorRunner to execute each task through
+ * the ProviderInvoker with actual AI provider calls.
  */
 
 import { useCallback, useRef, useState } from "react"
@@ -21,6 +21,9 @@ import type {
   UserGoal,
 } from "@/orchestrator/orchestrator-types"
 import type { NodeGraphDoc } from "@/ui/workspace/project-types"
+import { ProviderInvoker } from "@/providers-ai/provider-invoker"
+import { getDefaultRegistry } from "@/providers-ai/provider-registry"
+import { OrchestratorRunner } from "@/orchestrator/runner"
 
 export interface RunResult {
   readonly graphName: string
@@ -28,10 +31,14 @@ export interface RunResult {
   readonly progress: ProgressReport | null
   readonly ranAt: IsoTimestamp
   readonly nodeCount: number
+  readonly artifactCount: number
+  readonly totalTokens: number
+  readonly totalCost: number
   readonly error?: string
 }
 
 let lastRun: RunResult | null = null
+let currentRunner: OrchestratorRunner | null = null
 const runListeners = new Set<(r: RunResult | null) => void>()
 
 /** Subscribe to the last completed run (used by the Dashboard surface). */
@@ -50,6 +57,14 @@ export function getLastRun(): RunResult | null {
 function publishRun(result: RunResult): void {
   lastRun = result
   for (const fn of runListeners) fn(result)
+}
+
+/** Cancel an in-flight run. */
+export async function cancelCurrentRun(): Promise<void> {
+  if (currentRunner) {
+    await currentRunner.cancel()
+    currentRunner = null
+  }
 }
 
 function graphNodesToPlannerInput(graph: NodeGraphDoc): PlannerGraphNode[] {
@@ -91,11 +106,13 @@ function buildConfig(goal: UserGoal): OrchestratorConfig {
 /**
  * Execute a node graph through the orchestrator. Returns a promise resolving to
  * a RunResult. Pure (no React state) so it can be called from anywhere.
+ * Uses OrchestratorRunner + ProviderInvoker to make actual AI provider calls.
  */
 export async function runGraph(graph: NodeGraphDoc): Promise<RunResult> {
   const ranAt = new Date().toISOString() as IsoTimestamp
   const goal = buildGoal(graph)
   const config = buildConfig(goal)
+
   const coordinator = new CoordinatorOrchestrator(
     config,
     goal,
@@ -110,11 +127,29 @@ export async function runGraph(graph: NodeGraphDoc): Promise<RunResult> {
       progress: null,
       ranAt,
       nodeCount: graph.nodes.length,
+      artifactCount: 0,
+      totalTokens: 0,
+      totalCost: 0,
       error: startResult.error.message,
     }
     publishRun(result)
     return result
   }
+
+  const registry = getDefaultRegistry()
+  const invoker = new ProviderInvoker(registry)
+  const runner = new OrchestratorRunner(invoker)
+  currentRunner = runner
+
+  const taskDescription = `Execute workflow "${graph.name}" with ${graph.nodes.length} nodes`
+  const taskResult = await runner.runTask(taskDescription, {
+    workspaceId: goal.workspaceId,
+    sessionId: goal.sessionId,
+    projectId: goal.projectId,
+    refinementMode: "medium",
+  })
+
+  currentRunner = null
 
   const progress = coordinator.getAggregatedProgress()
   const result: RunResult = {
@@ -123,6 +158,10 @@ export async function runGraph(graph: NodeGraphDoc): Promise<RunResult> {
     progress,
     ranAt,
     nodeCount: graph.nodes.length,
+    artifactCount: taskResult.artifacts.length,
+    totalTokens: taskResult.totalTokens,
+    totalCost: taskResult.totalCost,
+    error: taskResult.status === "failed" ? taskResult.error : undefined,
   }
   publishRun(result)
   return result
@@ -170,6 +209,9 @@ export function useRunGraph(): UseRunGraph {
         progress: null,
         ranAt: new Date().toISOString() as IsoTimestamp,
         nodeCount: graph.nodes.length,
+        artifactCount: 0,
+        totalTokens: 0,
+        totalCost: 0,
         error: message,
       }
       publishRun(failed)

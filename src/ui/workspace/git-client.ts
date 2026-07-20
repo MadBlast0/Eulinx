@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core"
+﻿import { invoke } from "@tauri-apps/api/core"
 import { isTauri } from "@tauri-apps/api/core"
 import type { InvokeArgs } from "@tauri-apps/api/core"
 import { virtualFs } from "./fs-client"
@@ -123,6 +123,7 @@ export async function getStatus(_repo: string): Promise<GitStatus> {
     const result = await invoke<GitStatus>("git_status", { repo: _repo } as InvokeArgs)
     return result
   } catch {
+    console.warn("eulinx: git_status invoke failed, returning empty status")
     return emptyStatus()
   }
 }
@@ -173,3 +174,4 @@ export async function push(_repo: string): Promise<string> {
   }
   return await invoke<string>("git_push", { repo: _repo } as InvokeArgs)
 }
+

@@ -6,6 +6,7 @@ import {
   Clock,
   Folder,
   HelpCircle,
+  Package,
   Plus,
   Settings,
   Share2,
@@ -60,6 +61,9 @@ export function LeftSidebar({
     },
     { key: "sessions", label: "Recent", icon: <Clock className="h-3.5 w-3.5" strokeWidth={1.5} /> },
     { key: "memory", label: "Favorites", icon: <Star className="h-3.5 w-3.5" strokeWidth={1.5} /> },
+    { key: "tasks", label: "Tasks", icon: <LayoutDashboard className="h-3.5 w-3.5" strokeWidth={1.5} /> },
+    { key: "templates", label: "Templates", icon: <Boxes className="h-3.5 w-3.5" strokeWidth={1.5} /> },
+    { key: "plugins", label: "Plugins", icon: <Package className="h-3.5 w-3.5" strokeWidth={1.5} /> },
   ]
 
   const handleAddProject = async (): Promise<void> => {

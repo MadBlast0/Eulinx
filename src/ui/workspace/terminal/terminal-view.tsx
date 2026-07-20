@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
+﻿import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Terminal as XTerm } from "@xterm/xterm"
 import "@xterm/xterm/css/xterm.css"
 import { FitAddon } from "@xterm/addon-fit"
@@ -95,7 +95,7 @@ function TerminalFallback({
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Type a command…"
+          placeholder="Type a commandâ€¦"
           aria-label="Terminal command input"
           className="h-7 flex-1 rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-background)] px-2 font-mono text-xs outline-none focus-visible:ring-1 focus-visible:ring-ring"
         />
@@ -156,6 +156,7 @@ function TerminalXterm({
     try {
       fit.fit()
     } catch {
+      console.warn("eulinx: xterm fit failed on initial mount (host not yet measurable)")
       // Host not yet measurable; ResizeObserver will retry.
     }
 
@@ -194,7 +195,7 @@ function TerminalXterm({
     try {
       fitRef.current?.fit()
     } catch {
-      // ignore
+      console.warn("eulinx: xterm fit failed during PTY binding")
     }
 
     return () => {
@@ -218,6 +219,7 @@ function TerminalXterm({
           try {
             fitRef.current?.fit()
           } catch {
+            console.warn("eulinx: xterm fit failed during resize (transient measure failure)")
             // ignore transient measure failures
           }
         })
@@ -330,3 +332,4 @@ export const TerminalView = memo(function TerminalView({
 })
 
 export default TerminalView
+

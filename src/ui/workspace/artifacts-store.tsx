@@ -23,40 +23,19 @@ function uid(): string {
   return `artifact-${Date.now().toString(36)}-${counter.toString(36)}`
 }
 
-const SEED_ARTIFACTS: readonly Artifact[] = [
-  {
-    id: uid(),
-    title: "onboarding.md",
-    kind: "markdown",
-    body: "# Onboarding\n\nWelcome to Eulinx. This artifact is seed data for the canvas surface.",
-    updatedAt: Date.now() - 1000 * 60 * 60 * 3,
-  },
-  {
-    id: uid(),
-    title: "summarizer.ts",
-    kind: "code",
-    body: 'export function summarize(text: string): string {\n  return text.slice(0, 280)\n}',
-    updatedAt: Date.now() - 1000 * 60 * 60 * 26,
-  },
-  {
-    id: uid(),
-    title: "spec-draft.md",
-    kind: "markdown",
-    body: "## Spec\n\nDesign notes for the registry-driven canvas.",
-    updatedAt: Date.now() - 1000 * 60 * 12,
-  },
-]
+const EMPTY_ARTIFACTS: readonly Artifact[] = []
 
 interface ArtifactsContextValue {
   readonly artifacts: readonly Artifact[]
   addArtifact(kind: ArtifactKind, title: string): void
   removeArtifact(id: string): void
+  setArtifacts(artifacts: readonly Artifact[]): void
 }
 
 const ArtifactsContext = createContext<ArtifactsContextValue | null>(null)
 
 export function ArtifactsProvider({ children }: { children: ReactNode }) {
-  const [artifacts, setArtifacts] = useState<readonly Artifact[]>(SEED_ARTIFACTS)
+  const [artifacts, setArtifacts] = useState<readonly Artifact[]>(EMPTY_ARTIFACTS)
 
   const addArtifact = useCallback((kind: ArtifactKind, title: string): void => {
     const artifact: Artifact = {
@@ -73,9 +52,13 @@ export function ArtifactsProvider({ children }: { children: ReactNode }) {
     setArtifacts((prev) => prev.filter((a) => a.id !== id))
   }, [])
 
+  const setArtifactsCallback = useCallback((artifacts: readonly Artifact[]): void => {
+    setArtifacts(artifacts)
+  }, [])
+
   const value = useMemo<ArtifactsContextValue>(
-    () => ({ artifacts, addArtifact, removeArtifact }),
-    [artifacts, addArtifact, removeArtifact],
+    () => ({ artifacts, addArtifact, removeArtifact, setArtifacts: setArtifactsCallback }),
+    [artifacts, addArtifact, removeArtifact, setArtifactsCallback],
   )
 
   return <ArtifactsContext.Provider value={value}>{children}</ArtifactsContext.Provider>

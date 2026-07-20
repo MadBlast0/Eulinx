@@ -1,6 +1,7 @@
-import { useEffect, useState, type ComponentType } from "react"
+import { useCallback, useEffect, useRef, useState, type ComponentType } from "react"
 import { ArrowLeft } from "lucide-react"
 import "./workspace.css"
+import { cn } from "@/utils/cn"
 import { WorkspaceProvider, useWorkspace } from "./use-workspace"
 import { ProjectsProvider } from "./use-projects"
 import { MemoryProvider } from "./memory-store"
@@ -9,6 +10,8 @@ import { SessionsProvider } from "./sessions-store"
 import { PromptsProvider } from "./prompts-store"
 import { SettingsProvider } from "./settings-store"
 import { WorkersProvider } from "./workers-store"
+import { TasksProvider } from "./tasks-store"
+import { TemplatesProvider } from "./templates-store"
 import { CostProvider } from "./cost-store"
 import { TopBar } from "./top-bar"
 import { LeftSidebar } from "./left-sidebar"
@@ -27,9 +30,17 @@ import {
   CostDashboard,
   Metrics,
   PromptInspector,
+  PluginManager,
 } from "./surfaces"
 import { ToolbarButton } from "./primitives"
 import { KeymapProvider, useCommand } from "./keyboard/use-keyboard"
+import { PluginsProvider } from "./plugins-store"
+import { EventBridge } from "./event-bridge"
+import { StateBridge } from "./state-bridge"
+import { LayoutProvider, useLayout, type RegionId } from "./layout-state"
+import { PaneDivider } from "./pane-divider"
+import { CanvasTabStrip } from "./canvas-tab-strip"
+import { saveLayout, loadLayout } from "./layout-persistence"
 
 export type SurfaceKey =
   | "dashboard"
@@ -41,6 +52,9 @@ export type SurfaceKey =
   | "cost"
   | "metrics"
   | "prompts"
+  | "plugins"
+  | "tasks"
+  | "templates"
 
 const SURFACES: Record<SurfaceKey, ComponentType> = {
   dashboard: Dashboard,
@@ -52,7 +66,10 @@ const SURFACES: Record<SurfaceKey, ComponentType> = {
   cost: CostDashboard,
   metrics: Metrics,
   prompts: PromptInspector,
+  plugins: PluginManager,
 }
+
+const DIVIDER_WIDTH = 5
 
 function WorkspaceShell() {
   const {
@@ -65,7 +82,40 @@ function WorkspaceShell() {
     toggleRightSidebar,
   } = useWorkspace()
 
+  const {
+    layout,
+    focusedRegion,
+    setRegionSize,
+    bulkSetLayout,
+    setFocusedRegion,
+  } = useLayout()
+
+  const workspaceIdRef = useRef("default")
+  const loadedRef = useRef(false)
+
   const [surface, setSurface] = useState<SurfaceKey | null>(null)
+
+  useEffect(() => {
+    if (loadedRef.current) return
+    loadedRef.current = true
+    const saved = loadLayout(workspaceIdRef.current)
+    if (saved && saved.schema === 1) {
+      bulkSetLayout(saved)
+    }
+  }, [bulkSetLayout])
+
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    if (!loadedRef.current) return
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      saveLayout(workspaceIdRef.current, layout)
+    }, 300)
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+  }, [layout])
 
   useCommand("palette.open", () => setOverlay("cmd"))
   useCommand("app.showHelp", () => setOverlay("shortcuts"))
@@ -83,6 +133,9 @@ function WorkspaceShell() {
   useCommand("surface.cost", () => setSurface("cost"))
   useCommand("surface.metrics", () => setSurface("metrics"))
   useCommand("surface.prompts", () => setSurface("prompts"))
+  useCommand("surface.plugins", () => setSurface("plugins"))
+  useCommand("surface.tasks", () => setSurface("tasks"))
+  useCommand("surface.templates", () => setSurface("templates"))
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -90,35 +143,118 @@ function WorkspaceShell() {
         e.preventDefault()
         setSurface(null)
       }
+      if (e.ctrlKey && !e.shiftKey && !e.metaKey && !e.altKey) {
+        const map: Record<string, RegionId> = {
+          "1": "sidebar",
+          "2": "canvas",
+          "3": "inspector",
+          "4": "panel",
+        }
+        const region = map[e.key]
+        if (region) {
+          e.preventDefault()
+          setFocusedRegion(region)
+          const el = document.querySelector(`[data-region="${region}"]`)
+          if (el instanceof HTMLElement) el.focus()
+        }
+      }
     }
     document.addEventListener("keydown", onKey)
     return () => document.removeEventListener("keydown", onKey)
-  }, [surface])
+  }, [surface, setFocusedRegion])
 
-  const cols = [
-    leftSidebarOpen ? "var(--wsx-left-w)" : "0px",
-    "1fr",
-    rightSidebarOpen ? "var(--wsx-right-w)" : "0px",
-  ].join(" ")
+  const sidebarRegion = layout.regions.sidebar
+  const inspectorRegion = layout.regions.inspector
+  const panelRegion = layout.regions.panel
+  const statusBarRegion = layout.regions.statusBar
+  const titleBarRegion = layout.regions.titleBar
+
+  const sidebarVisible = leftSidebarOpen && !sidebarRegion.collapsed
+  const inspectorVisible = rightSidebarOpen && !inspectorRegion.collapsed
+  const panelVisible = !panelRegion.collapsed
+
+  const sidebarSize = sidebarVisible ? sidebarRegion.size : 0
+  const inspectorSize = inspectorVisible ? inspectorRegion.size : 0
+  const panelSize = panelVisible ? panelRegion.size : 0
+
+  const handleSidebarResize = useCallback(
+    (delta: number) => {
+      setRegionSize("sidebar", sidebarRegion.size + delta)
+    },
+    [setRegionSize, sidebarRegion.size],
+  )
+
+  const handleInspectorResize = useCallback(
+    (delta: number) => {
+      setRegionSize("inspector", inspectorRegion.size - delta)
+    },
+    [setRegionSize, inspectorRegion.size],
+  )
+
+  const handlePanelResize = useCallback(
+    (delta: number) => {
+      setRegionSize("panel", panelRegion.size + delta)
+    },
+    [setRegionSize, panelRegion.size],
+  )
+
+  const handleFocusRegion = useCallback(
+    (region: RegionId) => () => {
+      setFocusedRegion(region)
+    },
+    [setFocusedRegion],
+  )
 
   const ActiveSurface = surface ? SURFACES[surface] : null
 
+  const cols = [
+    sidebarVisible ? `${sidebarSize}px` : "0px",
+    sidebarVisible ? `${DIVIDER_WIDTH}px` : "0px",
+    "1fr",
+    inspectorVisible ? `${DIVIDER_WIDTH}px` : "0px",
+    inspectorVisible ? `${inspectorSize}px` : "0px",
+  ].join(" ")
+
   return (
     <div
-      className="wsx grid"
+      className="wsx"
       style={{
+        display: "grid",
         gridTemplateColumns: cols,
-        gridTemplateRows: "var(--wsx-topbar-h) 1fr var(--wsx-statusbar-h)",
-        gridTemplateAreas: `"topbar topbar topbar" "left center right" "status status status"`,
+        gridTemplateRows: [
+          `${titleBarRegion.size}px`,
+          "1fr",
+          `${statusBarRegion.size}px`,
+        ].join(" "),
+        gridTemplateAreas: [
+          `"topbar topbar topbar topbar topbar"`,
+          `"left div-l center div-r right"`,
+          `"status status status status status"`,
+        ].join(" "),
         height: "100vh",
       }}
     >
-      <div style={{ gridArea: "topbar" }}>
+      <div
+        style={{ gridArea: "topbar" }}
+        data-region="titleBar"
+        tabIndex={-1}
+        onFocus={handleFocusRegion("titleBar")}
+        className={focusedRegion === "titleBar" ? "wsx-focused" : ""}
+      >
         <TopBar />
       </div>
 
-      <div style={{ gridArea: "left", overflow: "hidden" }}>
-        {leftSidebarOpen && (
+      <div
+        style={{
+          gridArea: "left",
+          overflow: "hidden",
+        }}
+        data-region="sidebar"
+        tabIndex={-1}
+        onFocus={handleFocusRegion("sidebar")}
+        className={focusedRegion === "sidebar" ? "wsx-focused" : ""}
+      >
+        {sidebarVisible && (
           <LeftSidebar
             activeSurface={surface}
             onOpenSurface={(key) => setSurface(key)}
@@ -126,12 +262,26 @@ function WorkspaceShell() {
         )}
       </div>
 
+      {sidebarVisible && (
+        <div style={{ gridArea: "div-l" }}>
+          <PaneDivider direction="vertical" onResize={handleSidebarResize} />
+        </div>
+      )}
+
       <div
-        style={{ gridArea: "center" }}
-        className="flex flex-col overflow-hidden"
+        style={{ gridArea: "center", overflow: "hidden" }}
+        className="flex flex-col"
       >
         {ActiveSurface ? (
-          <div className="relative flex h-full flex-col overflow-hidden bg-[color:var(--Eulinx-color-background)]">
+          <div
+            className={cn(
+              "relative flex h-full flex-col overflow-hidden bg-[color:var(--Eulinx-color-background)]",
+              focusedRegion === "canvas" && "wsx-focused",
+            )}
+            data-region="canvas"
+            tabIndex={-1}
+            onFocus={handleFocusRegion("canvas")}
+          >
             <div className="absolute left-3 top-3 z-[1]">
               <ToolbarButton
                 tip="Back to canvas"
@@ -146,21 +296,64 @@ function WorkspaceShell() {
           </div>
         ) : (
           <>
-            <Canvas />
-            <BottomPanel />
+            <CanvasTabStrip />
+            <div
+              className={cn(
+                "flex flex-1 flex-col overflow-hidden",
+                focusedRegion === "canvas" && "wsx-focused",
+              )}
+              data-region="canvas"
+              tabIndex={-1}
+              onFocus={handleFocusRegion("canvas")}
+            >
+              <Canvas />
+            </div>
+            {panelVisible && (
+              <>
+                <PaneDivider direction="horizontal" onResize={handlePanelResize} />
+                <div
+                  style={{ height: panelSize, flexShrink: 0 }}
+                  data-region="panel"
+                  tabIndex={-1}
+                  onFocus={handleFocusRegion("panel")}
+                  className={focusedRegion === "panel" ? "wsx-focused" : ""}
+                >
+                  <BottomPanel />
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
 
-      <div style={{ gridArea: "right", overflow: "hidden" }}>
-        {rightSidebarOpen && <RightSidebar />}
+      {inspectorVisible && (
+        <div style={{ gridArea: "div-r" }}>
+          <PaneDivider direction="vertical" onResize={handleInspectorResize} />
+        </div>
+      )}
+
+      <div
+        style={{ gridArea: "right", overflow: "hidden" }}
+        data-region="inspector"
+        tabIndex={-1}
+        onFocus={handleFocusRegion("inspector")}
+        className={focusedRegion === "inspector" ? "wsx-focused" : ""}
+      >
+        {inspectorVisible && <RightSidebar />}
       </div>
 
-      <div style={{ gridArea: "status" }}>
+      <div
+        style={{ gridArea: "status" }}
+        data-region="statusBar"
+        tabIndex={-1}
+        onFocus={handleFocusRegion("statusBar")}
+      >
         <StatusBar />
       </div>
 
       <Overlays />
+      <EventBridge />
+      <StateBridge />
     </div>
   )
 }
@@ -175,11 +368,19 @@ export function WorkspaceApp() {
               <WorkspaceProvider>
                 <SettingsProvider>
                   <WorkersProvider>
-                    <CostProvider>
-                      <KeymapProvider>
-                        <WorkspaceShell />
-                      </KeymapProvider>
-                    </CostProvider>
+                    <TasksProvider>
+                      <TemplatesProvider>
+                        <CostProvider>
+                          <PluginsProvider>
+                          <KeymapProvider>
+                            <LayoutProvider>
+                              <WorkspaceShell />
+                            </LayoutProvider>
+                          </KeymapProvider>
+                          </PluginsProvider>
+                        </CostProvider>
+                      </TemplatesProvider>
+                    </TasksProvider>
                   </WorkersProvider>
                 </SettingsProvider>
               </WorkspaceProvider>
@@ -190,4 +391,3 @@ export function WorkspaceApp() {
     </ProjectsProvider>
   )
 }
-

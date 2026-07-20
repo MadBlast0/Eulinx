@@ -6,8 +6,9 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { Activity, Cpu, Database, Network, Server, Zap } from "lucide-react"
+import { Activity, Server, Zap } from "lucide-react"
 import { EventBus } from "@/event-bus/event-bus"
+import { type Tone } from "./state"
 
 export type Health = "healthy" | "degraded" | "down"
 
@@ -21,26 +22,33 @@ export interface RuntimeService {
   readonly icon: ReactNode
 }
 
-const ICONS: Record<string, ReactNode> = {
-  server: <Server className="h-4 w-4" strokeWidth={1.5} />,
-  zap: <Zap className="h-4 w-4" strokeWidth={1.5} />,
-  database: <Database className="h-4 w-4" strokeWidth={1.5} />,
-  network: <Network className="h-4 w-4" strokeWidth={1.5} />,
-  cpu: <Cpu className="h-4 w-4" strokeWidth={1.5} />,
-  activity: <Activity className="h-4 w-4" strokeWidth={1.5} />,
+export interface LogLine {
+  readonly source: string
+  readonly tone: Tone
+  readonly text: string
+}
+
+export interface EventEntry {
+  readonly severity: Tone
+  readonly label: string
+  readonly time: string
 }
 
 interface RuntimeContextValue {
   readonly services: readonly RuntimeService[]
   readonly lastChecked: number
   readonly healthyCount: number
+  readonly logLines: readonly LogLine[]
+  readonly eventEntries: readonly EventEntry[]
+  pushLog(source: string, tone: Tone, text: string): void
+  pushEvent(severity: Tone, label: string): void
   healthCheck(): void
 }
 
 const RuntimeContext = createContext<RuntimeContextValue | null>(null)
 
 let busInstance: EventBus | null = null
-function getBus(): EventBus {
+export function getBus(): EventBus {
   if (!busInstance) {
     busInstance = new EventBus()
     busInstance.start()
@@ -50,29 +58,74 @@ function getBus(): EventBus {
 
 function buildServices(): readonly RuntimeService[] {
   const bus = getBus()
-  const busRunning = bus.getState() === "running"
-  const seed: ReadonlyArray<Omit<RuntimeService, "icon"> & { iconName: string }> = [
-    { id: "svc-core", name: "Core Runtime", health: "healthy", metric: "0.4ms", metricLabel: "p50 latency", pct: 18, iconName: "server" },
-    { id: "svc-llm", name: "LLM Gateway", health: "healthy", metric: "42 tok/s", metricLabel: "throughput", pct: 54, iconName: "zap" },
-    { id: "svc-vec", name: "Vector Store", health: "degraded", metric: "312ms", metricLabel: "query time", pct: 83, iconName: "database" },
-    { id: "svc-net", name: "Network Bridge", health: "healthy", metric: "1.2 Gb/s", metricLabel: "bandwidth", pct: 41, iconName: "network" },
-    { id: "svc-cpu", name: "Compute Pool", health: "degraded", metric: "76%", metricLabel: "cores busy", pct: 76, iconName: "cpu" },
+  const state = bus.getState()
+  const metrics = bus.getMetrics()
+  const isRunning = state === "running"
+
+  const items: RuntimeService[] = [
+    {
+      id: "svc-bus",
+      name: "Event Bus",
+      health: isRunning ? "healthy" : state === "degraded" ? "degraded" : "down",
+      metric: state,
+      metricLabel: "state",
+      pct: isRunning ? 22 : state === "degraded" ? 68 : 96,
+      icon: <Activity className="h-4 w-4" strokeWidth={1.5} />,
+    },
+    {
+      id: "svc-pub",
+      name: "Published Events",
+      health: isRunning ? "healthy" : "down",
+      metric: String(metrics.published),
+      metricLabel: "total published",
+      pct: Math.min(metrics.published % 101, 100),
+      icon: <Server className="h-4 w-4" strokeWidth={1.5} />,
+    },
+    {
+      id: "svc-del",
+      name: "Delivered Events",
+      health: metrics.delivered > 0 ? "healthy" : "degraded",
+      metric: String(metrics.delivered),
+      metricLabel: "total delivered",
+      pct: metrics.delivered > 0 ? Math.min(metrics.delivered % 101, 100) : 0,
+      icon: <Zap className="h-4 w-4" strokeWidth={1.5} />,
+    },
     {
       id: "svc-queue",
-      name: "Event Bus",
-      health: busRunning ? "healthy" : "degraded",
-      metric: busRunning ? "running" : "starting",
-      metricLabel: "status",
-      pct: busRunning ? 22 : 4,
-      iconName: "activity",
+      name: "Core Queue",
+      health: metrics.coreQueueDepth < 100 ? "healthy" : metrics.coreQueueDepth < 500 ? "degraded" : "down",
+      metric: String(metrics.coreQueueDepth),
+      metricLabel: "depth",
+      pct: Math.min(Math.round((metrics.coreQueueDepth / 100) * 100), 100),
+      icon: <Server className="h-4 w-4" strokeWidth={1.5} />,
+    },
+    {
+      id: "svc-subs",
+      name: "Subscribers",
+      health: "healthy",
+      metric: String(bus.getSubscriptions().length),
+      metricLabel: "active",
+      pct: Math.min(bus.getSubscriptions().length * 10, 100),
+      icon: <Activity className="h-4 w-4" strokeWidth={1.5} />,
     },
   ]
-  return seed.map((s) => ({ ...s, icon: ICONS[s.iconName] }))
+  return items
 }
 
 export function RuntimeProvider({ children }: { children: ReactNode }) {
   const [services, setServices] = useState<readonly RuntimeService[]>(buildServices)
   const [lastChecked, setLastChecked] = useState<number>(() => Date.now())
+  const [logLines, setLogLines] = useState<readonly LogLine[]>([])
+  const [eventEntries, setEventEntries] = useState<readonly EventEntry[]>([])
+
+  const pushLog = useCallback((source: string, tone: Tone, text: string) => {
+    setLogLines((prev) => [...prev, { source, tone, text }])
+  }, [])
+
+  const pushEvent = useCallback((severity: Tone, label: string) => {
+    const time = new Date().toLocaleTimeString("en-US", { hour12: false })
+    setEventEntries((prev) => [...prev, { severity, label, time }])
+  }, [])
 
   const healthCheck = useCallback((): void => {
     const next = buildServices()
@@ -82,8 +135,8 @@ export function RuntimeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<RuntimeContextValue>(() => {
     const healthyCount = services.filter((s) => s.health === "healthy").length
-    return { services, lastChecked, healthyCount, healthCheck }
-  }, [services, lastChecked, healthCheck])
+    return { services, lastChecked, healthyCount, logLines, eventEntries, pushLog, pushEvent, healthCheck }
+  }, [services, lastChecked, healthCheck, logLines, eventEntries, pushLog, pushEvent])
 
   return <RuntimeContext.Provider value={value}>{children}</RuntimeContext.Provider>
 }

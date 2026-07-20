@@ -1,4 +1,4 @@
-import { isTauri } from "@tauri-apps/api/core"
+﻿import { isTauri } from "@tauri-apps/api/core"
 import { invoke } from "@tauri-apps/api/core"
 import { appConfigDir } from "@tauri-apps/api/path"
 import type { InvokeArgs } from "@tauri-apps/api/core"
@@ -30,6 +30,7 @@ function parseWorkspace(raw: string | null): WorkspaceDoc | null {
     }
     return null
   } catch {
+    console.warn("eulinx: failed to parse workspace document, returning null")
     return null
   }
 }
@@ -51,6 +52,7 @@ const tauriStorage: ProjectStorage = {
       const raw = await invoke<string>("fs_read_text", { path } as InvokeArgs)
       return parseWorkspace(raw)
     } catch {
+      console.warn("eulinx: failed to load workspace from Tauri fs")
       return null
     }
   },
@@ -63,6 +65,7 @@ const tauriStorage: ProjectStorage = {
       const result = await invoke<string | null>("dialog_pick_folder")
       return result
     } catch {
+      console.warn("eulinx: failed to load workspace from Tauri fs")
       return null
     }
   },
@@ -88,3 +91,4 @@ const browserStorage: ProjectStorage = {
 }
 
 export const projectStorage: ProjectStorage = isTauri() ? tauriStorage : browserStorage
+

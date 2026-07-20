@@ -40,7 +40,8 @@ try {
     }
   }
 } catch {
-  // import.meta.glob unavailable — virtual FS starts empty
+  console.warn('eulinx: fs-client : unexpected error in catch block')
+  // import.meta.glob unavailable â€” virtual FS starts empty
 }
 
 async function browserListDir(path: string): Promise<FileEntry[]> {
@@ -129,3 +130,4 @@ export async function createDir(path: string): Promise<void> {
 }
 
 export { isTauri }
+

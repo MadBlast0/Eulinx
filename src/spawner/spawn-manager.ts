@@ -654,6 +654,7 @@ export class SpawnManager {
       try {
         handler(event)
       } catch {
+        console.warn('eulinx: spawn-manager : unexpected error in catch block')
         // Event handlers must not throw
       }
     }

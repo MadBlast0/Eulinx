@@ -169,3 +169,129 @@
   background: var(--wsx-border-strong);
   border-radius: var(--Eulinx-radius-sm);
 }
+
+/* Pane divider */
+.wsx-pane-divider {
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
+  background: transparent;
+  transition: background 120ms;
+}
+.wsx-pane-divider[data-direction="vertical"] {
+  width: 5px;
+  cursor: col-resize;
+}
+.wsx-pane-divider[data-direction="horizontal"] {
+  height: 5px;
+  cursor: row-resize;
+}
+.wsx-pane-divider:hover,
+.wsx-pane-divider:active {
+  background: var(--wsx-accent-dim);
+}
+.wsx-pane-divider::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 2px;
+  transition: background 120ms, opacity 120ms;
+  opacity: 0;
+}
+.wsx-pane-divider[data-direction="vertical"]::after {
+  left: 2px;
+  right: 2px;
+  top: 0;
+  bottom: 0;
+  background: var(--wsx-accent);
+  opacity: 0;
+}
+.wsx-pane-divider[data-direction="horizontal"]::after {
+  top: 2px;
+  bottom: 2px;
+  left: 0;
+  right: 0;
+  background: var(--wsx-accent);
+  opacity: 0;
+}
+.wsx-pane-divider:hover::after,
+.wsx-pane-divider:active::after {
+  opacity: 0.5;
+}
+
+/* Focus ring */
+.wsx-focused {
+  outline: 1.5px solid var(--wsx-accent);
+  outline-offset: -1.5px;
+  z-index: 5;
+}
+
+/* Window control buttons (macOS traffic-light dots) */
+.wsx-win-btn {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: opacity 120ms;
+  position: relative;
+}
+.wsx-win-btn:hover {
+  opacity: 0.8;
+}
+.wsx-win-btn:active {
+  opacity: 0.6;
+}
+.wsx-win-close {
+  background: #ff5f57;
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+}
+.wsx-win-minimize {
+  background: #fdbc40;
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+}
+.wsx-win-maximize {
+  background: #33c748;
+  border: 0.5px solid rgba(0, 0, 0, 0.12);
+}
+
+/* Tab strip */
+.wsx-tab-strip {
+  display: flex;
+  align-items: stretch;
+  height: 36px;
+  flex-shrink: 0;
+  gap: 0;
+  border-bottom: 1px solid var(--wsx-border);
+  background: var(--Eulinx-color-surface);
+  padding: 0 8px;
+  overflow-x: auto;
+}
+.wsx-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--wsx-text-muted);
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: color 120ms, border-color 120ms;
+  cursor: pointer;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-family: inherit;
+}
+.wsx-tab:hover {
+  color: var(--wsx-text-sec);
+}
+.wsx-tab-active {
+  color: var(--wsx-text);
+  border-bottom-color: var(--wsx-accent);
+}

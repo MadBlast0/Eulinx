@@ -19,6 +19,8 @@ import {
   PANEL_ORDER,
   type PanelKey,
 } from "./panels/registry"
+import { useRuntime } from "./runtime-store"
+import { useMemory } from "./memory-store"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,21 +42,6 @@ const TAB_LABEL: Record<BottomTab, string> = {
   memory: "Memory",
 }
 
-interface LogLine {
-  readonly source: string
-  readonly tone: Tone
-  readonly text: string
-}
-
-const LOG_LINES: readonly LogLine[] = [
-  { source: "vite", tone: "accent", text: "VITE v5.4.12  ready in 312ms" },
-  { source: "vite", tone: "accent", text: " ➜  Local:   http://localhost:1420/" },
-  { source: "vite", tone: "accent", text: " ➜  Network: use --host to expose" },
-  { source: "test", tone: "success", text: "running 42 tests" },
-  { source: "test", tone: "success", text: "test result: ok. 42 passed, 0 failed" },
-  { source: "lint", tone: "warning", text: "0 errors, 2 warnings" },
-]
-
 interface ProblemRow {
   readonly severity: Tone
   readonly label: string
@@ -63,32 +50,37 @@ interface ProblemRow {
 
 const PROBLEMS: readonly ProblemRow[] = []
 
-interface EventEntry {
-  readonly severity: Tone
-  readonly label: string
-  readonly time: string
-}
-
-const EVENTS: readonly EventEntry[] = []
-
 interface MemoryEntry {
   readonly tone: Tone
   readonly key: string
   readonly value: string
 }
 
-const MEMORY: readonly MemoryEntry[] = []
+const SEVERITY_TONE: Record<string, Tone> = {
+  critical: "accent",
+  important: "warning",
+  reference: "info",
+  archived: "neutral",
+}
 
 type DockView = { readonly kind: "tab"; readonly tab: BottomTab } | { readonly kind: "panel"; readonly key: PanelKey }
 
 export function BottomPanel() {
   const { bottomTab, setBottomTab, bottomPanelOpen, setBottomPanelOpen } = useWorkspace()
+  const { logLines, eventEntries } = useRuntime()
+  const { entries: memoryEntries } = useMemory()
 
   const [dockView, setDockView] = useState<DockView>({ kind: "tab", tab: bottomTab })
 
   if (!bottomPanelOpen) return null
 
   const activePanelKey = dockView.kind === "panel" ? dockView.key : null
+
+  const memoryDisplay: readonly MemoryEntry[] = memoryEntries.map((e) => ({
+    key: e.title,
+    value: `${e.kind} — ${e.tags.join(", ")}`,
+    tone: SEVERITY_TONE[e.severity] ?? "neutral",
+  }))
 
   return (
     <div
@@ -186,14 +178,18 @@ export function BottomPanel() {
       <div className="flex-1 overflow-y-auto bg-[color:var(--Eulinx-color-surface)] px-4 py-3 font-mono text-xs leading-[1.8] text-[color:var(--Eulinx-color-text-muted)]">
         {bottomTab === "logs" && (
           <>
-            {LOG_LINES.map((line, i) => (
-              <div key={i}>
-                <span style={{ color: `var(--Eulinx-color-${line.tone === "accent" ? "accent" : line.tone})` }}>
-                  [{line.source}]
-                </span>{" "}
-                {line.text}
-              </div>
-            ))}
+            {logLines.length === 0 ? (
+              <div>Waiting for log output...</div>
+            ) : (
+              logLines.map((line, i) => (
+                <div key={i}>
+                  <span style={{ color: `var(--Eulinx-color-${line.tone === "accent" ? "accent" : line.tone})` }}>
+                    [{line.source}]
+                  </span>{" "}
+                  {line.text}
+                </div>
+              ))
+            )}
           </>
         )}
         {bottomTab === "problems" &&
@@ -209,10 +205,10 @@ export function BottomPanel() {
             ))
           ))}
         {bottomTab === "events" &&
-          (EVENTS.length === 0 ? (
+          (eventEntries.length === 0 ? (
             <div>Waiting for events...</div>
           ) : (
-            EVENTS.map((e, i) => (
+            eventEntries.map((e, i) => (
               <div key={i} className="flex items-center gap-2">
                 <Dot tone={e.severity} />
                 <span className="text-[color:var(--Eulinx-color-text-secondary)]">{e.label}</span>
@@ -221,10 +217,10 @@ export function BottomPanel() {
             ))
           ))}
         {bottomTab === "memory" &&
-          (MEMORY.length === 0 ? (
+          (memoryDisplay.length === 0 ? (
             <div>Memory entries will appear here.</div>
           ) : (
-            MEMORY.map((m, i) => (
+            memoryDisplay.map((m, i) => (
               <div key={i} className="flex items-center gap-2">
                 <StateBadge tone={m.tone}>{m.key}</StateBadge>
                 <span className="text-[color:var(--Eulinx-color-text-secondary)]">{m.value}</span>

@@ -13,6 +13,8 @@ import {
   TerminalSquare,
   Undo2,
 } from "lucide-react"
+import { isTauri } from "@tauri-apps/api/core"
+import { invoke } from "@tauri-apps/api/core"
 import { ToolbarButton, ToolbarSep } from "./primitives"
 import { useWorkspace } from "./use-workspace"
 import { useProjects } from "./use-projects"
@@ -48,11 +50,43 @@ export function TopBar() {
     void run(graph)
   }, [graph, run])
 
+  const handleWindowClose = useCallback(() => {
+    if (isTauri()) { void invoke("plugin:window|close") }
+  }, [])
+  const handleWindowMinimize = useCallback(() => {
+    if (isTauri()) { void invoke("plugin:window|minimize") }
+  }, [])
+  const handleWindowMaximize = useCallback(() => {
+    if (isTauri()) { void invoke("plugin:window|toggle_maximize") }
+  }, [])
+
   return (
     <div
       className="flex h-full items-center gap-2 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-toolbar)] px-3"
       style={{ WebkitAppRegion: "drag" }}
     >
+      {/* Window controls (macOS-style traffic dots) */}
+      <div className="flex items-center gap-1.5" style={{ WebkitAppRegion: "no-drag" }}>
+        <button
+          type="button"
+          aria-label="Close"
+          onClick={handleWindowClose}
+          className="wsx-win-btn wsx-win-close"
+        />
+        <button
+          type="button"
+          aria-label="Minimize"
+          onClick={handleWindowMinimize}
+          className="wsx-win-btn wsx-win-minimize"
+        />
+        <button
+          type="button"
+          aria-label="Maximize"
+          onClick={handleWindowMaximize}
+          className="wsx-win-btn wsx-win-maximize"
+        />
+      </div>
+
       {/* Left group: logo, workspace selector, breadcrumb */}
       <div className="flex shrink-0 items-center gap-2" style={{ WebkitAppRegion: "no-drag" }}>
         <button

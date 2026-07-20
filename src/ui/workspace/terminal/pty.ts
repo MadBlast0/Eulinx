@@ -1,4 +1,4 @@
-﻿export type PtyId = string
+export type PtyId = string
 export type ExitCode = number | null
 
 export interface Pty {
@@ -99,7 +99,7 @@ export function createMockPty(): Pty {
   const dispatchData = (chunk: string): void => {
     if (killed || exited) return
     for (const cb of listeners.data) {
-      try { cb(chunk) } catch { /* ignore subscriber errors */ }
+      try { cb(chunk) } catch { console.warn('eulinx: mock PTY data subscriber error'); }
     }
   }
 
@@ -107,7 +107,7 @@ export function createMockPty(): Pty {
     if (exited) return
     exited = true
     for (const cb of listeners.exit) {
-      try { cb(code) } catch { /* ignore */ }
+      try { cb(code) } catch { console.warn('eulinx: mock PTY exit subscriber error'); }
     }
   }
 
@@ -330,6 +330,7 @@ export function createNativePty(shell?: string): Pty {
       try {
         cb(chunk)
       } catch {
+        console.warn('eulinx: pty : unexpected error in catch block')
         // A subscriber error must never break the stream.
       }
     }
@@ -342,6 +343,7 @@ export function createNativePty(shell?: string): Pty {
       try {
         cb(code)
       } catch {
+        console.warn('eulinx: pty : unexpected error in catch block')
         // Ignore subscriber errors.
       }
     }
@@ -394,3 +396,4 @@ export function createNativePty(shell?: string): Pty {
 
   return pty
 }
+

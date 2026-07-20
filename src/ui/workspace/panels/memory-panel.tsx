@@ -2,27 +2,27 @@ import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { StateBadge } from "../primitives"
-import { type Tone } from "../state"
+import { useMemory } from "../memory-store"
 import PanelScaffold from "./panel-scaffold"
 
-interface MemoryEntry {
-  readonly tone: Tone
-  readonly key: string
-  readonly value: string
+const SEVERITY_TONE: Record<string, "accent" | "info" | "success" | "warning" | "error" | "neutral"> = {
+  critical: "accent",
+  important: "warning",
+  reference: "info",
+  archived: "neutral",
 }
 
-const MEMORY: readonly MemoryEntry[] = [
-  { tone: "accent", key: "user.name", value: "MadBlast" },
-  { tone: "info", key: "project.lang", value: "TypeScript" },
-  { tone: "success", key: "pref.build", value: "pnpm build" },
-  { tone: "warning", key: "token.limit", value: "approaching" },
-  { tone: "error", key: "last.fail", value: "cargo test flaky" },
-]
-
 export default function MemoryPanel() {
+  const { entries } = useMemory()
   const [query, setQuery] = useState("")
 
-  const filtered = MEMORY.filter(
+  const displayEntries = entries.map((e) => ({
+    key: e.title,
+    value: `${e.kind} — ${e.tags.join(", ")}`,
+    tone: SEVERITY_TONE[e.severity] ?? "neutral",
+  }))
+
+  const filtered = displayEntries.filter(
     (m) =>
       m.key.toLowerCase().includes(query.toLowerCase()) ||
       m.value.toLowerCase().includes(query.toLowerCase()),

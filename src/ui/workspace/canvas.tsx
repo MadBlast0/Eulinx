@@ -1,9 +1,6 @@
 import { useProjects } from "./use-projects"
 import { useWorkspace } from "./use-workspace"
-import { NodeGraph } from "./node-graph"
 import { ContextMenu } from "./context-menu"
-import { TerminalView } from "./terminal"
-import { ArtifactsView } from "./canvas-views/artifacts-view"
 import { getCanvasViewMeta } from "./canvas-views/registry"
 
 function CanvasHeader({ title }: { title: string }) {
@@ -44,7 +41,7 @@ export function Canvas() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-[color:var(--Eulinx-color-background)]">
       <CanvasHeader title={meta.label} />
-      {activeView.kind === "node-graph" && (
+      {activeView.kind === "node-graph" ? (
         <div
           className="relative flex-1 overflow-hidden"
           onContextMenu={(e) => {
@@ -52,18 +49,12 @@ export function Canvas() {
             openContextMenu({ x: e.clientX, y: e.clientY })
           }}
         >
-          <NodeGraph />
+          {meta.render()}
           <ContextMenu />
         </div>
-      )}
-      {activeView.kind === "artifacts" && (
-        <div className="min-h-0 flex-1">
-          <ArtifactsView />
-        </div>
-      )}
-      {activeView.kind === "terminal" && (
-        <div className="min-h-0 flex-1 p-3">
-          <TerminalView ptyId="canvas-terminal" className="h-full" />
+      ) : (
+        <div className={`min-h-0 flex-1${activeView.kind === "terminal" ? " p-3" : ""}`}>
+          {meta.render()}
         </div>
       )}
     </div>

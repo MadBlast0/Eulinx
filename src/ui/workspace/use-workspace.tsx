@@ -135,7 +135,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         accent: "accent",
         shell: shell && shell.length > 0 ? shell : undefined,
         lines: kind === "terminal" ? [{ prompt: "$", cursor: true }] : undefined,
-        url: kind === "browser" ? "about:blank" : undefined,
+        url: kind === "browser" ? "https://example.com" : undefined,
       }
       projects.addNode(node)
       setSelectedId(id)

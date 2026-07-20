@@ -1,5 +1,5 @@
 /**
- * P18-UI-DASH — Theme Provider (Themes-Part01 .. Part04)
+ * P18-UI-DASH â€” Theme Provider (Themes-Part01 .. Part04)
  *
  * Applies exactly one theme at a time by writing `--Eulinx-color-<role>`
  * custom properties onto `document.documentElement` (`:root`) and nowhere
@@ -522,11 +522,13 @@ async function persistPreference(pref: ThemePreference): Promise<void> {
       return
     }
   } catch {
+    console.warn('eulinx: theme-provider : unexpected error in catch block')
     // fall through to localStorage
   }
   try {
     localStorage.setItem(PREF_LOCAL_KEY, JSON.stringify(pref))
   } catch {
+    console.warn('eulinx: theme-provider : unexpected error in catch block')
     // best-effort only
   }
 }
@@ -539,6 +541,7 @@ async function loadPersistedPreference(): Promise<ThemePreference | null> {
       if (value && isValidPreference(value)) return value
     }
   } catch {
+    console.warn('eulinx: theme-provider : unexpected error in catch block')
     // fall through
   }
   try {
@@ -548,6 +551,7 @@ async function loadPersistedPreference(): Promise<ThemePreference | null> {
       if (isValidPreference(parsed)) return parsed
     }
   } catch {
+    console.warn('eulinx: theme-provider : unexpected error in catch block')
     // ignore
   }
   return null
@@ -826,3 +830,5 @@ function deriveOriginFromId(id: string):
   if (pluginMatch) return { id, origin: "plugin", pluginId: pluginMatch[1] }
   return null
 }
+
+

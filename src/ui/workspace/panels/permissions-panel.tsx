@@ -14,6 +14,7 @@ interface PermissionRow {
   readonly defaultOn: boolean
 }
 
+// TODO: Connect to actual permissions store when it exists
 const PERMISSIONS: readonly PermissionRow[] = [
   {
     id: "fs.read",
