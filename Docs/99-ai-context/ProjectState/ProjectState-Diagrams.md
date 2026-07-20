@@ -1,7 +1,7 @@
 ---
 title: ProjectState Diagrams
-status: draft
-version: 1.0
+status: final
+version: 2.0
 tags: [ai-context, diagrams]
 related: ["[[ProjectState-Part01]]"]
 ---
@@ -10,53 +10,70 @@ related: ["[[ProjectState-Part01]]"]
 
 ```mermaid
 flowchart TD
-  subgraph DOC["Documentation state"]
-    DC["Complete: 00-04, 12, 13, 16, 17"]
-    DP["Structured/partial: 05, 06-11, 99"]
+  subgraph RUNTIME["TypeScript Runtime Engine"]
+    RT["RuntimeManager\nScheduler\nEventBus\nServiceRegistry"]
+    WK["Worker System\n(spawn/lifecycle/hierarchy/comm/health)"]
+    AF["Artifact System\n(lifecycle/verify/merge/version)"]
+    WF["Workflow Engine\n(DAG/retry/executors)"]
+    MEM["Memory System\n(STM/LTM/vector/knowledge-base)"]
   end
-  subgraph CODE["Application code state"]
-    CS["Setup stage only\nintended stack: Tauri v2 + React19 + TS + Vite + pnpm\nTailwind+shadcn, Zustand, TanStack Query, React Flow,\nxterm.js, SQLite(SQLx), LanceDB, Tantivy"]
+  subgraph ORCH["AI / Orchestrators"]
+    PL["Planner"]
+    CR["Critic / Judge"]
+    BL["Builder / Architect"]
+    RL["Refinement Loop"]
   end
-  subgraph NOTBUILT["NOT yet built (in code)"]
-    NB1["Runtime kernel (Scheduler/EventBus/Merge/Lock)"]
-    NB2["Worker spawner / live terminal"]
-    NB3["Workflow Engine executing graphs"]
-    NB4["Artifact/Verifier/Merge path"]
-    NB5["UI canvas beyond scaffolding"]
+  subgraph UI["React 19 + Flow UI"]
+    WS["Workspace Layout\nNode Graph\nPanels"]
+    TERM["Terminal (xterm.js)"]
+    TK["Themes / Tokens\nAccessibility"]
   end
-  DOC -->|"ahead of"| CODE
-  CODE -->|"none of these exist"| NOTBUILT
-  NOTBUILT -->|"build via"| ROAD["Roadmap phases (small tasks)"]
+  subgraph RUST["Rust Thin Backend (Tauri v2)"]
+    DB["SQLite (rusqlite)\n27 entity tables"]
+    PTY["PTY / Terminal"]
+    FS["Filesystem / Git"]
+    WIN["Window / Dialog"]
+  end
+  subgraph PLUGIN["Plugin System"]
+    HK["Hook System"]
+    MCP["MCP Client"]
+    TL["Tool Registry"]
+  end
+  RUNTIME --> ORCH
+  ORCH --> UI
+  RUNTIME --> RUST
+  RUNTIME --> PLUGIN
+  UI --> RUST
 ```
 
 ```text
-CURRENT BUILD STATE
+ARCHITECTURE OVERVIEW
 
-DOCUMENTATION  (single source of truth, ahead of code)
-  complete : 00-04, 12, 13, 16, 17
-  partial  : 05, 06-11, 99
+LAYER                    STATUS           KEY FILES
+─────────────────────────────────────────────────────
+TypeScript Runtime       ✅ IMPLEMENTED   runtime/, scheduler/, event-bus/
+Worker System            ✅ IMPLEMENTED   spawner/, worker/
+Artifact System           ✅ IMPLEMENTED   artifact/
+Workflow Engine          ✅ IMPLEMENTED   workflow/
+Memory System            ✅ IMPLEMENTED   memory/
+AI / Orchestrators       ✅ IMPLEMENTED   orchestrator/, roles/
+API Layer                ✅ IMPLEMENTED   api/services/
+Database (Rust SQLite)   ✅ IMPLEMENTED   src-tauri/src/managers/db_manager.rs
+Plugin System            ✅ IMPLEMENTED   plugins/
+Built-in Tools           ✅ IMPLEMENTED   tools/
+UI                       ✅ IMPLEMENTED   ui/
+Testing                  ✅ IMPLEMENTED   128 test files, cargo tests
 
-APPLICATION CODE
-  setup stage only
-  stack: Tauri v2 / React 19 / TS / Vite / pnpm
-         Tailwind+shadcn, Zustand, TanStack Query
-         React Flow, xterm.js, SQLite(SQLx), LanceDB, Tantivy
-  first targets: design-system skeleton + thin Rust PTY bridge
-
-NOT YET BUILT (do not assume existence)
-  runtime kernel (Scheduler, EventBus, MergeManager, LockManager)
-  worker spawner / live terminal execution
-  workflow engine executing graphs
-  artifact/verifier/merge path
-  UI canvas beyond scaffolding
-
-CONSEQUENCE: prove headless loop before UI; keep Rust thin
+DEFERRED TO FUTURE:
+  - Distributed execution
+  - Remote marketplace
+  - Advanced vector DB (LanceDB)
+  - Full-text engine (Tantivy)
+  - Collaboration features
 ```
 
 # Related Documents
 
 - [[ProjectState-Part01]]
-- [[06-workflow-engine/README]]
-- [[07-ui-ux/README]]
-- [[04-memory/README]]
-- [[12-development/README]]
+- [[CurrentProgress/CurrentProgress-Part01]]
+- [[ImplementationGapAudit]]

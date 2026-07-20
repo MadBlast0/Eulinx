@@ -1,7 +1,7 @@
 ---
 title: CurrentProgress Diagrams
-status: draft
-version: 1.0
+status: final
+version: 2.0
 tags: [ai-context, diagrams]
 related: ["[[CurrentProgress-Part01]]"]
 ---
@@ -10,53 +10,61 @@ related: ["[[CurrentProgress-Part01]]"]
 
 ```mermaid
 flowchart TD
-  subgraph COMPLETE["Complete spec sections"]
-    C00["00 intro"] & C01["01 core-concepts"] & C02["02 runtime"]
-    C03["03 worker-system"] & C04["04 memory"] & C12["12 development"]
-    C13["13 roadmap"] & C16["16 testing"] & C17["17 research"]
-    C99["99 ai-context"]
+  subgraph IMPL["✅ IMPLEMENTED"]
+    RUNTIME["Runtime Kernel\n(Scheduler, EventBus,\nServiceRegistry)"]
+    WORKER["Worker System\n(spawn/lifecycle/comm/health)"]
+    ARTIFACT["Artifact System\n(lifecycle/verify/merge/version)"]
+    WORKFLOW["Workflow Engine\n(DAG/retry/executors)"]
+    MEMORY["Memory\n(STM/LTM/vector/knowledge)"]
+    AI["AI / Orchestrators\n(planner/critic/judge)"]
+    API["API Layer\n(services/Eulinx:///Rust)"]
+    DB["Database\n(Rust SQLite/rusqlite)"]
+    PLUGIN["Plugin System\n(hooks/MCP/lifecycle)"]
+    TOOLS["Built-in Tools\n(fs/git/terminal/http)"]
+    UI["React 19 UI\n(workspace/graph/panels)"]
+    TEST["Testing\n(128 files, cargo tests)"]
   end
-  subgraph PARTIAL["Partial / target sections"]
-    P05["05 resource-manager"] & P06["06 workflow-engine"]
-    P07["07 ui-ux"] & P08["08 database"] & P09["09 plugin-system"]
-    P10["10 ai-system"] & P11["11 features"] 
+  subgraph ADR["🔄 ADR Reconciliation"]
+    A004["ADR-004: SQLx→rusqlite"]
+    A005["ADR-005: LanceDB→in-memory"]
+    A021["ADR-021: Tantivy→TS index"]
+    A025["ADR-025: compliance verified"]
+    A029["ADR-029: feature→domain folders"]
   end
-  subgraph CODE["Application code"]
-    CS["Setup stage only\nTauri v2 + React19 + TS + Vite + pnpm"]
+  subgraph FUTURE["📋 Future"]
+    DIST["Distributed Execution"]
+    MKT["Remote Marketplace"]
+    VEC["Advanced Vector DB"]
+    FTS["Full-text Engine"]
+    COLLAB["Collaboration"]
   end
-  COMPLETE -->|"ahead of code"| CODE
-  PARTIAL -->|"build target"| CODE
-  CODE -->|"follows"| RF["Roadmap PHASE 00 -> 21"]
+  IMPL --> ADR
+  ADR --> FUTURE
 ```
 
 ```text
-VAULT COMPLETION MAP
+COMPLETION MAP
 
-COMPLETE (written, prefer over summary)
-  00 introduction        12 development (constitution)
-  01 core-concepts       13 roadmap (MVP + P1-4 + Future)
-  02 runtime             16 testing
-  03 worker-system       17 research
-  04 memory              99 ai-context (this set)
+✅ RUNTIME KERNEL      — Scheduler, EventBus, services, lifecycle
+✅ WORKER SYSTEM       — Spawn, lifecycle, hierarchy, comm, health
+✅ ARTIFACT SYSTEM     — Lifecycle, verify, merge, version, relationships
+✅ WORKFLOW ENGINE     — DAG, retry, node executors, pause/resume
+✅ MEMORY SYSTEM       — STM/LTM/vector/knowledge+embeddings
+✅ AI / ORCHESTRATORS  — Planner, critic, judge, refinement loop
+✅ API LAYER           — Service modules, Eulinx:// URIs, Rust bridge
+✅ DATABASE (Rust)     — SQLite/rusqlite, migrations, CRUD, backups
+✅ PLUGIN SYSTEM       — Hooks, MCP client, lifecycle, tool registry
+✅ BUILT-IN TOOLS      — FS, Git, terminal, HTTP, browser, DB
+✅ UI                  — Workspace, node-graph, panels, themes, a11y
+✅ TESTING             — 128 Vitest files + cargo tests + E2E scaffold
 
-PARTIAL / TARGET (structure declared, build target)
-  05 resource-manager  [complete: CPU/mem, disk/net, token/cost, quotas, monitoring]
-  06 workflow-engine   [structure declared]
-  07 ui-ux             [structure declared]
-  08 database          [structure declared]
-  09 plugin-system     [structure declared]
-  10 ai-system         [structure declared]
-  11 features          [README present]
+🔄 ADR RECONCILIATION  — In progress (004/005/021/025/029 done)
 
-CODE REALITY
-  project-setup stage only  -> vault is well ahead of code
-  implementation follows roadmap phases PHASE 00 -> 21
+📋 DEFERRED           — Distributed execution, marketplace, LanceDB, Tantivy, collab
 ```
 
 # Related Documents
 
 - [[CurrentProgress-Part01]]
-- [[06-workflow-engine/README]]
-- [[07-ui-ux/README]]
-- [[04-memory/README]]
-- [[12-development/README]]
+- [[ProjectState/ProjectState-Part01]]
+- [[ImplementationGapAudit]]
