@@ -39,6 +39,7 @@ export type ArtifactKind =
   | "review"
   | "verification_result"
   | "merge_result"
+  | "file"
 
 // ---------------------------------------------------------------------------
 // Artifact Status (ArtifactLifecycle-Part01 §LifecycleStateMachine)

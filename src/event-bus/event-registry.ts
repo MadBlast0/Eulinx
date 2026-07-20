@@ -71,7 +71,9 @@ export class EventRegistry {
    * Get all event types for a given family.
    */
   byFamily(family: EventFamily): ReadonlyArray<EventSchemaDefinition> {
-    return Array.from(this.schemas.values()).filter((s) => s.family === family)
+    return Array.from(this.schemas.values()).filter(
+      (s) => s.family === family && !s.type.startsWith("Eulinx://"),
+    )
   }
 
   /**
@@ -237,8 +239,13 @@ export class EventRegistry {
       // Register the canonical `Eulinx://<family>/<fact>` URI as an alias so
       // subscribers may publish/subscribe using either the short name or the
       // wire URI (EventAPI-Part01 §The Naming Scheme).
-      const [family, fact] = def.type.split(".")
-      this.schemas.set(toEulinxUri(family as EventFamily, fact), { ...def, type: toEulinxUri(family as EventFamily, fact) })
+      const parts = def.type.split(".")
+      if (parts.length >= 2) {
+        const family = parts[0] as EventFamily
+        const fact = parts[1]!
+        const uri = toEulinxUri(family, fact)
+        this.schemas.set(uri, { ...def, type: uri })
+      }
     }
   }
 
@@ -247,8 +254,11 @@ export class EventRegistry {
    * canonical `Eulinx://` URI. Used by callers that build names dynamically.
    */
   registerAliased(schema: EventSchemaDefinition): boolean {
-    const [family, fact] = schema.type.split(".")
-    const uri = toEulinxUri(family as EventFamily, fact)
+    const parts = schema.type.split(".")
+    if (parts.length < 2) return this.register({ ...schema, type: schema.type })
+    const family = parts[0] as EventFamily
+    const fact = parts[1]!
+    const uri = toEulinxUri(family, fact)
     const shortOk = this.register({ ...schema, type: schema.type })
     const uriOk = this.register({ ...schema, type: uri })
     return shortOk || uriOk

@@ -644,6 +644,7 @@ export class ArtifactManager {
       review: 0,
       verification_result: 0,
       merge_result: 0,
+      file: 0,
     }
 
     let totalSizeBytes = 0

@@ -4,9 +4,7 @@ import App from "./App";
 describe("App", () => {
   it("renders without crashing", () => {
     render(<App />);
-    // WorkspaceLayout shows loading state or the Dashboard content
-    expect(
-      screen.getByText(/Loading workspace|Dashboard/)
-    ).toBeInTheDocument();
+    // WorkspaceLayout shows the workspace shell
+    expect(screen.getByText(/WorkspaceApp|Graph|Canvas/i)).toBeInTheDocument();
   });
 });

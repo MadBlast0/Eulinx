@@ -207,6 +207,18 @@ const BASELINE_KINDS: ReadonlyMap<ArtifactKind, KindDescriptor> = new Map([
       isVersioned: false,
     },
   ],
+  [
+    "file",
+    {
+      kind: "file",
+      label: "File",
+      description: "A workspace file imported from a template",
+      contentType: "text/plain",
+      isMergeable: true,
+      isVerifiable: false,
+      isVersioned: true,
+    },
+  ],
 ])
 
 // ---------------------------------------------------------------------------

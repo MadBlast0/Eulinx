@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from "react"
 import { ThemeProvider } from "@/ui/tokens/theme-provider"
+import { NotificationProvider } from "@/providers/NotificationProvider"
 import { WorkspaceApp } from "@/ui/workspace"
 
 class Boundary extends Component<
@@ -35,7 +36,9 @@ function App() {
     <Boundary label="ThemeProvider">
       <ThemeProvider>
         <Boundary label="WorkspaceApp">
-          <WorkspaceApp />
+          <NotificationProvider>
+            <WorkspaceApp />
+          </NotificationProvider>
         </Boundary>
       </ThemeProvider>
     </Boundary>
