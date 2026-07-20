@@ -17,6 +17,7 @@ import type {
 import { PromptCache } from "./prompt-cache"
 import { PromptValidator } from "./prompt-validate"
 import { PromptBuilder } from "./prompt-builder"
+import { PromptOptimizer, type OptimizationResult, type PromptOptimizerExecutor } from "./prompt-optimize"
 import { createLogger } from "@/core/logger"
 import type { Logger } from "@/core/logger"
 import type { Result } from "@/core/result"
@@ -34,6 +35,7 @@ export class PromptManager {
   private readonly cache: PromptCache
   private readonly validator: PromptValidator
   private readonly builder: PromptBuilder
+  private readonly optimizer: PromptOptimizer
   private readonly eventListeners: Map<PromptEventType, Set<(event: PromptEvent) => void>>
 
   constructor(cacheMaxSize = 1000) {
@@ -41,6 +43,7 @@ export class PromptManager {
     this.cache = new PromptCache(cacheMaxSize)
     this.validator = new PromptValidator()
     this.builder = new PromptBuilder()
+    this.optimizer = new PromptOptimizer()
     this.eventListeners = new Map()
   }
 
@@ -133,6 +136,37 @@ export class PromptManager {
   /** Get all versions of a template */
   getTemplateVersions(id: string): readonly PromptTemplate[] {
     return this.templates.get(id) ?? []
+  }
+
+  /**
+   * Optimize a template's text and persist the result as a new version.
+   * Runs deterministic optimization always; when `llmExecutor` is provided,
+   * an LLM conciseness rewrite is attempted (falls back to deterministic).
+   * Returns the optimization report describing exactly what changed.
+   */
+  async optimize(
+    id: string,
+    llmExecutor?: PromptOptimizerExecutor,
+  ): Promise<Result<OptimizationResult, CoreError>> {
+    const template = this.getTemplate(id)
+    if (!template) {
+      return err({ code: "validation_error", message: `Template not found: ${id}` })
+    }
+
+    const result = llmExecutor
+      ? await this.optimizer.optimizeTextWithLlm(template.template, llmExecutor)
+      : this.optimizer.optimizeText(template.template)
+
+    // Persist as a new version only if something actually changed.
+    if (result.optimizedLength !== result.originalLength) {
+      const versioned = this.versionTemplate(id, { template: result.optimized })
+      if (!versioned.ok) {
+        return err(versioned.error)
+      }
+    }
+
+    this.logger.info(`Optimized template ${id}: ${result.applied.length} transform(s) applied`)
+    return ok(result)
   }
 
   // -----------------------------------------------------------------------

@@ -154,9 +154,17 @@ export class PlannerOrchestrator extends BaseOrchestrator {
     // Build plan tree
     const nodes: Record<string, PlanNode> = {}
     phases.forEach((phase, index) => {
-      nodes[phase.id] = phase
+      let tasks: PlanNode[]
       const phaseNodesForTasks = phaseSpecs[index]?.nodes ?? []
-      const tasks = this.decomphaseTask(this.goal.id, index, phase.intent, phaseNodesForTasks)
+      if (phaseNodesForTasks.length > 0) {
+        tasks = this.decomphaseTask(this.goal.id, index, phase.intent, phaseNodesForTasks)
+      } else {
+        const defaultNode: PlannerGraphNode = { id: `default-${index}`, label: phase.intent, kind: "task" }
+        tasks = this.decomphaseTask(this.goal.id, index, phase.intent, [defaultNode])
+      }
+      const updatedPhase = { ...phase, childIds: tasks.map((t) => t.id) }
+      nodes[phase.id] = updatedPhase
+      this.phaseNodes[index] = updatedPhase
       for (const task of tasks) {
         nodes[task.id] = task
       }
@@ -201,9 +209,17 @@ export class PlannerOrchestrator extends BaseOrchestrator {
 
     const nodes: Record<string, PlanNode> = {}
     phases.forEach((phase, index) => {
-      nodes[phase.id] = phase
+      let tasks: PlanNode[]
       const phaseNodesForTasks = phaseSpecs[index]?.nodes ?? []
-      const tasks = this.decomphaseTask(this.goal.id, index, phase.intent, phaseNodesForTasks)
+      if (phaseNodesForTasks.length > 0) {
+        tasks = this.decomphaseTask(this.goal.id, index, phase.intent, phaseNodesForTasks)
+      } else {
+        const defaultNode: PlannerGraphNode = { id: `default-${index}`, label: phase.intent, kind: "task" }
+        tasks = this.decomphaseTask(this.goal.id, index, phase.intent, [defaultNode])
+      }
+      const updatedPhase = { ...phase, childIds: tasks.map((t) => t.id) }
+      nodes[updatedPhase.id] = updatedPhase
+      this.phaseNodes[index] = updatedPhase
       for (const task of tasks) {
         nodes[task.id] = task
       }

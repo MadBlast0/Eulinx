@@ -145,9 +145,9 @@ describe("PlannerOrchestrator", () => {
     const result = await planner.planWithLlm(executor)
     expect(result.ok).toBe(true)
     if (result.ok) {
-      const phases = Object.values(result.value.nodes).filter((n) => n.id.startsWith("phase-"))
+      const phases = Object.values(result.value.nodes).filter((n) => n.ownerRole === "coordinator")
       expect(phases).toHaveLength(2)
-      const tasks = Object.values(result.value.nodes).filter((n) => n.id.includes("task"))
+      const tasks = Object.values(result.value.nodes).filter((n) => n.id.includes("-task-"))
       expect(tasks).toHaveLength(3)
       // Owner roles come from the LLM, not the structural default.
       expect(tasks.some((t) => t.ownerRole === "researcher")).toBe(true)
