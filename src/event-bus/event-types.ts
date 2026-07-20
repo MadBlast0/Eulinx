@@ -874,6 +874,65 @@ function isValidEventFamily(value: string): value is EventFamily {
   )
 }
 
+// ---------------------------------------------------------------------------
+// EulinxEventUri — the canonical `Eulinx://<family>/<fact>` wire names
+// ---------------------------------------------------------------------------
+
+export const EULINX_EVENT_PREFIX = "Eulinx://" as const
+
+/**
+ * The canonical wire name for an event: `Eulinx://<family>/<fact>`.
+ * The EventBus registers both the short `<family>.<fact>` name and this URI as
+ * aliases so subscribers may use either form (EventAPI-Part01 §The Naming Scheme).
+ */
+export type EulinxEventUri = `${typeof EULINX_EVENT_PREFIX}${EventFamily}/${string}`
+
+/**
+ * Build a canonical `Eulinx://` URI from a family and a past-tense fact.
+ * The fact uses underscore casing (e.g. `state_changed`).
+ */
+export function toEulinxUri(family: EventFamily, fact: string): EulinxEventUri {
+  return `${EULINX_EVENT_PREFIX}${family}/${fact}` as EulinxEventUri
+}
+
+export interface ParsedEulinxUri {
+  readonly family: EventFamily
+  readonly fact: string
+}
+
+/**
+ * Parse a `Eulinx://<family>/<fact>` URI back into its parts.
+ * Returns `undefined` if the string is not a well-formed `Eulinx://` URI.
+ */
+export function parseEulinxUri(uri: string): ParsedEulinxUri | undefined {
+  if (!uri.startsWith(EULINX_EVENT_PREFIX)) return undefined
+  const rest = uri.slice(EULINX_EVENT_PREFIX.length)
+  const slashIndex = rest.indexOf("/")
+  if (slashIndex === -1) return undefined
+  const family = rest.slice(0, slashIndex)
+  const fact = rest.slice(slashIndex + 1)
+  if (fact.length === 0) return undefined
+  if (!isValidEventFamily(family)) return undefined
+  return { family, fact }
+}
+
+/**
+ * Given a short event type (`<family>.<fact>`), return the alias URI, or vice
+ * versa. Returns the same string when it is already in the requested form.
+ */
+export function aliasEventName(name: string): string {
+  const uri = parseEulinxUri(name)
+  if (uri) {
+    return `${uri.family}.${uri.fact}`
+  }
+  const dotIndex = name.indexOf(".")
+  if (dotIndex === -1) return name
+  const family = name.slice(0, dotIndex)
+  const fact = name.slice(dotIndex + 1)
+  if (!isValidEventFamily(family)) return name
+  return toEulinxUri(family, fact)
+}
+
 // Immediate-flush event families for UI batcher (EventBus-Part04 §Batching)
 export const IMMEDIATE_FLUSH_FAMILIES: readonly EventFamily[] = [
   "merge",

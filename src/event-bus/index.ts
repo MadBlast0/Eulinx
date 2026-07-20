@@ -42,5 +42,8 @@ export * from "./event-batcher"
 // Publishers
 export * from "./event-publishers"
 
+// Notification bridge
+export * from "./notification-bridge"
+
 // Main EventBus
 export { EventBus } from "./event-bus"

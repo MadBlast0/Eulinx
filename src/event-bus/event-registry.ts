@@ -7,6 +7,7 @@
  */
 
 import type { RuntimeServiceName, EventFamily } from "./event-types"
+import { toEulinxUri } from "./event-types"
 
 // ---------------------------------------------------------------------------
 // Event schema definition
@@ -229,7 +230,24 @@ export class EventRegistry {
 
     for (const def of defs) {
       this.schemas.set(def.type, def)
+      // Register the canonical `Eulinx://<family>/<fact>` URI as an alias so
+      // subscribers may publish/subscribe using either the short name or the
+      // wire URI (EventAPI-Part01 §The Naming Scheme).
+      const [family, fact] = def.type.split(".")
+      this.schemas.set(toEulinxUri(family as EventFamily, fact), { ...def, type: toEulinxUri(family as EventFamily, fact) })
     }
+  }
+
+  /**
+   * Register a schema under BOTH the short `<family>.<fact>` name and its
+   * canonical `Eulinx://` URI. Used by callers that build names dynamically.
+   */
+  registerAliased(schema: EventSchemaDefinition): boolean {
+    const [family, fact] = schema.type.split(".")
+    const uri = toEulinxUri(family as EventFamily, fact)
+    const shortOk = this.register({ ...schema, type: schema.type })
+    const uriOk = this.register({ ...schema, type: uri })
+    return shortOk || uriOk
   }
 }
 

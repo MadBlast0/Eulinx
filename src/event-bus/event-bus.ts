@@ -35,6 +35,7 @@ import { EventQueue } from "./event-queue"
 import { UiBatcher } from "./event-batcher"
 import { EventRegistry, getDefaultRegistry } from "./event-registry"
 import { matchesFilter, isValidTopicPattern, PLUGIN_SUBSCRIPTION_LIMIT } from "./event-subscriptions"
+import { aliasEventName, parseEulinxUri } from "./event-types"
 import { generateId } from "@/core/uuid"
 import { invoke, isTauri } from "@tauri-apps/api/core"
 import { createLogger } from "@/core/logger"
@@ -300,15 +301,21 @@ export class EventBus {
     filter: SubscriptionFilter,
     handler: EventHandler,
   ): SubscribeResult {
-    // Validate topic patterns
+    // Validate topic patterns. Both short names (`worker.spawned`) and the
+    // canonical `Eulinx://worker/spawned` URI are accepted (EventAPI-Part01).
     for (const topic of filter.topics) {
-      if (topic !== "*" && !isValidTopicPattern(topic)) {
+      if (topic !== "*" && !isValidTopicPattern(topic) && parseEulinxUri(topic) === undefined) {
         return {
           ok: false,
           error: { kind: "invalid_topic_pattern", pattern: topic },
         }
       }
     }
+
+    // Normalize every topic to the canonical short `<family>.<fact>` form so
+    // a subscriber using the `Eulinx://` URI still matches short-name events.
+    const normalizedTopics = filter.topics.map((t) => aliasEventName(t))
+    const normalizedFilter: SubscriptionFilter = { ...filter, topics: normalizedTopics }
 
     // Reject empty topics
     if (filter.topics.length === 0) {
@@ -345,7 +352,7 @@ export class EventBus {
       subscriptionId,
       kind,
       ownerId,
-      filter,
+      filter: normalizedFilter,
       queueCapacity,
       deliveredCount: 0,
       droppedCount: 0,
@@ -393,12 +400,15 @@ export class EventBus {
 
   private findMatchingSubscribers(event: EulinxEventUnion): SubscriptionEntry[] {
     const results: SubscriptionEntry[] = []
+    // Match against the canonical short `<family>.<fact>` form regardless of
+    // whether the published event used the short name or the `Eulinx://` URI.
+    const matchedType = aliasEventName(event.type)
     for (const sub of this.subscribers.values()) {
       if (sub.state === "quarantined") continue
       if (
         matchesFilter(
           sub.filter,
-          event.type,
+          matchedType,
           event.workspaceId,
           event.sessionId,
           event.executionId,
