@@ -75,17 +75,21 @@ export class EventRegistry {
   }
 
   /**
-   * Get all replay-grade event types.
+   * Get all replay-grade event types (short-form only, excludes URI aliases).
    */
   replayGradeTypes(): ReadonlyArray<EventSchemaDefinition> {
-    return Array.from(this.schemas.values()).filter((s) => s.replayGrade)
+    return Array.from(this.schemas.values()).filter(
+      (s) => s.replayGrade && !s.type.startsWith("Eulinx://"),
+    )
   }
 
   /**
-   * Get all high-frequency event types.
+   * Get all high-frequency event types (short-form only, excludes URI aliases).
    */
   highFrequencyTypes(): ReadonlyArray<EventSchemaDefinition> {
-    return Array.from(this.schemas.values()).filter((s) => s.highFrequency)
+    return Array.from(this.schemas.values()).filter(
+      (s) => s.highFrequency && !s.type.startsWith("Eulinx://"),
+    )
   }
 
   /**

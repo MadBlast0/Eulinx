@@ -35,7 +35,7 @@ import { EventQueue } from "./event-queue"
 import { UiBatcher } from "./event-batcher"
 import { EventRegistry, getDefaultRegistry } from "./event-registry"
 import { matchesFilter, isValidTopicPattern, PLUGIN_SUBSCRIPTION_LIMIT } from "./event-subscriptions"
-import { aliasEventName, parseEulinxUri } from "./event-types"
+import { parseEulinxUri } from "./event-types"
 import { generateId } from "@/core/uuid"
 import { invoke, isTauri } from "@tauri-apps/api/core"
 import { createLogger } from "@/core/logger"
@@ -312,9 +312,14 @@ export class EventBus {
       }
     }
 
-    // Normalize every topic to the canonical short `<family>.<fact>` form so
-    // a subscriber using the `Eulinx://` URI still matches short-name events.
-    const normalizedTopics = filter.topics.map((t) => aliasEventName(t))
+    // Convert any `Eulinx://` URIs to short `<family>.<fact>` form so
+    // a subscriber using the URI still matches short-name events.
+    // Leave short-form patterns and `*` untouched so `matchesTopic` (which
+    // splits on `.`) works correctly.
+    const normalizedTopics = filter.topics.map((t) => {
+      const parsed = parseEulinxUri(t)
+      return parsed ? `${parsed.family}.${parsed.fact}` : t
+    })
     const normalizedFilter: SubscriptionFilter = { ...filter, topics: normalizedTopics }
 
     // Reject empty topics
@@ -400,9 +405,11 @@ export class EventBus {
 
   private findMatchingSubscribers(event: EulinxEventUnion): SubscriptionEntry[] {
     const results: SubscriptionEntry[] = []
-    // Match against the canonical short `<family>.<fact>` form regardless of
-    // whether the published event used the short name or the `Eulinx://` URI.
-    const matchedType = aliasEventName(event.type)
+    // Normalize to short `<family>.<fact>` form so URI-published events match
+    // short-form subscribers. Leave short-form events untouched so that
+    // `matchesTopic` (dot-split) works with pattern wildcards.
+    const parsed = parseEulinxUri(event.type)
+    const matchedType = parsed ? `${parsed.family}.${parsed.fact}` : event.type
     for (const sub of this.subscribers.values()) {
       if (sub.state === "quarantined") continue
       if (
