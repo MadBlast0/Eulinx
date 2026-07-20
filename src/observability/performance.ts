@@ -8,6 +8,58 @@
 import type { PerformanceMetrics } from "./observability-types"
 
 // ---------------------------------------------------------------------------
+// Frame budget utilities
+// ---------------------------------------------------------------------------
+
+/** Target frame time for 60fps in milliseconds. */
+export const FRAME_BUDGET_MS = 1000 / 60
+
+/** High-resolution clock, preferring `performance.now` when available. */
+function now(): number {
+  return typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now()
+}
+
+/** Result of measuring an operation against a time budget. */
+export interface BudgetResult<T> {
+  /** The value returned by the measured function. */
+  value: T
+  /** Wall-clock duration of the operation in milliseconds. */
+  durationMs: number
+  /** The budget the operation was measured against. */
+  budgetMs: number
+  /** Whether the operation completed within `budgetMs`. */
+  ok: boolean
+}
+
+/**
+ * Run `fn`, measure how long it takes, and report whether it finished within
+ * `budgetMs`. Never throws for exceeding the budget — inspect `ok` on the
+ * returned result. Use `FRAME_BUDGET_MS` for the 60fps frame budget.
+ */
+export function withinBudget<T>(budgetMs: number, fn: () => T): BudgetResult<T> {
+  const start = now()
+  const value = fn()
+  const durationMs = now() - start
+  return { value, durationMs, budgetMs, ok: durationMs <= budgetMs }
+}
+
+/**
+ * Async variant of {@link withinBudget}. Awaits `fn` before measuring the
+ * elapsed time.
+ */
+export async function withinBudgetAsync<T>(
+  budgetMs: number,
+  fn: () => Promise<T>,
+): Promise<BudgetResult<T>> {
+  const start = now()
+  const value = await fn()
+  const durationMs = now() - start
+  return { value, durationMs, budgetMs, ok: durationMs <= budgetMs }
+}
+
+// ---------------------------------------------------------------------------
 // Performance Monitor
 // ---------------------------------------------------------------------------
 

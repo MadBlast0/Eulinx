@@ -61,4 +61,10 @@ export { AnalyticsTracker } from "./analytics"
 export { CostTracker } from "./cost"
 
 // Performance
-export { PerformanceMonitor } from "./performance"
+export {
+  PerformanceMonitor,
+  withinBudget,
+  withinBudgetAsync,
+  FRAME_BUDGET_MS,
+  type BudgetResult,
+} from "./performance"
