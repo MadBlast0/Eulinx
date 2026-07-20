@@ -59,6 +59,9 @@ export class BudgetPool {
   }
   private readonly reservations = new Map<string, BudgetReservation>()
   private readonly config: BudgetPoolConfig
+  /** Invoked (at most once per breach) when a reservation is rejected. */
+  onBudgetExceeded: ((unitId: string) => void) | null = null
+  private budgetBreached = false
 
   constructor(config: BudgetPoolConfig) {
     this.config = config
@@ -68,49 +71,42 @@ export class BudgetPool {
    * Check if a budget estimate can be accommodated.
    */
   canReserve(estimate: BudgetEstimate): boolean {
-    if (
-      estimate.estimatedCostMicroUsd !== undefined &&
-      this.consumption.costMicroUsd + estimate.estimatedCostMicroUsd >
-        this.config.maxCostMicroUsd
-    ) {
-      return false
+    const fits =
+      !(
+        estimate.estimatedCostMicroUsd !== undefined &&
+        this.consumption.costMicroUsd + estimate.estimatedCostMicroUsd >
+          this.config.maxCostMicroUsd
+      ) &&
+      !(
+        estimate.estimatedWorkers !== undefined &&
+        this.consumption.workers + estimate.estimatedWorkers >
+          this.config.maxWorkers
+      ) &&
+      !(
+        estimate.estimatedToolInvocations !== undefined &&
+        this.consumption.toolInvocations + estimate.estimatedToolInvocations >
+          this.config.maxToolInvocations
+      ) &&
+      !(
+        estimate.estimatedFileWrites !== undefined &&
+        this.consumption.fileWrites + estimate.estimatedFileWrites >
+          this.config.maxFileWrites
+      ) &&
+      !(
+        estimate.estimatedTokens !== undefined &&
+        this.consumption.tokens + estimate.estimatedTokens >
+          this.config.maxTokens
+      ) &&
+      !(
+        estimate.estimatedRuntimeMs !== undefined &&
+        this.consumption.runtimeMs + estimate.estimatedRuntimeMs >
+          this.config.maxRuntimeMs
+      )
+    if (!fits && !this.budgetBreached && this.onBudgetExceeded) {
+      this.budgetBreached = true
+      this.onBudgetExceeded("budget_pool")
     }
-    if (
-      estimate.estimatedWorkers !== undefined &&
-      this.consumption.workers + estimate.estimatedWorkers >
-        this.config.maxWorkers
-    ) {
-      return false
-    }
-    if (
-      estimate.estimatedToolInvocations !== undefined &&
-      this.consumption.toolInvocations + estimate.estimatedToolInvocations >
-        this.config.maxToolInvocations
-    ) {
-      return false
-    }
-    if (
-      estimate.estimatedFileWrites !== undefined &&
-      this.consumption.fileWrites + estimate.estimatedFileWrites >
-        this.config.maxFileWrites
-    ) {
-      return false
-    }
-    if (
-      estimate.estimatedTokens !== undefined &&
-      this.consumption.tokens + estimate.estimatedTokens >
-        this.config.maxTokens
-    ) {
-      return false
-    }
-    if (
-      estimate.estimatedRuntimeMs !== undefined &&
-      this.consumption.runtimeMs + estimate.estimatedRuntimeMs >
-        this.config.maxRuntimeMs
-    ) {
-      return false
-    }
-    return true
+    return fits
   }
 
   /**
@@ -176,6 +172,11 @@ export class BudgetPool {
 
   getReservation(unitId: string): BudgetReservation | undefined {
     return this.reservations.get(unitId)
+  }
+
+  /** Allow a future breach to notify again (call after budget frees up). */
+  clearBreach(): void {
+    this.budgetBreached = false
   }
 
   getConsumption(): BudgetConsumption {

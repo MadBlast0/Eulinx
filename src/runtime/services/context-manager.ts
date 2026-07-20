@@ -4,6 +4,7 @@ import type { EventBus } from "@/event-bus/event-bus"
 import { createLogger } from "@/core/logger"
 import type { Logger } from "@/core/logger"
 import type { ContextRequest, ContextPackage } from "./types"
+import type { MemoryManager } from "@/memory/memory-manager"
 
 interface ContextWindow {
   readonly sessionId: SessionId
@@ -18,10 +19,12 @@ export class ContextManager {
   protected readonly log: Logger
   private readonly windows = new Map<SessionId, ContextWindow>()
   private readonly eventBus?: EventBus
+  private readonly memoryManager?: MemoryManager
 
-  constructor(eventBus?: EventBus) {
+  constructor(eventBus?: EventBus, memoryManager?: MemoryManager) {
     this.log = createLogger("ContextManager")
     this.eventBus = eventBus
+    this.memoryManager = memoryManager
   }
 
   async start(): Promise<void> {
@@ -39,15 +42,33 @@ export class ContextManager {
   }
 
   buildContext(request: ContextRequest): ContextPackage {
-    const estimatedTokens = Math.ceil(request.query.length / 4)
+    const memoryResults = this.memoryManager?.buildContext({
+      workspaceId: request.workspaceId,
+      sessionId: request.sessionId,
+      query: request.query,
+      maxTokens: request.maxTokens,
+    })
+
+    const memoryContent = memoryResults && memoryResults.length > 0
+      ? memoryResults.map(r => r.content).join("\n\n")
+      : ""
+
+    const combinedContent = memoryContent
+      ? `Query: ${request.query}\n\nRelevant context from memory:\n${memoryContent}`
+      : request.query
+
+    const estimatedTokens = Math.ceil(combinedContent.length / 4)
     const clampedTokens = request.maxTokens
       ? Math.min(estimatedTokens, request.maxTokens)
       : Math.min(estimatedTokens, MAX_TOKENS_PER_WINDOW)
 
+    const sources: string[] = ["query"]
+    if (memoryResults && memoryResults.length > 0) sources.push("memory")
+
     return {
-      content: request.query,
+      content: combinedContent,
       tokenCount: clampedTokens,
-      sources: ["query"],
+      sources,
     }
   }
 
@@ -83,6 +104,6 @@ export class ContextManager {
   }
 }
 
-export function createContextManager(eventBus?: EventBus): ContextManager {
-  return new ContextManager(eventBus)
+export function createContextManager(eventBus?: EventBus, memoryManager?: MemoryManager): ContextManager {
+  return new ContextManager(eventBus, memoryManager)
 }

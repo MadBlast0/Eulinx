@@ -6,6 +6,7 @@
  */
 
 import type { RuntimeServiceDefinition, ServiceRegistry, ServiceState } from "./service-registry"
+import { ok, type Result } from "@/core/result"
 import { createLogger } from "@/core/logger"
 import { EventBus } from "@/event-bus/event-bus"
 import { PermissionManager } from "@/security/permission-manager"
@@ -21,8 +22,92 @@ import { ProcessLifecycle } from "@/runtime/services/process-lifecycle"
 import { WorkerSpawner } from "@/runtime/services/worker-spawner"
 import { ExecutionEngine } from "@/runtime/services/execution-engine"
 import { MergeManager } from "@/runtime/services/merge-manager"
+import { WorkflowManager } from "@/workflow/workflow-manager"
+import type { WorkflowDefinition } from "@/workflow/workflow-manager"
+import { TriggerEngine } from "@/workflow/triggers"
+import type { ReadSnapshotFn, WebhookRegisterFn } from "@/workflow/triggers"
+import type { PersistenceAdapter, WorkflowEventEmitter } from "@/workflow/workflow-engine"
+import type {
+  AdmissionRequest,
+  AdmissionResponse,
+  ExecutionRequest,
+  WorkflowNodeResult,
+  WorkflowRun,
+  WorkflowRunId,
+  NodeRuntimeState,
+  GraphSnapshot,
+} from "@/workflow/workflow-types"
+import type { RunContext } from "@/workflow/run-context"
+import type { RunTrigger } from "@/workflow/workflow-types"
 
 const logger = createLogger("RuntimeBootstrap")
+
+// ---------------------------------------------------------------------------
+// In-memory workflow engine adapters (no Rust backend required).
+// ---------------------------------------------------------------------------
+
+class NoopEventEmitter implements WorkflowEventEmitter {
+  emit(): void {}
+}
+
+class AllowAllScheduler {
+  async admit(_request: AdmissionRequest): Promise<AdmissionResponse> {
+    return { admitted: [], deferred: [], rejected: [] }
+  }
+}
+
+class NoopExecutor {
+  async execute(_request: ExecutionRequest): Promise<WorkflowNodeResult> {
+    return {
+      ok: true,
+      executionId: "noop",
+      outputs: {},
+      metrics: { durationMs: 0, tokensUsed: 0, costUsd: 0, toolCalls: 0 },
+    }
+  }
+  async status(): Promise<"completed"> {
+    return "completed"
+  }
+  async cancel(): Promise<void> {}
+}
+
+class InMemoryPersistence implements PersistenceAdapter {
+  private readonly runs = new Map<string, WorkflowRun>()
+  private readonly snapshots = new Map<string, GraphSnapshot>()
+  private readonly nodeStates = new Map<string, readonly NodeRuntimeState[]>()
+  private readonly contexts = new Map<string, RunContext>()
+
+  async saveRun(run: WorkflowRun): Promise<Result<void, string>> {
+    this.runs.set(run.runId, run)
+    return ok(undefined)
+  }
+  async loadRun(runId: WorkflowRunId): Promise<Result<WorkflowRun | null, string>> {
+    return ok(this.runs.get(runId) ?? null)
+  }
+  async loadSnapshot(snapshotId: string): Promise<Result<GraphSnapshot | null, string>> {
+    return ok(this.snapshots.get(snapshotId) ?? null)
+  }
+  async saveNodeState(state: NodeRuntimeState): Promise<Result<void, string>> {
+    const key = state.runId
+    const arr = (this.nodeStates.get(key) ?? []) as NodeRuntimeState[]
+    arr.push(state)
+    this.nodeStates.set(key, arr)
+    return ok(undefined)
+  }
+  async loadNodeStates(runId: WorkflowRunId): Promise<Result<readonly NodeRuntimeState[], string>> {
+    return ok(this.nodeStates.get(runId) ?? [])
+  }
+  async saveRunContext(context: RunContext): Promise<Result<void, string>> {
+    this.contexts.set(context.runId, context)
+    return ok(undefined)
+  }
+  async loadRunContext(runId: WorkflowRunId): Promise<Result<RunContext | null, string>> {
+    return ok(this.contexts.get(runId) ?? null)
+  }
+  async appendTransition(): Promise<Result<void, string>> {
+    return ok(undefined)
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Lightweight adapter for services without real implementations yet.
@@ -30,7 +115,7 @@ const logger = createLogger("RuntimeBootstrap")
 // Replace with a proper implementation when the module exists.
 // ---------------------------------------------------------------------------
 
-class ServiceAdapter {
+export class ServiceAdapter {
   protected state: ServiceState = "registered"
   protected readonly log: ReturnType<typeof createLogger>
 
@@ -80,6 +165,8 @@ export const CORE_SERVICE_DEFINITIONS: readonly RuntimeServiceDefinition[] = [
   { id: "Scheduler", name: "Scheduler", required: true, phase: 5, dependencies: ["WorkerSpawner", "EventBus"] },
   { id: "ExecutionEngine", name: "ExecutionEngine", required: true, phase: 5, dependencies: ["Scheduler", "PermissionManager"] },
   { id: "MergeManager", name: "MergeManager", required: true, phase: 5, dependencies: ["ArtifactManager", "LockManager", "PermissionManager"] },
+  { id: "WorkflowManager", name: "WorkflowManager", required: false, phase: 5, dependencies: ["EventBus"] },
+  { id: "TriggerEngine", name: "TriggerEngine", required: false, phase: 5, dependencies: ["WorkflowManager", "EventBus"] },
 ]
 
 // ---------------------------------------------------------------------------
@@ -123,7 +210,8 @@ export function bootstrapServiceRegistry(
     "ArtifactManager",
     new ArtifactManager("__bootstrap__" as unknown as WorkspaceId),
   )
-  registry.setInstance("ContextManager", new ContextManager(eventBus))
+  const memoryManager = registry.getInstance<MemoryManager>("MemoryManager")
+  registry.setInstance("ContextManager", new ContextManager(eventBus, memoryManager ?? undefined))
 
   // -----------------------------------------------------------------------
   // Phase 4 — Capability Services
@@ -144,5 +232,78 @@ export function bootstrapServiceRegistry(
     registry.setInstance("MergeManager", new MergeManager(artifactManager, lockManager, eventBus))
   }
 
+  // Workflow + Trigger engine (Phase 5 — optional)
+  const workflowManager = new WorkflowManager(
+    new AllowAllScheduler(),
+    new NoopExecutor(),
+    new InMemoryPersistence(),
+    new NoopEventEmitter(),
+  )
+  registry.setInstance("WorkflowManager", workflowManager)
+
+  const triggerEngine = new TriggerEngine({
+    run: (workflowId: string, trigger: RunTrigger) => {
+      const def = workflowManager.getWorkflow(workflowId)
+      if (!def) return Promise.resolve(undefined)
+      return workflowManager.runWorkflow(workflowId, trigger).then(() => undefined)
+    },
+  })
+  registry.setInstance("TriggerEngine", triggerEngine)
+
   logger.info(`Service registry bootstrapped (${CORE_SERVICE_DEFINITIONS.length} core services)`)
+}
+
+// ---------------------------------------------------------------------------
+// Workflow trigger bootstrap
+//
+// Builds a WorkflowManager (in-memory adapters) and a TriggerEngine wired to
+// it, then starts producers for every definition that declares a `trigger`.
+// Dependency-light: file polling and webhook registration are injected.
+// ---------------------------------------------------------------------------
+
+export interface WorkflowTriggerBootstrap {
+  readonly manager: WorkflowManager
+  readonly engine: TriggerEngine
+  /** Register a definition and immediately start its trigger (if any). */
+  register(definition: WorkflowDefinition, readSnapshot?: ReadSnapshotFn, webhookRegister?: WebhookRegisterFn): void
+  /** Stop all producers. */
+  stopAll(): void
+}
+
+export function createWorkflowTriggerBootstrap(
+  readSnapshot?: ReadSnapshotFn,
+  webhookRegister?: WebhookRegisterFn,
+): WorkflowTriggerBootstrap {
+  const manager = new WorkflowManager(
+    new AllowAllScheduler(),
+    new NoopExecutor(),
+    new InMemoryPersistence(),
+    new NoopEventEmitter(),
+  )
+
+  const engine = new TriggerEngine({
+    run: (workflowId: string, trigger: RunTrigger) => {
+      const def = manager.getWorkflow(workflowId)
+      if (!def) return Promise.resolve(undefined)
+      return manager.runWorkflow(workflowId, trigger).then(() => undefined)
+    },
+    readSnapshot,
+    webhookRegister,
+  })
+
+  return {
+    manager,
+    engine,
+    register(definition, rs, wh) {
+      manager.registerWorkflow(definition)
+      if (definition.trigger) {
+        engine.register(definition.workflowId, definition.trigger)
+      }
+      void rs
+      void wh
+    },
+    stopAll() {
+      engine.stopAll()
+    },
+  }
 }

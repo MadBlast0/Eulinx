@@ -186,7 +186,20 @@ export class RuntimeManager {
     })
 
     // Route command
-    return this.routeCommand(command)
+    const result = await this.routeCommand(command)
+
+    // Orphan fix: fire observe hooks through the plugin HookSystem so plugin
+    // hooks actually run against real runtime events. Lazy import avoids a
+    // static cycle between runtime and plugins.
+    void import("@/plugins").then((plugins) => {
+      void plugins.runObserveHooks("runtime.command", {
+        type: command.type,
+        commandId: command.id,
+        ok: result.ok,
+      })
+    }).catch(() => {})
+
+    return result
   }
 
   // -----------------------------------------------------------------------

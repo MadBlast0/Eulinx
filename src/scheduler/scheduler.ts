@@ -30,6 +30,8 @@ import { SchedulerEventEmitter } from "./scheduler-events"
 import type { SchedulerUnitBlockedPayload } from "./scheduler-events"
 import { MetricsCollector } from "./metrics"
 import type { QueueKind } from "./scheduler-types"
+import { getBus } from "@/ui/workspace/runtime-store"
+import { raiseNotification } from "@/event-bus/notification-bridge"
 
 // ---------------------------------------------------------------------------
 // Scheduler Configuration
@@ -109,6 +111,13 @@ export class Scheduler {
     this.deadQueue = new DeadQueue()
     this.concurrency = new ConcurrencyLimiter({ maxConcurrent: config.maxConcurrency })
     this.budgetPool = new BudgetPool(config.budget)
+    this.budgetPool.onBudgetExceeded = (unitId: string) => {
+      void raiseNotification(getBus(), {
+        message: `Scheduler budget exceeded (${unitId}). Further units will wait.`,
+        severity: "warning",
+        subjectId: "scheduler.budget",
+      })
+    }
     this.events = new SchedulerEventEmitter()
     this.metrics = new MetricsCollector()
   }
