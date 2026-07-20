@@ -1,5 +1,5 @@
 /**
- * P07-SESSION-REPLAY — Session Replay
+ * P07-SESSION-REPLAY â€” Session Replay
  *
  * Session-Part03: "Every completed Session SHOULD support replay."
  * Replay is read-only. Includes timeline, worker creation/destruction,
@@ -207,8 +207,10 @@ export class SessionReplayEngine {
       try {
         handler(newState)
       } catch {
+        console.warn('eulinx: session-replay : unexpected error in catch block')
         // Handlers must not throw
       }
     }
   }
 }
+

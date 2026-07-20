@@ -14,6 +14,13 @@ import { ArtifactManager } from "@/artifact/artifact-manager"
 import { ToolRegistry } from "@/tools/tool-registry"
 import { Scheduler } from "@/scheduler/scheduler"
 import type { WorkspaceId } from "@/core/types"
+import { WorkspaceManager } from "@/runtime/services/workspace-manager"
+import { LockManager } from "@/runtime/services/lock-manager"
+import { ContextManager } from "@/runtime/services/context-manager"
+import { ProcessLifecycle } from "@/runtime/services/process-lifecycle"
+import { WorkerSpawner } from "@/runtime/services/worker-spawner"
+import { ExecutionEngine } from "@/runtime/services/execution-engine"
+import { MergeManager } from "@/runtime/services/merge-manager"
 
 const logger = createLogger("RuntimeBootstrap")
 
@@ -104,9 +111,9 @@ export function bootstrapServiceRegistry(
   // -----------------------------------------------------------------------
   // Phase 2 — Safety Services
   // -----------------------------------------------------------------------
-  registry.setInstance("WorkspaceManager", new ServiceAdapter("WorkspaceManager", eventBus))
+  registry.setInstance("WorkspaceManager", new WorkspaceManager(eventBus))
   registry.setInstance("PermissionManager", new PermissionManager())
-  registry.setInstance("LockManager", new ServiceAdapter("LockManager", eventBus))
+  registry.setInstance("LockManager", new LockManager(eventBus))
 
   // -----------------------------------------------------------------------
   // Phase 3 — Data Services
@@ -116,21 +123,26 @@ export function bootstrapServiceRegistry(
     "ArtifactManager",
     new ArtifactManager("__bootstrap__" as unknown as WorkspaceId),
   )
-  registry.setInstance("ContextManager", new ServiceAdapter("ContextManager", eventBus))
+  registry.setInstance("ContextManager", new ContextManager(eventBus))
 
   // -----------------------------------------------------------------------
   // Phase 4 — Capability Services
   // -----------------------------------------------------------------------
   registry.setInstance("ToolRegistry", new ToolRegistry())
-  registry.setInstance("ProcessLifecycle", new ServiceAdapter("ProcessLifecycle", eventBus))
-  registry.setInstance("WorkerSpawner", new ServiceAdapter("WorkerSpawner", eventBus))
+  const processLifecycle = new ProcessLifecycle(eventBus)
+  registry.setInstance("ProcessLifecycle", processLifecycle)
+  registry.setInstance("WorkerSpawner", new WorkerSpawner(processLifecycle, eventBus))
 
   // -----------------------------------------------------------------------
   // Phase 5 — Execution Services
   // -----------------------------------------------------------------------
   registry.setInstance("Scheduler", new Scheduler())
-  registry.setInstance("ExecutionEngine", new ServiceAdapter("ExecutionEngine", eventBus))
-  registry.setInstance("MergeManager", new ServiceAdapter("MergeManager", eventBus))
+  registry.setInstance("ExecutionEngine", new ExecutionEngine(eventBus))
+  const lockManager = registry.getInstance<LockManager>("LockManager")
+  const artifactManager = registry.getInstance<ArtifactManager>("ArtifactManager")
+  if (lockManager && artifactManager) {
+    registry.setInstance("MergeManager", new MergeManager(artifactManager, lockManager, eventBus))
+  }
 
   logger.info(`Service registry bootstrapped (${CORE_SERVICE_DEFINITIONS.length} core services)`)
 }

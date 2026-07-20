@@ -1,5 +1,5 @@
-/**
- * P07-SESSION-CLEANUP — Session Cleanup
+﻿/**
+ * P07-SESSION-CLEANUP â€” Session Cleanup
  *
  * Session-Part04: Security and cleanup.
  * Session-Part01: "A Session MUST NOT outlive its Workspace."
@@ -162,3 +162,4 @@ export function isSessionCleanedUp(state: PersistedSessionState): boolean {
   const isTerminal = (SESSION_TERMINAL as readonly string[]).includes(state.state)
   return isTerminal && state.activeWorkerIds.length === 0
 }
+

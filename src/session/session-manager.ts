@@ -1,5 +1,5 @@
 /**
- * P07-SESSION-CREATE — Session Manager
+ * P07-SESSION-CREATE â€” Session Manager
  *
  * Orchestrates session lifecycle: creation, state transitions, worker/task/artifact
  * tracking, event emission, and cleanup. Integrates with session-state for
@@ -70,7 +70,7 @@ export class SessionManager {
 
   /**
    * Create a new session.
-   * Session-Part02: Created → Initializing → Loading Workspace → Starting Services → Running.
+   * Session-Part02: Created â†’ Initializing â†’ Loading Workspace â†’ Starting Services â†’ Running.
    */
   async createSession(request: SessionCreateRequest): Promise<SessionHandle> {
     // Enforce single active session
@@ -462,6 +462,7 @@ export class SessionManager {
       try {
         handler(event)
       } catch {
+        console.warn('eulinx: session-manager : unexpected error in catch block')
         // Event handlers must not throw
       }
     }
@@ -489,3 +490,4 @@ export class SessionManager {
     return (SESSION_TERMINAL as readonly string[]).includes(state)
   }
 }
+
