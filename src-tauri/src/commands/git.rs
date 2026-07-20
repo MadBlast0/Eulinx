@@ -217,3 +217,89 @@ pub fn git_push(repo: String) -> Result<String, String> {
     let out = git(&repo, &["push"])?;
     Ok(out.trim().to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_branch_line_plain() {
+        let (branch, ahead, behind) = parse_branch_line("## main");
+        assert_eq!(branch, "main");
+        assert_eq!(ahead, 0);
+        assert_eq!(behind, 0);
+    }
+
+    #[test]
+    fn parse_branch_line_with_upstream_extracts_branch() {
+        let (branch, _ahead, _behind) =
+            parse_branch_line("## feature/x...origin/feature/x [ahead 2, behind 3]");
+        // The branch name is taken from the part before "...".
+        assert_eq!(branch, "feature/x");
+    }
+
+    #[test]
+    fn parse_branch_line_strips_upstream_suffix() {
+        let (branch, _ahead, _behind) = parse_branch_line("## dev...origin/dev [ahead 5]");
+        assert_eq!(branch, "dev");
+    }
+
+    #[test]
+    fn parse_numstat_builds_map() {
+        let out = "3\t1\tsrc/a.rs\n0\t0\tsrc/b.rs\n-\t-\tbinary.png\n";
+        let map = parse_numstat(out);
+        assert_eq!(map.get("src/a.rs"), Some(&(3, 1)));
+        assert_eq!(map.get("src/b.rs"), Some(&(0, 0)));
+        // Binary files report `-` which parses to 0.
+        assert_eq!(map.get("binary.png"), Some(&(0, 0)));
+    }
+
+    #[test]
+    fn commit_rejects_empty_message() {
+        // Uses a path that need not be a repo: validation happens before shelling out.
+        let err = git_commit(".".to_string(), "   ".to_string()).unwrap_err();
+        assert!(err.contains("empty"));
+    }
+
+    /// End-to-end against a real `git` CLI in a throwaway repo. Skipped if git
+    /// is not installed so the suite stays green in minimal environments.
+    #[test]
+    fn git_status_reads_real_repo() {
+        if Command::new("git").arg("--version").output().is_err() {
+            eprintln!("git not available; skipping git_status_reads_real_repo");
+            return;
+        }
+
+        let mut dir = std::env::temp_dir();
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        dir.push(format!("eulinx_git_test_{nanos}"));
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = dir.to_string_lossy().to_string();
+
+        let run = |args: &[&str]| {
+            Command::new("git")
+                .args(args)
+                .current_dir(&repo)
+                .output()
+                .unwrap()
+        };
+        run(&["init"]);
+        run(&["config", "user.email", "test@example.com"]);
+        run(&["config", "user.name", "Test"]);
+
+        std::fs::write(dir.join("new.txt"), b"hi").unwrap();
+
+        let status = git_status(repo.clone()).expect("status");
+        // A freshly created file with no commits shows up as untracked.
+        assert!(
+            status.untracked.iter().any(|c| c.path.contains("new.txt")),
+            "expected new.txt in untracked, got: {:?}",
+            status.untracked
+        );
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+}

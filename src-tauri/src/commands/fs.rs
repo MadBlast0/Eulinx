@@ -20,7 +20,12 @@ pub fn fs_read_text(app: AppHandle, path: String) -> Result<String, String> {
 /// Write (overwrite) a UTF-8 file at `path`, creating parent dirs if needed.
 #[tauri::command]
 pub fn fs_write_text(_app: AppHandle, path: String, contents: String) -> Result<(), String> {
-    let p = Path::new(&path);
+    write_text_impl(&path, &contents)
+}
+
+/// Pure implementation of `fs_write_text`, independent of Tauri, for testing.
+fn write_text_impl(path: &str, contents: &str) -> Result<(), String> {
+    let p = Path::new(path);
     if let Some(parent) = p.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("create dir failed: {e}"))?;
     }
@@ -56,7 +61,12 @@ pub struct FileEntry {
 /// files; within each group entries are sorted alphabetically (case-insensitive).
 #[tauri::command]
 pub fn fs_list_dir(_app: AppHandle, path: String) -> Result<Vec<FileEntry>, String> {
-    let dir = std::fs::read_dir(Path::new(&path)).map_err(|e| format!("read dir failed: {e}"))?;
+    list_dir_impl(&path)
+}
+
+/// Pure implementation of `fs_list_dir`, independent of Tauri, for testing.
+fn list_dir_impl(path: &str) -> Result<Vec<FileEntry>, String> {
+    let dir = std::fs::read_dir(Path::new(path)).map_err(|e| format!("read dir failed: {e}"))?;
 
     let mut entries: Vec<FileEntry> = Vec::new();
     for entry in dir {
@@ -89,4 +99,68 @@ pub fn fs_list_dir(_app: AppHandle, path: String) -> Result<Vec<FileEntry>, Stri
     });
 
     Ok(entries)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Create a unique temp directory under the OS temp dir.
+    fn temp_dir(tag: &str) -> std::path::PathBuf {
+        let mut base = std::env::temp_dir();
+        let nanos = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        base.push(format!("eulinx_fs_test_{tag}_{nanos}"));
+        std::fs::create_dir_all(&base).unwrap();
+        base
+    }
+
+    #[test]
+    fn write_then_read_roundtrip() {
+        let dir = temp_dir("roundtrip");
+        let file = dir.join("nested").join("hello.txt");
+        let path = file.to_string_lossy().to_string();
+
+        write_text_impl(&path, "hello world").expect("write");
+        assert!(Path::new(&path).exists(), "parent dirs created and file written");
+
+        let read = std::fs::read_to_string(&file).expect("read");
+        assert_eq!(read, "hello world");
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn list_dir_groups_and_sorts_case_insensitive() {
+        let dir = temp_dir("listing");
+        std::fs::create_dir(dir.join("Zebra")).unwrap();
+        std::fs::write(dir.join("apple.txt"), b"a").unwrap();
+        std::fs::write(dir.join("Banana.txt"), b"bb").unwrap();
+
+        let entries = list_dir_impl(&dir.to_string_lossy()).expect("list");
+        assert_eq!(entries.len(), 3);
+
+        // Files are grouped together and sorted case-insensitively.
+        assert_eq!(entries[0].name, "apple.txt");
+        assert!(!entries[0].is_dir);
+        assert_eq!(entries[0].size, Some(1));
+        assert_eq!(entries[1].name, "Banana.txt");
+        assert_eq!(entries[1].size, Some(2));
+
+        // The directory forms its own group with no reported size.
+        assert_eq!(entries[2].name, "Zebra");
+        assert!(entries[2].is_dir);
+        assert!(entries[2].size.is_none());
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn list_dir_errors_on_missing_path() {
+        let missing = std::env::temp_dir().join("eulinx_fs_does_not_exist_xyz");
+        let result = list_dir_impl(&missing.to_string_lossy());
+        assert!(result.is_err());
+    }
 }

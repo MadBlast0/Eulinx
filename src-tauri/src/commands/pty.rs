@@ -67,14 +67,20 @@ fn default_shell() -> (String, String) {
     }
 }
 
+/// Resolve the (program, flag) pair for a spawn request. Extracted from
+/// `pty_spawn` so the selection logic can be unit tested without an AppHandle.
+fn resolve_shell(shell: Option<&str>) -> (String, String) {
+    match shell {
+        Some(s) if !s.trim().is_empty() => (s.trim().to_string(), "-i".to_string()),
+        _ => default_shell(),
+    }
+}
+
 /// Spawn a real shell. `shell` overrides the OS default (e.g. "pwsh", "bash").
 /// Returns the PTY id used for write/resize/kill and event channels.
 #[tauri::command]
 pub fn pty_spawn(app: AppHandle, id: String, shell: Option<String>) -> Result<String, String> {
-    let (program, flag) = match shell {
-        Some(s) if !s.trim().is_empty() => (s.trim().to_string(), "-i".to_string()),
-        _ => default_shell(),
-    };
+    let (program, flag) = resolve_shell(shell.as_deref());
 
     let mut command = Command::new(&program);
     command.arg(&flag);
@@ -200,6 +206,56 @@ pub fn pty_resize(app: AppHandle, id: String, cols: u32, rows: u32) -> Result<()
 
     println!("[pty] resize id={id} cols={cols} rows={rows}");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn resolve_shell_uses_default_when_none() {
+        let (program, flag) = resolve_shell(None);
+        if cfg!(windows) {
+            assert_eq!(program, "cmd.exe");
+            assert_eq!(flag, "/C");
+        } else {
+            assert!(!program.is_empty());
+            assert_eq!(flag, "-i");
+        }
+    }
+
+    #[test]
+    fn resolve_shell_uses_default_when_blank() {
+        let (program, _) = resolve_shell(Some("   "));
+        let (default, _) = default_shell();
+        assert_eq!(program, default);
+    }
+
+    #[test]
+    fn resolve_shell_honors_override_and_trims() {
+        let (program, flag) = resolve_shell(Some("  bash  "));
+        assert_eq!(program, "bash");
+        assert_eq!(flag, "-i");
+    }
+
+    /// Spawn a trivial command the same way the bridge does and confirm we can
+    /// capture its output. This exercises the std::process piping path used by
+    /// `pty_spawn` without needing a Tauri AppHandle.
+    #[test]
+    fn spawns_trivial_command_and_captures_output() {
+        let output = if cfg!(windows) {
+            Command::new("cmd.exe")
+                .args(["/C", "echo", "eulinx"])
+                .output()
+        } else {
+            Command::new("echo").arg("eulinx").output()
+        };
+
+        let output = output.expect("spawn trivial command");
+        assert!(output.status.success());
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        assert!(stdout.contains("eulinx"), "unexpected stdout: {stdout}");
+    }
 }
 
 /// Kill the shell process.

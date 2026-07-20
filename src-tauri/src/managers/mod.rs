@@ -1,3 +1,4 @@
+pub mod db_manager;
 pub mod dialog_manager;
 pub mod fs_manager;
 pub mod pty_manager;
