@@ -10,6 +10,7 @@ import {
   Network,
   PanelRight,
   TerminalSquare,
+  BookOpen,
   type LucideIcon,
 } from "lucide-react"
 
@@ -23,6 +24,7 @@ import MemoryPanel from "./memory-panel"
 import MetricsPanel from "./metrics-panel"
 import PermissionsPanel from "./permissions-panel"
 import SearchPanel from "./search-panel"
+import KnowledgeBasePanel from "../surfaces/knowledge-base-panel"
 
 export type PanelKey =
   | "logs"
@@ -35,6 +37,7 @@ export type PanelKey =
   | "metrics"
   | "permissions"
   | "search"
+  | "knowledgeBase"
 
 export interface PanelDefinition {
   readonly title: string
@@ -53,6 +56,7 @@ export const PANEL_REGISTRY: Record<PanelKey, PanelDefinition> = {
   metrics: { title: "Metrics", icon: BarChart3, Component: MetricsPanel },
   permissions: { title: "Permissions", icon: KeyRound, Component: PermissionsPanel },
   search: { title: "Search", icon: FileSearch, Component: SearchPanel },
+  knowledgeBase: { title: "Knowledge Base", icon: BookOpen, Component: KnowledgeBasePanel },
 }
 
 export const PANEL_ORDER: readonly PanelKey[] = [
@@ -66,6 +70,7 @@ export const PANEL_ORDER: readonly PanelKey[] = [
   "metrics",
   "permissions",
   "search",
+  "knowledgeBase",
 ]
 
 export default PANEL_REGISTRY

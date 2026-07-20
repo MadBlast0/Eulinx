@@ -1,6 +1,5 @@
 import { isTauri } from "@tauri-apps/api/core"
-import { invoke } from "@tauri-apps/api/core"
-import type { InvokeArgs } from "@tauri-apps/api/core"
+import { fsService, type FileEntry as FsFileEntry } from "@/api/services"
 
 export interface FileEntry {
   readonly name: string
@@ -74,20 +73,13 @@ export async function listDir(path: string): Promise<FileEntry[]> {
     return browserListDir(path)
   }
 
-  const raw = await invoke<RawFileEntry[]>("fs_list_dir", { path } as InvokeArgs)
-  return raw.map((e) => ({
+  const raw = await fsService.listDir(path)
+  return raw.map((e: FsFileEntry) => ({
     name: e.name,
     path: e.path,
-    isDir: e.is_dir,
+    isDir: e.isDir,
     size: e.size ?? undefined,
   }))
-}
-
-interface RawFileEntry {
-  readonly name: string
-  readonly path: string
-  readonly is_dir: boolean
-  readonly size: number | null
 }
 
 export async function fs_read_text(path: string): Promise<string> {
@@ -95,7 +87,7 @@ export async function fs_read_text(path: string): Promise<string> {
     const { innerPath } = parsePath(path)
     return virtualFs.get(innerPath)?.content ?? ""
   }
-  return invoke<string>("fs_read_text", { path } as InvokeArgs)
+  return fsService.readText(path)
 }
 
 export async function writeTextFile(path: string, contents: string): Promise<void> {
@@ -109,7 +101,7 @@ export async function writeTextFile(path: string, contents: string): Promise<voi
     })
     return
   }
-  await invoke("fs_write_text", { path, contents } as InvokeArgs)
+  await fsService.writeText(path, contents)
 }
 
 export async function createDir(path: string): Promise<void> {
@@ -126,7 +118,9 @@ export async function createDir(path: string): Promise<void> {
     }
     return
   }
-  await invoke("fs_create_dir", { path } as InvokeArgs)
+  // TODO: route through fsService once a `fs_create_dir` command exists.
+  // Currently falls back to writeText with empty content to create the path.
+  await fsService.writeText(path + "/.keep", "")
 }
 
 export { isTauri }

@@ -13,13 +13,12 @@ import {
   TerminalSquare,
   Undo2,
 } from "lucide-react"
-import { isTauri } from "@tauri-apps/api/core"
-import { invoke } from "@tauri-apps/api/core"
 import { ToolbarButton, ToolbarSep } from "./primitives"
 import { useWorkspace } from "./use-workspace"
 import { useProjects } from "./use-projects"
 import { useRunGraph } from "./orchestrator-run"
 import { ShellPicker } from "./terminal/shell-picker"
+import { windowService } from "@/api/services"
 
 export function TopBar() {
   const {
@@ -51,13 +50,13 @@ export function TopBar() {
   }, [graph, run])
 
   const handleWindowClose = useCallback(() => {
-    if (isTauri()) { void invoke("plugin:window|close") }
+    windowService.close()
   }, [])
   const handleWindowMinimize = useCallback(() => {
-    if (isTauri()) { void invoke("plugin:window|minimize") }
+    windowService.minimize()
   }, [])
   const handleWindowMaximize = useCallback(() => {
-    if (isTauri()) { void invoke("plugin:window|toggle_maximize") }
+    windowService.toggleMaximize()
   }, [])
 
   return (

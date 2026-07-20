@@ -1,7 +1,6 @@
-﻿import { invoke } from "@tauri-apps/api/core"
-import { isTauri } from "@tauri-apps/api/core"
-import type { InvokeArgs } from "@tauri-apps/api/core"
+﻿import { isTauri } from "@tauri-apps/api/core"
 import { virtualFs } from "./fs-client"
+import { gitService, type GitStatus } from "@/api/services"
 
 export interface ChangeEntry {
   readonly path: string
@@ -120,7 +119,7 @@ export async function getStatus(_repo: string): Promise<GitStatus> {
     return emptyStatus()
   }
   try {
-    const result = await invoke<GitStatus>("git_status", { repo: _repo } as InvokeArgs)
+    const result = await gitService.status(_repo)
     return result
   } catch {
     console.warn("eulinx: git_status invoke failed, returning empty status")
@@ -138,7 +137,7 @@ export async function stageAll(_repo: string): Promise<void> {
     return
   }
   if (_repo === "") return
-  await invoke("git_stage_all", { repo: _repo } as InvokeArgs)
+  await gitService.stageAll(_repo)
 }
 
 export async function commit(_repo: string, message: string): Promise<string> {
@@ -162,7 +161,7 @@ export async function commit(_repo: string, message: string): Promise<string> {
   if (_repo === "") {
     throw new Error("Git is unavailable in the browser")
   }
-  return await invoke<string>("git_commit", { repo: _repo, message } as InvokeArgs)
+  return await gitService.commit(_repo, message)
 }
 
 export async function push(_repo: string): Promise<string> {
@@ -172,6 +171,6 @@ export async function push(_repo: string): Promise<string> {
   if (_repo === "") {
     throw new Error("Git is unavailable in the browser")
   }
-  return await invoke<string>("git_push", { repo: _repo } as InvokeArgs)
+  return await gitService.push(_repo)
 }
 

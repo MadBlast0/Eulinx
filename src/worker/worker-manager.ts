@@ -18,6 +18,8 @@ import type {
   WorkerCapabilities,
 } from "./worker-types"
 import type { WorkerLifecycleRecord } from "@/spawner/worker-lifecycle"
+import { getBus } from "@/ui/workspace/runtime-store"
+import { raiseNotification } from "@/event-bus/notification-bridge"
 
 // ---------------------------------------------------------------------------
 // Worker Manager Configuration
@@ -218,6 +220,16 @@ export class WorkerManager {
       timestamp: this.now(),
       metadata: reason ? { reason } : undefined,
     })
+
+    if (newState === "failing") {
+      void raiseNotification(getBus(), {
+        message: reason ?? `Worker ${workerId} is failing`,
+        severity: "error",
+        subjectId: workerId,
+        workspaceId: worker.workspaceId,
+        sessionId: worker.sessionId,
+      })
+    }
   }
 
   // ---------------------------------------------------------------------------

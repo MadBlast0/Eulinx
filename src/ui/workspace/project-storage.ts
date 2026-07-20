@@ -1,8 +1,7 @@
 ﻿import { isTauri } from "@tauri-apps/api/core"
-import { invoke } from "@tauri-apps/api/core"
 import { appConfigDir } from "@tauri-apps/api/path"
-import type { InvokeArgs } from "@tauri-apps/api/core"
 import type { WorkspaceDoc } from "./project-types"
+import { fsService } from "@/api/services"
 
 export interface ProjectStorage {
   loadWorkspace(): Promise<WorkspaceDoc | null>
@@ -49,7 +48,7 @@ const tauriStorage: ProjectStorage = {
   async loadWorkspace(): Promise<WorkspaceDoc | null> {
     try {
       const path = await REGISTRY_PATH_PROMISE
-      const raw = await invoke<string>("fs_read_text", { path } as InvokeArgs)
+      const raw = await fsService.readText(path)
       return parseWorkspace(raw)
     } catch {
       console.warn("eulinx: failed to load workspace from Tauri fs")
@@ -58,11 +57,11 @@ const tauriStorage: ProjectStorage = {
   },
   async saveWorkspace(doc: WorkspaceDoc): Promise<void> {
     const path = await REGISTRY_PATH_PROMISE
-    await invoke("fs_write_text", { path, contents: JSON.stringify(doc) } as InvokeArgs)
+    await fsService.writeText(path, JSON.stringify(doc))
   },
   async pickFolder(): Promise<string | null> {
     try {
-      const result = await invoke<string | null>("dialog_pick_folder")
+      const result = await fsService.pickFolder()
       return result
     } catch {
       console.warn("eulinx: failed to load workspace from Tauri fs")

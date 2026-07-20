@@ -1,4 +1,8 @@
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react"
+import { ArtifactManager } from "@/artifact/artifact-manager"
+import type { WorkspaceId } from "@/core/types"
+import { materializeTemplate } from "./template-materializer"
+import { useNotificationContext } from "@/providers/NotificationProvider"
 
 export type TemplateCategory = "coding" | "automation" | "research" | "writing" | "testing" | "data"
 
@@ -15,7 +19,7 @@ export interface Template {
   readonly capabilities: readonly string[]
 }
 
-const TEMPLATES: readonly Template[] = [
+export const TEMPLATES: readonly Template[] = [
   {
     id: "code-review",
     title: "Code Review Assistant",
@@ -160,9 +164,42 @@ export function TemplatesProvider({ children }: { children: ReactNode }) {
     return result
   }, [categoryFilter, search])
 
-  const useTemplate = useCallback((_id: string) => {
-    console.log(`Template ${_id} would be imported into workspace`)
+  const notify = useNotificationContext().notify
+
+  // A workspace-scoped ArtifactManager. Real runtime would inject the active
+  // workspace's manager; here we lazily create one per session.
+  const artifactManager = useMemo(() => {
+    return new ArtifactManager("template-import" as unknown as WorkspaceId)
   }, [])
+
+  const useTemplate = useCallback(
+    (id: string) => {
+      const template = TEMPLATES.find((t) => t.id === id)
+      if (!template) {
+        notify({
+          title: "Template not found",
+          message: `No template with id "${id}".`,
+          type: "error",
+        })
+        return
+      }
+      try {
+        const result = materializeTemplate(template, artifactManager)
+        notify({
+          title: `Imported "${template.title}"`,
+          message: `Created ${result.artifactIds.length} file(s) in your workspace.`,
+          type: "success",
+        })
+      } catch (error) {
+        notify({
+          title: `Failed to import "${template.title}"`,
+          message: error instanceof Error ? error.message : "Unknown error",
+          type: "error",
+        })
+      }
+    },
+    [artifactManager, notify],
+  )
 
   const value = useMemo<TemplatesContextValue>(
     () => ({

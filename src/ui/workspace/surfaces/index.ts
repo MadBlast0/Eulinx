@@ -1,6 +1,7 @@
 export { default as Dashboard } from "./dashboard"
 export { default as Settings } from "./settings"
 export { default as MemoryBrowser } from "./memory-browser"
+export { default as KnowledgeBasePanel } from "./knowledge-base-panel"
 export { default as WorkerExplorer } from "./worker-explorer"
 export { default as SessionViewer } from "./session-viewer"
 export { default as RuntimeMonitor } from "./runtime-monitor"

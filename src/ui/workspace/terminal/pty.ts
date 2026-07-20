@@ -299,6 +299,12 @@ export function createMockPty(): Pty {
 // Native PTY bridge (Tauri)
 // ---------------------------------------------------------------------------
 
+// TODO(ADR-025): route `pty_spawn`/`pty_write`/`pty_resize`/`pty_kill` and the
+// `pty://<id>/data|exit` listeners through a dedicated `ptyService` in
+// `@/api/services` so this file no longer calls `invoke`/`listen` directly.
+// The Pty interface is shared with the mock, so this is deferred until the
+// service module can own the listener lifecycle.
+
 import type { InvokeArgs } from "@tauri-apps/api/core"
 import { invoke } from "@tauri-apps/api/core"
 import { listen, type UnlistenFn } from "@tauri-apps/api/event"

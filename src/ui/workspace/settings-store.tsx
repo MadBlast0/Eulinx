@@ -1,8 +1,7 @@
 ﻿import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { isTauri } from "@tauri-apps/api/core"
-import { invoke } from "@tauri-apps/api/core"
-import type { InvokeArgs } from "@tauri-apps/api/core"
 import { appConfigDir } from "@tauri-apps/api/path"
+import { settingService } from "@/api/services"
 
 // ---------------------------------------------------------------------------
 // Settings store
@@ -32,12 +31,6 @@ const DEFAULTS: SettingsState = {
   anthropicKey: "",
 }
 
-const STORAGE_KEY = "eulinx.settings.v1"
-const SETTINGS_PATH_PROMISE = (async (): Promise<string> => {
-  const dir = await appConfigDir()
-  return `${dir}eulinx/settings.json`
-})()
-
 function coerce(raw: unknown): SettingsState {
   if (raw === null || typeof raw !== "object") return structuredClone(DEFAULTS)
   const r = raw as Record<string, unknown>
@@ -57,40 +50,21 @@ function coerce(raw: unknown): SettingsState {
 }
 
 async function loadSettings(): Promise<SettingsState> {
-  if (isTauri()) {
-    try {
-      const path = await SETTINGS_PATH_PROMISE
-      const raw = await invoke<string>("fs_read_text", { path } as InvokeArgs)
-      return coerce(JSON.parse(raw))
-    } catch {
-      console.warn("eulinx: failed to load settings from Tauri fs, using defaults")
-      return structuredClone(DEFAULTS)
-    }
+  try {
+    const raw = await settingService.load<string | null>(null)
+    if (raw === null) return structuredClone(DEFAULTS)
+    return coerce(JSON.parse(raw))
+  } catch {
+    console.warn("eulinx: failed to load settings, using defaults")
+    return structuredClone(DEFAULTS)
   }
-  if (typeof localStorage !== "undefined") {
-    try {
-      return coerce(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "null"))
-    } catch {
-      console.warn("eulinx: failed to parse settings from localStorage, using defaults")
-      return structuredClone(DEFAULTS)
-    }
-  }
-  return structuredClone(DEFAULTS)
 }
 
 async function persistSettings(state: SettingsState): Promise<void> {
-  const payload = JSON.stringify(state)
-  if (isTauri()) {
-    try {
-      const path = await SETTINGS_PATH_PROMISE
-      await invoke("fs_write_text", { path, contents: payload } as InvokeArgs)
-    } catch {
-      console.warn("eulinx: failed to persist settings to Tauri fs")
-    }
-    return
-  }
-  if (typeof localStorage !== "undefined") {
-    localStorage.setItem(STORAGE_KEY, payload)
+  try {
+    await settingService.save(JSON.stringify(state))
+  } catch {
+    console.warn("eulinx: failed to persist settings")
   }
 }
 
