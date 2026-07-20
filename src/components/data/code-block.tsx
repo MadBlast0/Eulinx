@@ -109,6 +109,7 @@ const CodeBlock = React.forwardRef<HTMLDivElement, CodeBlockProps>(
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       } catch {
+        console.warn('eulinx: code-block : unexpected error in catch block')
         // clipboard unavailable
       }
     }, [code])

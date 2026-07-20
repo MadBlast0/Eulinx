@@ -31,6 +31,7 @@ const JsonViewer = React.forwardRef<HTMLDivElement, JsonViewerProps>(
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       } catch {
+        console.warn('eulinx: json-viewer : unexpected error in catch block')
         // clipboard unavailable
       }
     }, [data])
