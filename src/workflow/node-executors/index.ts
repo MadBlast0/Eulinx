@@ -74,6 +74,17 @@ export class NodeExecutorRegistry {
   }
 
   /**
+   * Register a plugin-provided node executor under a custom node kind. Plugin
+   * node kinds are arbitrary strings (not in the core `NodeKind` union), so we
+   * key the executor map by string. The workflow engine looks up executors by
+   * the request's `kind` value (a string), which covers both core and plugin
+   * kinds.
+   */
+  registerPluginNode(kind: string, executor: NodeExecutor): void {
+    this.executors.set(kind as NodeKind, executor)
+  }
+
+  /**
    * Resolve the executor for a request. Falls back to the base executor for
    * kinds without a dedicated implementation.
    */

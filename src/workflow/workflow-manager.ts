@@ -22,6 +22,7 @@ import type {
   WorkflowError,
   SnapshotId,
 } from "./workflow-types"
+import type { WorkflowTriggerConfig } from "./triggers/types"
 import {
   WorkflowEngine,
   type SchedulerAdapter,
@@ -43,6 +44,8 @@ export interface WorkflowDefinition {
   readonly edges: readonly EdgeDefinition[]
   readonly createdAt: string
   readonly updatedAt: string
+  /** Optional declarative trigger that the TriggerEngine schedules. */
+  readonly trigger?: WorkflowTriggerConfig
 }
 
 // ---------------------------------------------------------------------------

@@ -58,7 +58,7 @@ describe("TriggerEngine — cron", () => {
 })
 
 describe("TriggerEngine — file_watch", () => {
-  it("debounces repeated changes into a single fire", () => {
+  it("debounces repeated changes into a single fire", async () => {
     let fingerprint = "a"
     const readSnapshot = vi.fn(() => fingerprint)
     const run = vi.fn(async () => undefined)
@@ -85,7 +85,7 @@ describe("TriggerEngine — file_watch", () => {
     expect(run).toHaveBeenCalledTimes(0)
 
     // Clear debounce window.
-    vi.advanceTimersByTime(200)
+    await vi.advanceTimersByTimeAsync(200)
     expect(run).toHaveBeenCalledTimes(1)
 
     engine.stopAll()
