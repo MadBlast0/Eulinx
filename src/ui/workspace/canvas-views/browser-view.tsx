@@ -1,5 +1,7 @@
 import { useCallback, useRef, useState, type FormEvent } from "react"
-import { ArrowLeft, ArrowRight, RotateCw, Globe, TriangleAlert } from "lucide-react"
+import { ArrowLeft, ArrowRight, RotateCw, Globe, TriangleAlert, FileText } from "lucide-react"
+import { fetchPage } from "@/tools/built-in/browser"
+import type { BrowserFetchResult } from "@/tools/built-in/browser"
 
 function formatUrl(input: string): string {
   const trimmed = input.trim()
@@ -7,6 +9,15 @@ function formatUrl(input: string): string {
   if (/^https?:\/\//i.test(trimmed)) return trimmed
   if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(trimmed)) return trimmed
   return `https://${trimmed}`
+}
+
+/** Strip tags + collapse whitespace to a rough readable-text extraction. */
+function extractReadableText(html: string): string {
+  const withoutScripts = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+  const text = withoutScripts.replace(/<[^>]+>/g, " ")
+  return text.replace(/\s+/g, " ").trim()
 }
 
 export interface BrowserViewProps {
@@ -21,6 +32,8 @@ export function BrowserView({ url: initialUrl = "about:blank" }: BrowserViewProp
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const [canGoBack] = useState(false)
   const [canGoForward] = useState(false)
+  const [extracting, setExtracting] = useState(false)
+  const [extracted, setExtracted] = useState<BrowserFetchResult | null>(null)
 
   const navigate = useCallback((url: string) => {
     const formatted = formatUrl(url)
@@ -74,6 +87,20 @@ export function BrowserView({ url: initialUrl = "about:blank" }: BrowserViewProp
     setError(true)
   }, [])
 
+  const handleExtract = useCallback(async () => {
+    const target = formatUrl(inputValue)
+    setExtracting(true)
+    setExtracted(null)
+    try {
+      const result = await fetchPage(target)
+      setExtracted(result)
+    } catch {
+      setError(true)
+    } finally {
+      setExtracting(false)
+    }
+  }, [inputValue])
+
   return (
     <div className="flex h-full w-full flex-col overflow-hidden bg-[color:var(--Eulinx-color-background)]">
       <div className="flex shrink-0 items-center gap-1 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-2 py-1.5">
@@ -105,6 +132,16 @@ export function BrowserView({ url: initialUrl = "about:blank" }: BrowserViewProp
             className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
             strokeWidth={1.5}
           />
+        </button>
+        <button
+          type="button"
+          onClick={handleExtract}
+          disabled={extracting || currentUrl === "about:blank"}
+          aria-label="Extract readable text"
+          className="flex h-7 items-center gap-1 rounded-[var(--Eulinx-radius-sm)] px-2 text-[11px] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] disabled:opacity-30"
+        >
+          <FileText className={`h-3.5 w-3.5 ${extracting ? "animate-spin" : ""}`} strokeWidth={1.5} />
+          Extract
         </button>
         <form onSubmit={handleSubmit} className="flex flex-1">
           <div className="relative flex w-full items-center">
@@ -172,6 +209,21 @@ export function BrowserView({ url: initialUrl = "about:blank" }: BrowserViewProp
           </div>
         )}
       </div>
+
+      {extracted && (
+        <div className="shrink-0 border-t border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-3">
+          <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-[color:var(--Eulinx-color-text-muted)]">
+            <FileText className="h-3.5 w-3.5" strokeWidth={1.5} />
+            Extracted text
+            <span className="ml-auto font-normal opacity-70">
+              {extracted.status} · {extracted.contentType || "n/a"}
+            </span>
+          </div>
+          <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words text-[11px] leading-relaxed text-[color:var(--Eulinx-color-text-secondary)]">
+            {extractReadableText(extracted.content) || "(no readable text found)"}
+          </pre>
+        </div>
+      )}
     </div>
   )
 }
