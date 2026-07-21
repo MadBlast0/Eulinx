@@ -26,6 +26,7 @@ import { toolCommand } from "./commands/tool"
 import { configCommand } from "./commands/config"
 import { pluginCommand } from "./commands/plugin"
 import { updateCommand } from "./commands/update"
+import { helixdbCommand } from "./commands/helixdb"
 
 // ---------------------------------------------------------------------------
 // Global options
@@ -61,6 +62,7 @@ const commands: CliCommand[] = [
   configCommand,
   pluginCommand,
   updateCommand,
+  helixdbCommand,
 ]
 
 const commandMap = new Map<string, CliCommand>()

@@ -204,3 +204,38 @@ export function fromPersistedEnvelope(
     emittedAt: envelope.emittedAt as EulinxEventUnion["emittedAt"],
   } as EulinxEventUnion
 }
+
+// ---------------------------------------------------------------------------
+// HelixDB write path (T14.4)
+// ---------------------------------------------------------------------------
+
+/**
+ * Adapter interface for HelixDB event persistence.
+ * Implementations translate event writes and queries to HelixDB graph mutations.
+ */
+export interface HelixDBEventAdapter {
+  write(envelope: PersistedEventEnvelope): Promise<void>
+  query(range: EventRangeQuery): Promise<readonly PersistedEventEnvelope[]>
+}
+
+/**
+ * Write a persisted event envelope to HelixDB via the adapter.
+ * Delegates directly to `adapter.write()`.
+ */
+export async function writeHelixDB(
+  adapter: HelixDBEventAdapter,
+  event: PersistedEventEnvelope,
+): Promise<void> {
+  await adapter.write(event)
+}
+
+/**
+ * Query events from HelixDB via the adapter.
+ * Delegates directly to `adapter.query()`.
+ */
+export async function queryHelixDB(
+  adapter: HelixDBEventAdapter,
+  range: EventRangeQuery,
+): Promise<readonly PersistedEventEnvelope[]> {
+  return adapter.query(range)
+}

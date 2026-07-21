@@ -1,4 +1,4 @@
-﻿/**
+/**
  * P03-EVENT-BUS — The EventBus Core
  *
  * The single nervous system of the Runtime.
@@ -40,6 +40,8 @@ import { generateId } from "@/core/uuid"
 import { invoke, isTauri } from "@tauri-apps/api/core"
 import { createLogger } from "@/core/logger"
 import type { Logger } from "@/core/logger"
+import type { HelixDBEventAdapter } from "./event-history"
+import { writeHelixDB, queryHelixDB, toPersistedEnvelope, fromPersistedEnvelope } from "./event-history"
 
 // ---------------------------------------------------------------------------
 // EventBus
@@ -57,6 +59,7 @@ export class EventBus {
   private readonly config: EventBusConfig
   private metrics: EventBusMetrics
   private readonly log: Logger
+  private helixdbAdapter: HelixDBEventAdapter | null = null
 
   // Log write failures counter
   private consecutiveLogFailures = 0
@@ -106,6 +109,18 @@ export class EventBus {
 
   getRegistry(): EventRegistry {
     return this._eventRegistry
+  }
+
+  // ---------------------------------------------------------------------------
+  // HelixDB Adapter
+  // ---------------------------------------------------------------------------
+
+  setHelixdbAdapter(adapter: HelixDBEventAdapter): void {
+    this.helixdbAdapter = adapter
+  }
+
+  getHelixdbAdapter(): HelixDBEventAdapter | null {
+    return this.helixdbAdapter
   }
 
   // ---------------------------------------------------------------------------
@@ -247,6 +262,15 @@ export class EventBus {
           ok: false,
           error: { kind: "log_write_failed", detail: "Failed to write to event log" },
         }
+      }
+    }
+
+    // Write to HelixDB adapter if configured (T14.5)
+    if (this.helixdbAdapter) {
+      try {
+        await writeHelixDB(this.helixdbAdapter, toPersistedEnvelope(stampedEvent))
+      } catch {
+        this.log.warn('Failed to write event to HelixDB adapter')
       }
     }
 
@@ -507,6 +531,20 @@ export class EventBus {
   }
 
   public getLog(): EulinxEventUnion[] {
+    return [...this.eventLog]
+  }
+
+  /**
+   * Query persisted events. If HelixDB adapter is set, prefer it for reads.
+   * Otherwise falls back to the in-memory log.
+   */
+  public async queryEvents(
+    range: import("./event-history").EventRangeQuery,
+  ): Promise<readonly EulinxEventUnion[]> {
+    if (this.helixdbAdapter) {
+      const envelopes = await queryHelixDB(this.helixdbAdapter, range)
+      return envelopes.map((env) => fromPersistedEnvelope(env))
+    }
     return [...this.eventLog]
   }
 

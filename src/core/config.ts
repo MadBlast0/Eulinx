@@ -10,6 +10,8 @@ import { ok, err } from "./result"
 import { CoreError, validationError } from "./error"
 import type { ThemePreference } from "./enums"
 import { getEnv } from "./env"
+import type { HelixDBConfig } from "@/integrations/helixdb/helixdb-config"
+import { DEFAULT_HELIXDB_CONFIG, validateHelixDBConfig } from "@/integrations/helixdb/helixdb-config"
 
 // ---------------------------------------------------------------------------
 // Config schema
@@ -31,6 +33,7 @@ export interface AppConfig {
     readonly retryDelayMs: number
   }
   readonly memory: {
+    readonly backend: 'memory' | 'helixdb'
     readonly stmMaxEntries: number
     readonly stmTtlMs: number
   }
@@ -42,6 +45,7 @@ export interface AppConfig {
   readonly logging: {
     readonly level: "debug" | "info" | "warn" | "error"
   }
+  readonly helixdb: HelixDBConfig
 }
 
 // ---------------------------------------------------------------------------
@@ -64,6 +68,7 @@ const DEFAULT_CONFIG: AppConfig = {
     retryDelayMs: 1_000,
   },
   memory: {
+    backend: 'memory',
     stmMaxEntries: 100,
     stmTtlMs: 30 * 60 * 1_000,
   },
@@ -75,6 +80,7 @@ const DEFAULT_CONFIG: AppConfig = {
   logging: {
     level: "info",
   },
+  helixdb: DEFAULT_HELIXDB_CONFIG,
 }
 
 // ---------------------------------------------------------------------------
@@ -131,6 +137,11 @@ function validateConfig(config: AppConfig): Result<AppConfig, CoreError> {
   if (config.scheduler.retryDelayMs < 0) {
     return err(validationError("scheduler.retryDelayMs", "Must be >= 0"))
   }
+  const helixdbResult = validateHelixDBConfig(config.helixdb)
+  if (!helixdbResult.ok) return helixdbResult
+  if (!["memory", "helixdb"].includes(config.memory.backend)) {
+    return err(validationError("memory.backend", `Invalid backend: ${config.memory.backend}`))
+  }
   return ok(config)
 }
 
@@ -146,6 +157,7 @@ function mergeConfig(base: AppConfig, overrides: Partial<AppConfig>): AppConfig 
     memory: { ...base.memory, ...overrides.memory },
     ui: { ...base.ui, ...overrides.ui },
     logging: { ...base.logging, ...overrides.logging },
+    helixdb: { ...base.helixdb, ...overrides.helixdb },
   }
 }
 
@@ -171,6 +183,37 @@ export function loadConfigFromEnv(): Result<AppConfig, CoreError> {
       return err(validationError("EULINX_THEME", `Invalid theme: ${theme}`))
     }
     partials.push({ ui: { ...currentConfig.ui, theme: theme as ThemePreference } })
+  }
+
+  const memoryBackend = getEnv("EULINX_MEMORY_BACKEND")
+
+  const helixdbEnabled = getEnv("EULINX_HELIXDB_ENABLED")
+  const helixdbHost = getEnv("EULINX_HELIXDB_HOST")
+  const helixdbPort = getEnv("EULINX_HELIXDB_PORT")
+
+  if (memoryBackend !== undefined) {
+    if (!["memory", "helixdb"].includes(memoryBackend)) {
+      return err(validationError("EULINX_MEMORY_BACKEND", `Invalid memory backend: ${memoryBackend}`))
+    }
+    partials.push({ memory: { ...currentConfig.memory, backend: memoryBackend as AppConfig["memory"]["backend"] } })
+  }
+
+  if (helixdbEnabled !== undefined || helixdbHost !== undefined || helixdbPort !== undefined) {
+    const helixdbOverrides: Partial<HelixDBConfig> = {}
+    if (helixdbEnabled !== undefined) {
+      helixdbOverrides.enabled = helixdbEnabled === "true"
+    }
+    if (helixdbHost !== undefined) {
+      helixdbOverrides.host = helixdbHost
+    }
+    if (helixdbPort !== undefined) {
+      const port = Number(helixdbPort)
+      if (Number.isNaN(port)) {
+        return err(validationError("EULINX_HELIXDB_PORT", `Invalid port: ${helixdbPort}`))
+      }
+      helixdbOverrides.port = port
+    }
+    partials.push({ helixdb: { ...currentConfig.helixdb, ...helixdbOverrides } })
   }
 
   if (partials.length === 0) return loadConfig()
