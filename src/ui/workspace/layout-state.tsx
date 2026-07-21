@@ -28,10 +28,10 @@ export const DEFAULT_LAYOUT: LayoutState = {
   regions: {
     titleBar: {
       id: "titleBar",
-      size: 56,
+      size: 48,
       minSize: 40,
-      maxSize: 80,
-      defaultSize: 56,
+      maxSize: 72,
+      defaultSize: 48,
       collapsed: false,
       collapsible: false,
     },

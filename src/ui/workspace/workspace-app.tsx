@@ -13,11 +13,14 @@ import { WorkersProvider } from "./workers-store"
 import { TasksProvider } from "./tasks-store"
 import { TemplatesProvider } from "./templates-store"
 import { CostProvider } from "./cost-store"
+import { ArtifactsProvider } from "./artifacts-store"
 import { TopBar } from "./top-bar"
+import { Toolbar } from "./workspace-toolbar"
 import { LeftSidebar } from "./left-sidebar"
 import { Canvas } from "./canvas"
 import { BottomPanel } from "./bottom-panel"
 import { RightSidebar } from "./right-sidebar"
+import { KnowledgeWorkspace } from "./knowledge-workspace"
 import { StatusBar } from "./status-bar"
 import { Overlays } from "./overlays"
 import {
@@ -31,7 +34,19 @@ import {
   Metrics,
   PromptInspector,
   PluginManager,
+  TaskBoard,
+  TemplateGallery,
 } from "./surfaces"
+import {
+  UnifiedSearch,
+  WorkspaceDashboard,
+  MemoryGraph,
+  KnowledgeGraph,
+  CausalTrace,
+  SessionTimeline,
+  VectorExplorer,
+  QueryPlayground,
+} from "./canvas-views"
 import { ToolbarButton } from "./primitives"
 import { KeymapProvider, useCommand } from "./keyboard/use-keyboard"
 import { PluginsProvider } from "./plugins-store"
@@ -39,7 +54,7 @@ import { EventBridge } from "./event-bridge"
 import { StateBridge } from "./state-bridge"
 import { LayoutProvider, useLayout, type RegionId } from "./layout-state"
 import { PaneDivider } from "./pane-divider"
-import { CanvasTabStrip } from "./canvas-tab-strip"
+
 import { saveLayout, loadLayout } from "./layout-persistence"
 
 export type SurfaceKey =
@@ -55,6 +70,15 @@ export type SurfaceKey =
   | "plugins"
   | "tasks"
   | "templates"
+  | "helix-search"
+  | "helix-dashboard"
+  | "helix-memory-graph"
+  | "helix-knowledge-graph"
+  | "helix-causal-trace"
+  | "helix-session-timeline"
+  | "helix-vector-explorer"
+  | "helix-query-playground"
+  | "knowledge"
 
 const SURFACES: Record<SurfaceKey, ComponentType> = {
   dashboard: Dashboard,
@@ -67,6 +91,17 @@ const SURFACES: Record<SurfaceKey, ComponentType> = {
   metrics: Metrics,
   prompts: PromptInspector,
   plugins: PluginManager,
+  tasks: TaskBoard,
+  templates: TemplateGallery,
+  "helix-search": UnifiedSearch,
+  "helix-dashboard": WorkspaceDashboard,
+  "helix-memory-graph": MemoryGraph,
+  "helix-knowledge-graph": KnowledgeGraph,
+  "helix-causal-trace": CausalTrace,
+  "helix-session-timeline": SessionTimeline,
+  "helix-vector-explorer": VectorExplorer,
+  "helix-query-playground": QueryPlayground,
+  knowledge: KnowledgeWorkspace,
 }
 
 const DIVIDER_WIDTH = 5
@@ -136,6 +171,15 @@ function WorkspaceShell() {
   useCommand("surface.plugins", () => setSurface("plugins"))
   useCommand("surface.tasks", () => setSurface("tasks"))
   useCommand("surface.templates", () => setSurface("templates"))
+  useCommand("surface.helix-search", () => setSurface("helix-search"))
+  useCommand("surface.helix-dashboard", () => setSurface("helix-dashboard"))
+  useCommand("surface.helix-memory-graph", () => setSurface("helix-memory-graph"))
+  useCommand("surface.helix-knowledge-graph", () => setSurface("helix-knowledge-graph"))
+  useCommand("surface.helix-causal-trace", () => setSurface("helix-causal-trace"))
+  useCommand("surface.helix-session-timeline", () => setSurface("helix-session-timeline"))
+  useCommand("surface.helix-vector-explorer", () => setSurface("helix-vector-explorer"))
+  useCommand("surface.helix-query-playground", () => setSurface("helix-query-playground"))
+  useCommand("surface.knowledge", () => setSurface("knowledge"))
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -223,11 +267,13 @@ function WorkspaceShell() {
         gridTemplateColumns: cols,
         gridTemplateRows: [
           `${titleBarRegion.size}px`,
+          "38px",
           "1fr",
           `${statusBarRegion.size}px`,
         ].join(" "),
         gridTemplateAreas: [
           `"topbar topbar topbar topbar topbar"`,
+          `"left div-l toolbar div-r right"`,
           `"left div-l center div-r right"`,
           `"status status status status status"`,
         ].join(" "),
@@ -242,6 +288,14 @@ function WorkspaceShell() {
         className={focusedRegion === "titleBar" ? "wsx-focused" : ""}
       >
         <TopBar />
+      </div>
+
+      <div
+        style={{ gridArea: "toolbar" }}
+        data-region="toolbar"
+        tabIndex={-1}
+      >
+        <Toolbar />
       </div>
 
       <div
@@ -296,7 +350,6 @@ function WorkspaceShell() {
           </div>
         ) : (
           <>
-            <CanvasTabStrip />
             <div
               className={cn(
                 "flex flex-1 flex-col overflow-hidden",
@@ -373,9 +426,11 @@ export function WorkspaceApp() {
                         <CostProvider>
                           <PluginsProvider>
                           <KeymapProvider>
+                            <ArtifactsProvider>
                             <LayoutProvider>
                               <WorkspaceShell />
                             </LayoutProvider>
+                            </ArtifactsProvider>
                           </KeymapProvider>
                           </PluginsProvider>
                         </CostProvider>

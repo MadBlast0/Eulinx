@@ -33,11 +33,9 @@ export function createNodeGraphDoc(name: string): NodeGraphDoc {
 
 export function createDefaultViews(): { views: CanvasView[]; graphs: Record<string, NodeGraphDoc>; activeViewId: string } {
   const graph = createNodeGraphDoc("Main Graph")
-  const artifacts: CanvasView = { id: uid("view"), kind: "artifacts", name: "Artifacts" }
-  const terminal: CanvasView = { id: uid("view"), kind: "terminal", name: "Terminal" }
   const main: CanvasView = { id: uid("view"), kind: "node-graph", name: graph.name, graphId: graph.id }
   return {
-    views: [main, artifacts, terminal],
+    views: [main],
     graphs: { [graph.id]: graph },
     activeViewId: main.id,
   }

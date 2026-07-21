@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react"
-import { Palette, Keyboard, Plug, SlidersHorizontal } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Palette, Keyboard, Plug, SlidersHorizontal, Download, Upload, Loader2, CheckCircle2, XCircle } from "lucide-react"
 import {
   Button,
   Card,
@@ -18,6 +18,9 @@ import {
 } from "@/components/ui"
 import { PanelSurface } from "../primitives"
 import { useSettings } from "../settings-store"
+import { useProjects } from "../use-projects"
+import { useTasks } from "../tasks-store"
+import { exportWorkspace, importWorkspace, createExportData } from "../workspace-export-import"
 
 const THEMES: readonly string[] = ["Dark", "Light", "System"]
 const ACCENTS: readonly string[] = ["Blue", "Violet", "Emerald", "Amber"]
@@ -104,6 +107,90 @@ function SectionCard({
   )
 }
 
+type ExportStatus = "idle" | "loading" | "success" | "error"
+type ImportStatus = "idle" | "loading" | "success" | "error"
+
+function WorkspaceExportButton() {
+  const { settings } = useSettings()
+  const { workspace } = useProjects()
+  const { tasks } = useTasks()
+  const [status, setStatus] = useState<ExportStatus>("idle")
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleExport = useCallback(async () => {
+    try {
+      setStatus("loading")
+      const data = createExportData(workspace, settings, tasks)
+      await exportWorkspace(data)
+      setStatus("success")
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => setStatus("idle"), 2000)
+    } catch (err) {
+      console.error("Export failed:", err)
+      setStatus("error")
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => setStatus("idle"), 3000)
+    }
+  }, [workspace, settings, tasks])
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={() => void handleExport()}
+      disabled={status === "loading"}
+      className="min-w-[100px]"
+    >
+      {status === "loading" && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+      {status === "success" && <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 text-[color:var(--Eulinx-color-success)]" />}
+      {status === "error" && <XCircle className="mr-1.5 h-3.5 w-3.5 text-[color:var(--Eulinx-color-error)]" />}
+      {status === "idle" && <Download className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />}
+      {status === "loading" ? "Exporting..." : status === "success" ? "Exported" : status === "error" ? "Failed" : "Export"}
+    </Button>
+  )
+}
+
+function WorkspaceImportButton() {
+  const { save: saveSettings } = useSettings()
+  const [status, setStatus] = useState<ImportStatus>("idle")
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleImport = useCallback(async () => {
+    try {
+      setStatus("loading")
+      const data = await importWorkspace()
+
+      // Apply imported settings
+      saveSettings(data.settings)
+
+      setStatus("success")
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => setStatus("idle"), 2000)
+    } catch (err) {
+      console.error("Import failed:", err)
+      setStatus("error")
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => setStatus("idle"), 3000)
+    }
+  }, [saveSettings])
+
+  return (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={() => void handleImport()}
+      disabled={status === "loading"}
+      className="min-w-[100px]"
+    >
+      {status === "loading" && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+      {status === "success" && <CheckCircle2 className="mr-1.5 h-3.5 w-3.5 text-[color:var(--Eulinx-color-success)]" />}
+      {status === "error" && <XCircle className="mr-1.5 h-3.5 w-3.5 text-[color:var(--Eulinx-color-error)]" />}
+      {status === "idle" && <Upload className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />}
+      {status === "loading" ? "Importing..." : status === "success" ? "Imported" : status === "error" ? "Failed" : "Import"}
+    </Button>
+  )
+}
+
 export default function Settings() {
   const { settings, save, reset } = useSettings()
   const [keySaved, setKeySaved] = useState(false)
@@ -141,6 +228,10 @@ export default function Settings() {
             <TabsTrigger value="keybindings">
               <Keyboard className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
               Keybindings
+            </TabsTrigger>
+            <TabsTrigger value="workspace">
+              <Download className="mr-1.5 h-3.5 w-3.5" strokeWidth={1.5} />
+              Workspace
             </TabsTrigger>
           </TabsList>
 
@@ -261,6 +352,33 @@ export default function Settings() {
                   </kbd>
                 </div>
               ))}
+            </SectionCard>
+          </TabsContent>
+
+          <TabsContent value="workspace">
+            <SectionCard title="Workspace Data" icon={<Download className="h-3.5 w-3.5" strokeWidth={1.5} />}>
+              <div className="py-3">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col">
+                      <Label className="text-[13px] text-[color:var(--Eulinx-color-text)]">Export Workspace</Label>
+                      <span className="text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+                        Save all workspace data (projects, settings, tasks) to a JSON file
+                      </span>
+                    </div>
+                    <WorkspaceExportButton />
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col">
+                      <Label className="text-[13px] text-[color:var(--Eulinx-color-text)]">Import Workspace</Label>
+                      <span className="text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+                        Restore workspace data from a previously exported JSON file
+                      </span>
+                    </div>
+                    <WorkspaceImportButton />
+                  </div>
+                </div>
+              </div>
             </SectionCard>
           </TabsContent>
         </Tabs>

@@ -28,7 +28,7 @@ export interface EdgeConn {
   readonly to: string
 }
 
-export type RightTab = "properties" | "git" | "files" | "sessions" | "logs"
+export type RightTab = "files" | "git" | "sessions" | "logs" | "workers"
 export type BottomTab = "logs" | "problems" | "events" | "memory"
 export type OverlayKind = "cmd" | "welcome" | "settings" | "shortcuts" | null
 

@@ -15,7 +15,15 @@ export default function SessionViewer() {
   const { sessions } = useSessions()
   const fallback = sessions[0]
   const [activeId, setActiveId] = useState<string>(fallback?.id ?? "")
-  const active = sessions.find((s) => s.id === activeId) ?? fallback!
+  const active = sessions.find((s) => s.id === activeId) ?? fallback
+
+  if (!active) {
+    return (
+      <div className="flex h-full items-center justify-center text-sm text-[color:var(--Eulinx-color-text-muted)]">
+        No sessions found
+      </div>
+    )
+  }
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

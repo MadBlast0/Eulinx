@@ -3,14 +3,6 @@ import { useWorkspace } from "./use-workspace"
 import { ContextMenu } from "./context-menu"
 import { getCanvasViewMeta } from "./canvas-views/registry"
 
-function CanvasHeader({ title }: { title: string }) {
-  return (
-    <div className="flex h-9 shrink-0 items-center border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-4 text-xs font-medium uppercase tracking-wide text-[color:var(--Eulinx-color-text-muted)]">
-      {title}
-    </div>
-  )
-}
-
 function EmptyState() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
@@ -40,7 +32,6 @@ export function Canvas() {
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden bg-[color:var(--Eulinx-color-background)]">
-      <CanvasHeader title={meta.label} />
       {activeView.kind === "node-graph" ? (
         <div
           className="relative flex-1 overflow-hidden"

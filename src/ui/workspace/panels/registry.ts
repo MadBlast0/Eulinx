@@ -1,11 +1,14 @@
+import { createElement } from "react"
 import type { ComponentType } from "react"
 import {
   Activity,
   BarChart3,
   Bug,
   Database,
+  FileCode2,
   FileSearch,
   GitCompare,
+  GitBranch,
   KeyRound,
   Network,
   PanelRight,
@@ -24,7 +27,17 @@ import MemoryPanel from "./memory-panel"
 import MetricsPanel from "./metrics-panel"
 import PermissionsPanel from "./permissions-panel"
 import SearchPanel from "./search-panel"
+import QueryPlayground from "./query-playground"
 import KnowledgeBasePanel from "../surfaces/knowledge-base-panel"
+import SessionTimelinePanel from "./session-timeline"
+
+function SessionTimelineWrapper() {
+  return createElement(SessionTimelinePanel, { workspaceId: "default" })
+}
+
+function QueryPlaygroundWrapper() {
+  return createElement(QueryPlayground, { workspaceId: "default" })
+}
 
 export type PanelKey =
   | "logs"
@@ -37,7 +50,9 @@ export type PanelKey =
   | "metrics"
   | "permissions"
   | "search"
+  | "queryPlayground"
   | "knowledgeBase"
+  | "sessionTimeline"
 
 export interface PanelDefinition {
   readonly title: string
@@ -56,7 +71,9 @@ export const PANEL_REGISTRY: Record<PanelKey, PanelDefinition> = {
   metrics: { title: "Metrics", icon: BarChart3, Component: MetricsPanel },
   permissions: { title: "Permissions", icon: KeyRound, Component: PermissionsPanel },
   search: { title: "Search", icon: FileSearch, Component: SearchPanel },
+  queryPlayground: { title: "Query Playground", icon: FileCode2, Component: QueryPlaygroundWrapper },
   knowledgeBase: { title: "Knowledge Base", icon: BookOpen, Component: KnowledgeBasePanel },
+  sessionTimeline: { title: "Timeline", icon: GitBranch, Component: SessionTimelineWrapper },
 }
 
 export const PANEL_ORDER: readonly PanelKey[] = [
@@ -70,7 +87,9 @@ export const PANEL_ORDER: readonly PanelKey[] = [
   "metrics",
   "permissions",
   "search",
+  "queryPlayground",
   "knowledgeBase",
+  "sessionTimeline",
 ]
 
 export default PANEL_REGISTRY

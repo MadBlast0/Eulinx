@@ -43,15 +43,10 @@
 
   --wsx-left-w: 280px;
   --wsx-right-w: 320px;
-  --wsx-topbar-h: 56px;
+  --wsx-topbar-h: 48px;
   --wsx-panel-h: 200px;
   --wsx-statusbar-h: 28px;
   --wsx-grid-dot: rgba(236, 236, 236, 0.04);
-
-  --wsx-bg-elevated: var(--Eulinx-color-surface-elevated);
-  --wsx-accent: var(--Eulinx-color-accent);
-  --wsx-accent-dim: color-mix(in srgb, var(--Eulinx-color-accent) 55%, var(--Eulinx-color-background));
-  --wsx-accent-surf: color-mix(in srgb, var(--Eulinx-color-accent) 14%, transparent);
 
   font-size: 13px;
   color: var(--wsx-text);
@@ -220,44 +215,13 @@
   opacity: 0.5;
 }
 
-/* Focus ring */
+/* Focus ring — subtle inset shadow instead of harsh outline */
 .wsx-focused {
-  outline: 1.5px solid var(--wsx-accent);
-  outline-offset: -1.5px;
+  box-shadow: inset 0 0 0 1px var(--wsx-accent);
   z-index: 5;
 }
 
-/* Window control buttons (macOS traffic-light dots) */
-.wsx-win-btn {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  transition: opacity 120ms;
-  position: relative;
-}
-.wsx-win-btn:hover {
-  opacity: 0.8;
-}
-.wsx-win-btn:active {
-  opacity: 0.6;
-}
-.wsx-win-close {
-  background: #ff5f57;
-  border: 0.5px solid rgba(0, 0, 0, 0.12);
-}
-.wsx-win-minimize {
-  background: #fdbc40;
-  border: 0.5px solid rgba(0, 0, 0, 0.12);
-}
-.wsx-win-maximize {
-  background: #33c748;
-  border: 0.5px solid rgba(0, 0, 0, 0.12);
-}
-
-/* Tab strip */
+/* Tab strip — kept for backward compatibility */
 .wsx-tab-strip {
   display: flex;
   align-items: stretch;
@@ -266,7 +230,7 @@
   gap: 0;
   border-bottom: 1px solid var(--wsx-border);
   background: var(--Eulinx-color-surface);
-  padding: 0 8px;
+  padding: 0 12px;
   overflow-x: auto;
 }
 .wsx-tab {
@@ -274,7 +238,7 @@
   align-items: center;
   gap: 6px;
   height: 100%;
-  padding: 0 10px;
+  padding: 0 12px;
   font-size: 12px;
   font-weight: 500;
   color: var(--wsx-text-muted);

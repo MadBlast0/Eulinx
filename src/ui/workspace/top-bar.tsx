@@ -1,62 +1,32 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback } from "react"
 import {
   ChevronDown,
-  Globe,
-  Map as MapIcon,
+  Copy,
+  Minus,
   PanelLeft,
   PanelRight,
-  Play,
-  Redo2,
-  RotateCw,
   Search,
   Squircle,
-  TerminalSquare,
-  Undo2,
+  X,
 } from "lucide-react"
-import { ToolbarButton, ToolbarSep } from "./primitives"
+import { cn } from "@/utils/cn"
+import { ToolbarButton } from "./primitives"
 import { useWorkspace } from "./use-workspace"
 import { useProjects } from "./use-projects"
-import { useRunGraph } from "./orchestrator-run"
-import { ShellPicker } from "./terminal/shell-picker"
 import { windowService } from "@/api/services"
 
 export function TopBar() {
-  const {
-    toggleLeftSidebar,
-    toggleRightSidebar,
-    setOverlay,
-    addNode,
-  } = useWorkspace()
+  const { toggleLeftSidebar, toggleRightSidebar, setOverlay } = useWorkspace()
+  const { activeProject } = useProjects()
 
-  const { graph } = useProjects()
-  const { running, lastResult, run, reset } = useRunGraph()
-  const [noGraphMessage, setNoGraphMessage] = useState(false)
-
-  // Auto-reset to idle after a completed/errored run
-  useEffect(() => {
-    if (lastResult && !running) {
-      const timer = setTimeout(() => reset(), 5000)
-      return () => clearTimeout(timer)
-    }
-  }, [lastResult, running, reset])
-
-  const handleRun = useCallback(() => {
-    if (!graph) {
-      setNoGraphMessage(true)
-      setTimeout(() => setNoGraphMessage(false), 2000)
-      return
-    }
-    void run(graph)
-  }, [graph, run])
-
-  const handleWindowClose = useCallback(() => {
-    windowService.close()
-  }, [])
   const handleWindowMinimize = useCallback(() => {
     windowService.minimize()
   }, [])
   const handleWindowMaximize = useCallback(() => {
     windowService.toggleMaximize()
+  }, [])
+  const handleWindowClose = useCallback(() => {
+    windowService.close()
   }, [])
 
   return (
@@ -64,30 +34,14 @@ export function TopBar() {
       className="flex h-full items-center gap-2 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-toolbar)] px-3"
       style={{ WebkitAppRegion: "drag" }}
     >
-      {/* Window controls (macOS-style traffic dots) */}
-      <div className="flex items-center gap-1.5" style={{ WebkitAppRegion: "no-drag" }}>
-        <button
-          type="button"
-          aria-label="Close"
-          onClick={handleWindowClose}
-          className="wsx-win-btn wsx-win-close"
-        />
-        <button
-          type="button"
-          aria-label="Minimize"
-          onClick={handleWindowMinimize}
-          className="wsx-win-btn wsx-win-minimize"
-        />
-        <button
-          type="button"
-          aria-label="Maximize"
-          onClick={handleWindowMaximize}
-          className="wsx-win-btn wsx-win-maximize"
-        />
-      </div>
-
-      {/* Left group: logo, workspace selector, breadcrumb */}
+      {/* Left group: sidebar toggle, app icon, breadcrumb */}
       <div className="flex shrink-0 items-center gap-2" style={{ WebkitAppRegion: "no-drag" }}>
+        <ToolbarButton tip="Toggle left sidebar" onClick={toggleLeftSidebar}>
+          <PanelLeft className="h-4 w-4" strokeWidth={1.5} />
+        </ToolbarButton>
+
+        <div className="mx-1 h-5 w-px bg-[color:var(--Eulinx-color-border)]" />
+
         <button
           type="button"
           aria-label="Eulinx"
@@ -97,14 +51,10 @@ export function TopBar() {
           Eulinx
         </button>
 
-        <ToolbarButton tip="Toggle left sidebar" onClick={toggleLeftSidebar}>
-          <PanelLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
-        </ToolbarButton>
-
         <button
           type="button"
           aria-label="Select workspace"
-          className="flex items-center gap-1.5 rounded-[var(--Eulinx-radius-sm)] px-2 py-1.5 text-[12px] font-medium text-[color:var(--Eulinx-color-text)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="flex items-center gap-1 rounded-[var(--Eulinx-radius-sm)] px-2 py-1.5 text-[12px] font-medium text-[color:var(--Eulinx-color-text)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
           <Squircle className="h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
           Personal
@@ -114,23 +64,19 @@ export function TopBar() {
         <div className="flex items-center gap-1.5 text-[12px] text-[color:var(--Eulinx-color-text-muted)]">
           <span>Eulinx</span>
           <span className="text-[color:var(--Eulinx-color-border-strong)]">/</span>
-          <span className="text-[color:var(--Eulinx-color-text)]">Node Graph</span>
+          <span className="text-[color:var(--Eulinx-color-text)]">
+            {activeProject?.activeView?.name ?? activeProject?.name ?? "Graph"}
+          </span>
         </div>
       </div>
 
-      <ToolbarSep />
-
-      {/* Context-aware toolbar slot (populated when a node is selected) */}
-      <div id="wsx-ctx-toolbar" className="hidden items-center gap-1" style={{ WebkitAppRegion: "no-drag" }} />
-
-      {/* Center: search trigger */}
-      <div className="flex flex-1 justify-center" style={{ WebkitAppRegion: "drag" }}>
+      {/* Center: global search / command palette */}
+      <div className="flex flex-1 justify-center" style={{ WebkitAppRegion: "no-drag" }}>
         <button
           type="button"
           aria-label="Search or run a command"
           onClick={() => setOverlay("cmd")}
           className="flex h-[30px] w-full max-w-[420px] items-center gap-2 rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-background)] px-2.5 text-[12px] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:border-[color:var(--Eulinx-color-border-strong)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          style={{ WebkitAppRegion: "no-drag" }}
         >
           <Search className="h-3.5 w-3.5" strokeWidth={1.5} />
           <span className="flex-1 text-left">Search or run a command…</span>
@@ -140,59 +86,39 @@ export function TopBar() {
         </button>
       </div>
 
-      {/* Right group: add nodes, undo/redo, run, sync, profile */}
+      {/* Right group: sidebar toggle, window controls */}
       <div className="flex shrink-0 items-center gap-1" style={{ WebkitAppRegion: "no-drag" }}>
-        <ToolbarButton tip="New terminal" onClick={() => addNode("terminal")}>
-          <TerminalSquare className="h-3.5 w-3.5" strokeWidth={1.5} />
-        </ToolbarButton>
-        <ShellPicker onPick={(shell) => addNode("terminal", shell)} />
-        <ToolbarButton tip="New browser" onClick={() => addNode("browser")}>
-          <Globe className="h-3.5 w-3.5" strokeWidth={1.5} />
-        </ToolbarButton>
-        <ToolbarButton tip="New map" onClick={() => addNode("map")}>
-          <MapIcon className="h-3.5 w-3.5" strokeWidth={1.5} />
-        </ToolbarButton>
-
-        <ToolbarSep />
-
-        <ToolbarButton tip="Undo">
-          <Undo2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-        </ToolbarButton>
-        <ToolbarButton tip="Redo">
-          <Redo2 className="h-3.5 w-3.5" strokeWidth={1.5} />
-        </ToolbarButton>
-
-        <ToolbarSep />
-
-        <button
-          type="button"
-          aria-label={running ? "Running…" : "Run"}
-          disabled={running}
-          onClick={handleRun}
-          className="flex h-[30px] items-center gap-1.5 rounded-[var(--Eulinx-radius-sm)] bg-[color:var(--Eulinx-color-accent)] px-3 text-[12px] font-medium text-white transition-colors enabled:hover:bg-[color:var(--Eulinx-color-accent)]/90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        >
-          {running ? (
-            <RotateCw className="h-3.5 w-3.5 animate-spin" strokeWidth={2} />
-          ) : (
-            <Play className="h-3.5 w-3.5 fill-current" strokeWidth={0} />
-          )}
-          {running ? "Running…" : noGraphMessage ? "No graph" : "Run"}
-        </button>
-        <ToolbarButton tip="Sync">
-          <RotateCw className="h-3.5 w-3.5" strokeWidth={1.5} />
-        </ToolbarButton>
         <ToolbarButton tip="Toggle right sidebar" onClick={toggleRightSidebar}>
-          <PanelRight className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <PanelRight className="h-4 w-4" strokeWidth={1.5} />
         </ToolbarButton>
 
-        <button
-          type="button"
-          aria-label="Profile"
-          title="Profile"
-          className="ml-1 flex h-7 w-7 items-center justify-center rounded-full border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] text-[11px] font-semibold text-[color:var(--Eulinx-color-text)] transition-colors hover:border-[color:var(--Eulinx-color-border-strong)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        >
-          MB
-        </button>
+        {/* Window controls */}
+        <div className="ml-1 flex items-center">
+          <button
+            type="button"
+            aria-label="Minimize"
+            onClick={handleWindowMinimize}
+            className="flex h-7 w-[46px] items-center justify-center rounded-none text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)] focus-visible:outline-none"
+          >
+            <Minus className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </button>
+          <button
+            type="button"
+            aria-label="Maximize"
+            onClick={handleWindowMaximize}
+            className="flex h-7 w-[46px] items-center justify-center rounded-none text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)] focus-visible:outline-none"
+          >
+            <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </button>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={handleWindowClose}
+            className="flex h-7 w-[46px] items-center justify-center rounded-none text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-error)] hover:text-white focus-visible:outline-none"
+          >
+            <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </button>
+        </div>
       </div>
     </div>
   )

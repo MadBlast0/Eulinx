@@ -29,17 +29,17 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 const TABS: readonly { readonly id: BottomTab; readonly label: string; readonly icon: React.ReactNode }[] = [
-  { id: "logs", label: "Logs", icon: <TerminalSquare className="h-3 w-3" strokeWidth={1.5} /> },
-  { id: "problems", label: "Problems", icon: <Triangle className="h-3 w-3" strokeWidth={1.5} /> },
-  { id: "events", label: "Events", icon: <Activity className="h-3 w-3" strokeWidth={1.5} /> },
-  { id: "memory", label: "Memory", icon: <Database className="h-3 w-3" strokeWidth={1.5} /> },
+  { id: "logs", label: "Logs", icon: <TerminalSquare className="h-3.5 w-3.5" strokeWidth={1.5} /> },
+  { id: "problems", label: "Diagnostics", icon: <Triangle className="h-3.5 w-3.5" strokeWidth={1.5} /> },
+  { id: "events", label: "Events", icon: <Activity className="h-3.5 w-3.5" strokeWidth={1.5} /> },
+  { id: "memory", label: "Runtime", icon: <Database className="h-3.5 w-3.5" strokeWidth={1.5} /> },
 ]
 
 const TAB_LABEL: Record<BottomTab, string> = {
   logs: "Logs",
-  problems: "Problems",
+  problems: "Diagnostics",
   events: "Events",
-  memory: "Memory",
+  memory: "Runtime",
 }
 
 interface ProblemRow {
@@ -88,7 +88,7 @@ export function BottomPanel() {
       style={{ height: "var(--wsx-panel-h)" }}
     >
       <div
-        className="flex h-8 shrink-0 items-center gap-0 border-b border-[color:var(--Eulinx-color-border)] px-2"
+        className="flex h-9 shrink-0 items-center gap-0 border-b border-[color:var(--Eulinx-color-border)] px-2"
         style={{ background: "var(--Eulinx-color-toolbar)" }}
       >
         {TABS.map((tab) => (
@@ -102,7 +102,7 @@ export function BottomPanel() {
               setDockView({ kind: "tab", tab: tab.id })
             }}
             className={cn(
-              "flex h-full items-center gap-1 border-b-2 px-3 text-[11px] transition-colors",
+              "flex h-full items-center gap-1.5 border-b-2 px-3 text-[12px] font-medium transition-colors",
               "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               dockView.kind === "tab" && dockView.tab === tab.id
                 ? "border-[color:var(--Eulinx-color-accent)] text-[color:var(--Eulinx-color-text)]"
@@ -121,12 +121,12 @@ export function BottomPanel() {
               type="button"
               aria-label="Open panel"
               className={cn(
-                "flex h-6 items-center gap-1 rounded-[var(--Eulinx-radius-sm)] px-2 text-[11px]",
+                "flex h-7 items-center gap-1.5 rounded-[var(--Eulinx-radius-sm)] px-2.5 text-[12px] font-medium",
                 "text-[color:var(--Eulinx-color-text-muted)] hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]",
                 "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               )}
             >
-              <ScrollText className="h-3 w-3" strokeWidth={1.5} />
+              <ScrollText className="h-3.5 w-3.5" strokeWidth={1.5} />
               Panels
             </button>
           </DropdownMenuTrigger>
@@ -139,7 +139,7 @@ export function BottomPanel() {
                   key={key}
                   onSelect={() => setDockView({ kind: "panel", key })}
                 >
-                  <Icon className="h-3 w-3" strokeWidth={1.5} />
+                  <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
                   {def.title}
                 </DropdownMenuItem>
               )
@@ -150,19 +150,19 @@ export function BottomPanel() {
         <ToolbarSep />
 
         <div className="flex gap-0.5">
-          <ToolbarButton tip="Clear" size={22} aria-label="Clear">
-            <X className="h-3 w-3" strokeWidth={1.5} />
+          <ToolbarButton tip="Clear" size={26} aria-label="Clear">
+            <X className="h-3.5 w-3.5" strokeWidth={1.5} />
           </ToolbarButton>
-          <ToolbarButton tip="Maximize panel" size={22} aria-label="Maximize panel">
-            <Maximize2 className="h-3 w-3" strokeWidth={1.5} />
+          <ToolbarButton tip="Maximize panel" size={26} aria-label="Maximize panel">
+            <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.5} />
           </ToolbarButton>
           <ToolbarButton
             tip="Close panel"
-            size={22}
+            size={26}
             aria-label="Close panel"
             onClick={() => setBottomPanelOpen(false)}
           >
-            <Minimize2 className="h-3 w-3" strokeWidth={1.5} />
+            <Minimize2 className="h-3.5 w-3.5" strokeWidth={1.5} />
           </ToolbarButton>
         </div>
       </div>

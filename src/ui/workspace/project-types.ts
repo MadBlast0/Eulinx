@@ -1,6 +1,17 @@
 import type { EulinxNodeKind } from "./node-graph/node-types"
 
-export type CanvasViewKind = "node-graph" | "artifacts" | "terminal"
+export type CanvasViewKind =
+  | "node-graph"
+  | "artifacts"
+  | "terminal"
+  | "memory-graph"
+  | "knowledge-graph"
+  | "causal-trace"
+  | "session-timeline"
+  | "vector-explorer"
+  | "query-playground"
+  | "workspace-dashboard"
+  | "unified-search"
 
 export interface GraphNode {
   id: string
