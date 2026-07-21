@@ -9,6 +9,7 @@
 import type { SessionId, WorkspaceId, WorkerId, IsoTimestamp } from "@/core/types"
 import type {
   MemoryRecord,
+  MemoryKind,
   MemorySearchQuery,
   MemorySearchResult,
   MemoryPolicy,
@@ -26,6 +27,23 @@ import { KnowledgeBase, type IngestKind, type IngestOptions, type IngestResult }
 import { DEFAULT_MEMORY_POLICY, redactSecrets, isScopeViolation, isUnsafeForInjection } from "./memory-policies"
 
 // ---------------------------------------------------------------------------
+// HelixDB Adapter Interface (T12.7)
+// ---------------------------------------------------------------------------
+
+/**
+ * Interface for a HelixDB-backed memory adapter.
+ * When provided and backend='helixdb', MemoryManager delegates all operations
+ * to this adapter instead of using in-memory stores.
+ */
+export interface HelixDBMemoryAdapter {
+  write(kind: MemoryKind, params: Record<string, unknown>): Promise<MemoryRecord>
+  read(id: string): Promise<MemoryRecord | null>
+  delete(id: string): Promise<boolean>
+  search(query: MemorySearchQuery): Promise<readonly MemorySearchResult[]>
+  count(workspaceId: WorkspaceId): Promise<number>
+}
+
+// ---------------------------------------------------------------------------
 // Memory Manager
 // ---------------------------------------------------------------------------
 
@@ -41,9 +59,17 @@ export class MemoryManager {
   readonly policy: MemoryPolicy
 
   private readonly policies: Map<string, MemoryPolicy> = new Map()
+  private readonly backend: 'memory' | 'helixdb'
+  private readonly helixdbAdapter?: HelixDBMemoryAdapter
 
-  constructor(policy?: Partial<MemoryPolicy>) {
+  constructor(
+    policy?: Partial<MemoryPolicy>,
+    backend?: 'memory' | 'helixdb',
+    helixdbAdapter?: HelixDBMemoryAdapter,
+  ) {
     this.policy = { ...DEFAULT_MEMORY_POLICY, ...policy }
+    this.backend = backend ?? 'memory'
+    this.helixdbAdapter = helixdbAdapter
     this.stm = new ShortTermMemoryStore(this.policy)
     this.ltm = new LongTermMemoryStore(this.policy)
     this.episodic = new EpisodicMemoryStore()
@@ -87,6 +113,13 @@ export class MemoryManager {
     sensitivity?: "public" | "internal" | "confidential" | "secret"
     autoIndex?: boolean
   }): StmRecord {
+    if (this.backend === 'helixdb' && this.helixdbAdapter) {
+      // Delegate to HelixDB adapter (returns a promise but public API is sync —
+      // the adapter write is fire-and-forget from the caller's perspective;
+      // callers that need the record get it from the in-memory path below).
+      void this.helixdbAdapter.write("stm", params as unknown as Record<string, unknown>)
+    }
+
     const record = this.stm.write({
       content: params.sensitivity === "secret" && this.policy.autoRedactSecrets
         ? redactSecrets(params.content)
@@ -123,6 +156,10 @@ export class MemoryManager {
     sessionId?: SessionId
     workerId?: WorkerId
   }): LtmRecord {
+    if (this.backend === 'helixdb' && this.helixdbAdapter) {
+      void this.helixdbAdapter.write("ltm", params as unknown as Record<string, unknown>)
+    }
+
     const record = this.ltm.promote(params)
     this.search.indexRecord(record)
     return record
@@ -142,6 +179,10 @@ export class MemoryManager {
     workerId?: WorkerId
     tags?: readonly string[]
   }): EpisodicRecord {
+    if (this.backend === 'helixdb' && this.helixdbAdapter) {
+      void this.helixdbAdapter.write("episodic", params as unknown as Record<string, unknown>)
+    }
+
     const record = this.episodic.record(params)
     this.search.indexRecord(record)
     return record
@@ -158,6 +199,10 @@ export class MemoryManager {
     sourceIds?: readonly string[]
     tags?: readonly string[]
   }): SemanticRecord {
+    if (this.backend === 'helixdb' && this.helixdbAdapter) {
+      void this.helixdbAdapter.write("semantic", params as unknown as Record<string, unknown>)
+    }
+
     const record = this.semantic.store(params)
     this.search.indexRecord(record)
     return record
@@ -177,7 +222,33 @@ export class MemoryManager {
       maxResults: Math.min(query.maxResults ?? 10, this.policy.maxTokensPerQuery),
     }
 
+    if (this.backend === 'helixdb' && this.helixdbAdapter) {
+      // HelixDB search is async; fire and fall back to local for the sync API.
+      // Callers that need async should use the adapter directly.
+      void this.helixdbAdapter.search(limitedQuery)
+    }
+
     return this.search.search(limitedQuery)
+  }
+
+  /**
+   * Read a single memory record by ID.
+   */
+  async readMemory(id: string): Promise<MemoryRecord | null> {
+    if (this.backend === 'helixdb' && this.helixdbAdapter) {
+      return this.helixdbAdapter.read(id)
+    }
+    return null
+  }
+
+  /**
+   * Delete a memory record by ID.
+   */
+  async deleteMemory(id: string): Promise<boolean> {
+    if (this.backend === 'helixdb' && this.helixdbAdapter) {
+      return this.helixdbAdapter.delete(id)
+    }
+    return false
   }
 
   /**

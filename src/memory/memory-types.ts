@@ -109,7 +109,7 @@ export interface EpisodicRecord extends MemoryRecord {
   readonly kind: "episodic"
   readonly eventType: string
   readonly eventTimestamp: IsoTimestamp
-  readonly参与者: string
+  readonly participant: string
   readonly outcome?: string
 }
 

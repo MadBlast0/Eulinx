@@ -63,3 +63,12 @@ export {
 export {
   MemoryManager,
 } from "./memory-manager"
+
+// HelixDB Adapter Interface
+export type {
+  HelixDBMemoryAdapter,
+} from "./memory-manager"
+
+export type {
+  HelixDBKnowledgeAdapter,
+} from "./knowledge-base"

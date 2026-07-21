@@ -10,12 +10,35 @@
  */
 
 import type { WorkspaceId } from "@/core/types"
-import type { VectorMemoryStore } from "./memory-vector"
+import type { VectorMemoryStore, VectorSearchResult } from "./memory-vector"
 import { ingestMarkdown } from "./ingest/markdown"
 import { ingestPlainText } from "./ingest/plain-text"
 import { ingestUrl } from "./ingest/url"
 import { ingestRepo, type FsReader } from "./ingest/repo"
 import { ingestPdf, type PdfIngestResult } from "./ingest/pdf"
+
+// ---------------------------------------------------------------------------
+// HelixDB Knowledge Adapter Interface (T13.3)
+// ---------------------------------------------------------------------------
+
+/**
+ * Interface for a HelixDB-backed knowledge adapter.
+ * When provided and backend='helixdb', KnowledgeBase delegates ingest and search
+ * operations to this adapter instead of using the in-memory VectorMemoryStore.
+ */
+export interface HelixDBKnowledgeAdapter {
+  ingest(
+    kind: IngestKind,
+    source: string | ArrayBuffer,
+    workspaceId: WorkspaceId,
+    options: IngestOptions,
+  ): Promise<IngestResult>
+  search(
+    query: string,
+    workspaceId: WorkspaceId,
+    maxResults?: number,
+  ): Promise<readonly VectorSearchResult[]>
+}
 
 export type IngestKind = "markdown" | "text" | "url" | "repo" | "pdf"
 
@@ -34,9 +57,17 @@ export interface IngestResult {
 
 export class KnowledgeBase {
   readonly store: VectorMemoryStore
+  private readonly backend: 'memory' | 'helixdb'
+  private readonly helixdbAdapter?: HelixDBKnowledgeAdapter
 
-  constructor(store: VectorMemoryStore) {
+  constructor(
+    store: VectorMemoryStore,
+    backend?: 'memory' | 'helixdb',
+    helixdbAdapter?: HelixDBKnowledgeAdapter,
+  ) {
     this.store = store
+    this.backend = backend ?? 'memory'
+    this.helixdbAdapter = helixdbAdapter
   }
 
   async ingest(
@@ -45,6 +76,10 @@ export class KnowledgeBase {
     workspaceId: WorkspaceId,
     options: IngestOptions = {},
   ): Promise<IngestResult> {
+    if (this.backend === 'helixdb' && this.helixdbAdapter) {
+      return this.helixdbAdapter.ingest(kind, source, workspaceId, options)
+    }
+
     switch (kind) {
       case "markdown":
         return {
@@ -90,6 +125,9 @@ export class KnowledgeBase {
    * Semantic + keyword search over everything ingested into the workspace.
    */
   search(query: string, workspaceId: WorkspaceId, maxResults = 10) {
+    if (this.backend === 'helixdb' && this.helixdbAdapter) {
+      return this.helixdbAdapter.search(query, workspaceId, maxResults)
+    }
     return this.store.search({ text: query, workspaceId, maxResults })
   }
 }
