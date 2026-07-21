@@ -269,7 +269,7 @@
     border: 1px solid color-mix(in srgb, var(--Eulinx-color-accent) 78%, white 22%);
     background: linear-gradient(180deg, color-mix(in srgb, var(--Eulinx-color-accent) 92%, white 8%), var(--Eulinx-color-accent));
     color: #fff;
-    box-shadow: 0 8px 24px rgba(224, 113, 53, 0.18);
+    box-shadow: 0 8px 24px rgba(255, 56, 92, 0.18);
   }
 
   .eulinx-primary:hover {

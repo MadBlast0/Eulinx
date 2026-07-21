@@ -6,7 +6,13 @@
  * The branch session starts from a snapshot of the fork point.
  */
 
+import type { Result } from "@/core/result"
+import { ok, err } from "@/core/result"
+import type { CoreError } from "@/core/error"
 import type { SessionId, IsoTimestamp } from "@/core/types"
+import type { HelixDBClient, TenantScopedClient } from "@/integrations/helixdb/helixdb-client"
+import { LABEL_SESSION, EDGE_BRANCHED_FROM, EDGE_HAS_EVENT } from "@/integrations/helixdb/helixdb-types"
+import type { PersistedEventEnvelope } from "@/event-bus/event-history"
 import type { SessionBranch, BranchCreateRequest, SessionCreateRequest, SessionKind } from "./session-types"
 
 // ---------------------------------------------------------------------------
@@ -125,5 +131,85 @@ export class SessionBranchManager {
    */
   getAllBranches(): readonly SessionBranch[] {
     return [...this.branches.values()]
+  }
+}
+
+// ---------------------------------------------------------------------------
+// HelixDB-backed helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * T16.2 — Create a BRANCHED_FROM edge from targetSession to sourceSession.
+ * Property: atEventSeq (the event sequence the branch forked from).
+ */
+export async function createBranchEdge(
+  client: HelixDBClient | TenantScopedClient,
+  sourceSessionId: string,
+  targetSessionId: string,
+  forkedAtEventSeq: number,
+): Promise<Result<void, CoreError>> {
+  const query = `addE("${EDGE_BRANCHED_FROM}", nWithLabelWhere("${LABEL_SESSION}", eq("id", "${targetSessionId}")), nWithLabelWhere("${LABEL_SESSION}", eq("id", "${sourceSessionId}")), $props)`
+
+  const result = await client.query({
+    query,
+    params: { props: { atEventSeq: forkedAtEventSeq } },
+  })
+
+  if (!result.ok) {
+    return err(result.error)
+  }
+
+  return ok(undefined)
+}
+
+/**
+ * T16.3 — Get all events for a session, ordered by sequence ascending.
+ * Traversal: Session --[HAS_EVENT]--> Event nodes.
+ */
+export async function getSessionHistory(
+  client: HelixDBClient | TenantScopedClient,
+  sessionId: string,
+): Promise<Result<readonly PersistedEventEnvelope[], CoreError>> {
+  const query = `nWithLabelWhere("${LABEL_SESSION}", eq("id", "${sessionId}")).out("${EDGE_HAS_EVENT}").orderBy("sequence").valueMap()`
+
+  const result = await client.query({ query })
+
+  if (!result.ok) {
+    return err(result.error)
+  }
+
+  const events = result.value.results
+    .map((row) => hydrateEnvelope(row as Record<string, unknown>))
+    .filter((e): e is PersistedEventEnvelope => e !== null)
+
+  return ok(events)
+}
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
+function hydrateEnvelope(row: Record<string, unknown>): PersistedEventEnvelope | null {
+  const id = row.id as string | undefined
+  const workspaceId = row.workspaceId as string | undefined
+  const type = row.type as string | undefined
+  const emittedAt = row.emittedAt as string | undefined
+
+  if (!id || !workspaceId || !type || !emittedAt) {
+    return null
+  }
+
+  return {
+    sequence: (row.sequence as number) ?? 0,
+    eventId: id,
+    type,
+    payload: (row.payload as string) ?? "{}",
+    service: (row.service as string) ?? "unknown",
+    workspaceId,
+    sessionId: row.sessionId as string | undefined,
+    executionId: row.executionId as string | undefined,
+    correlationId: row.correlationId as string | undefined,
+    causationId: row.causationId as string | undefined,
+    emittedAt,
   }
 }

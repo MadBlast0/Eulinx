@@ -18,10 +18,13 @@ import { err, ok } from "@/core/result"
 import { CoreError } from "@/core/error"
 import type { Logger } from "@/core/logger"
 import { createLogger } from "@/core/logger"
+import { getConfig } from "@/core/config"
 import type {
   PersistedEntity,
   StateStore,
 } from "./state-types"
+import { HelixDBStateStore } from "@/integrations/helixdb/adapters/helixdb-state-store"
+import { HelixDBClient } from "@/integrations/helixdb/helixdb-client"
 import type { PersistedRuntimeState } from "./runtime-state"
 import type { PersistedWorkerState } from "./worker-state"
 import type { PersistedSessionState } from "./session-state"
@@ -71,6 +74,25 @@ export class PersistenceService {
 
   constructor(private readonly store: StateStore) {
     this.logger = createLogger("PersistenceService")
+  }
+
+  /**
+   * Create a PersistenceService with the store resolved from config.
+   * When config.helixdb.enabled is true, uses HelixDBStateStore;
+   * otherwise falls back to InMemoryStateStore.
+   *
+   * @param overrideStore - optional store override (e.g. for testing)
+   */
+  static create(overrideStore?: StateStore): PersistenceService {
+    if (overrideStore) {
+      return new PersistenceService(overrideStore)
+    }
+    const config = getConfig()
+    if (config.helixdb.enabled) {
+      const client = new HelixDBClient(config.helixdb)
+      return new PersistenceService(new HelixDBStateStore(client))
+    }
+    return new PersistenceService(new InMemoryStateStore())
   }
 
   // -----------------------------------------------------------------------

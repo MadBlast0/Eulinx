@@ -33,6 +33,9 @@ import {
 } from "@/state/session-state"
 import { getBus } from "@/ui/workspace/runtime-store"
 import { raiseNotification } from "@/event-bus/notification-bridge"
+import type { HelixDBClient } from "@/integrations/helixdb/helixdb-client"
+import { LABEL_SESSION, EDGE_BRANCHED_FROM } from "@/integrations/helixdb/helixdb-types"
+import { getConfig } from "@/core/config"
 
 // ---------------------------------------------------------------------------
 // Session Manager Configuration
@@ -61,9 +64,11 @@ export class SessionManager {
   private readonly events: Map<string, SessionEvent[]> = new Map()
   private readonly eventHandlers: Array<(event: SessionEvent) => void> = []
   private activeSessionId: SessionId | null = null
+  private readonly helixdbClient: HelixDBClient | null
 
-  constructor(config: Partial<SessionManagerConfig> = {}) {
+  constructor(config: Partial<SessionManagerConfig> = {}, helixdbClient?: HelixDBClient) {
     this.config = { ...DEFAULT_SESSION_MANAGER_CONFIG, ...config }
+    this.helixdbClient = helixdbClient ?? null
   }
 
   // ---------------------------------------------------------------------------
@@ -109,6 +114,27 @@ export class SessionManager {
     this.emitEvent(sessionId, request.workspaceId, "session.created", "system", request.reason)
 
     this.activeSessionId = sessionId
+
+    // Persist Session node to HelixDB if enabled
+    if (getConfig().helixdb.enabled && this.helixdbClient) {
+      void this.helixdbClient.query({
+        query: `addN("${LABEL_SESSION}", $props)`,
+        params: {
+          props: {
+            id: sessionId,
+            workspaceId: request.workspaceId,
+            runtimeId: request.runtimeId,
+            kind: request.kind,
+            state: "created",
+            displayName: request.reason ?? null,
+            parentSessionId: request.parentSessionId ?? null,
+            branchPoint: request.branchFromEventSeq ?? null,
+            createdAt: now,
+            updatedAt: now,
+          },
+        },
+      })
+    }
 
     return {
       sessionId,
@@ -217,6 +243,79 @@ export class SessionManager {
     if (this.activeSessionId === sessionId) {
       this.activeSessionId = null
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // HelixDB Recovery (T16.1)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Recover session state from HelixDB when in-memory state is lost.
+   * Returns null if HelixDB disabled, client missing, or session not found.
+   */
+  async recoverSession(sessionId: SessionId): Promise<PersistedSessionState | null> {
+    if (!getConfig().helixdb.enabled || !this.helixdbClient) return null
+    if (this.sessions.has(sessionId)) return this.sessions.get(sessionId)!
+
+    const result = await this.helixdbClient.query({
+      query: `nWithLabelWhere("${LABEL_SESSION}", eq("id", "${sessionId}"))`,
+    })
+
+    if (!result.ok || result.value.results.length === 0) return null
+
+    const row = result.value.results[0] as Record<string, unknown>
+    const state = createPersistedSessionState(
+      sessionId,
+      row.workspaceId as WorkspaceId,
+      row.runtimeId as string,
+      row.kind as "chat" | "terminal" | "agent",
+    )
+
+    const restored = transitionSessionState(state, (row.state as string) ?? "created", "Recovered from HelixDB")
+    this.sessions.set(sessionId, restored)
+
+    const now = new Date().toISOString() as IsoTimestamp
+    const meta: SessionMetadata = {
+      sessionId,
+      workspaceId: row.workspaceId as WorkspaceId,
+      runtimeId: row.runtimeId as string,
+      kind: (row.kind as SessionCreateRequest["kind"]) ?? "chat",
+      parentSessionId: row.parentSessionId as SessionId | undefined,
+      branchPoint: row.branchPoint as number | undefined,
+      createdAt: (row.createdAt as IsoTimestamp) ?? now,
+      updatedAt: now,
+    }
+    this.metadata.set(sessionId, meta)
+    this.events.set(sessionId, [])
+
+    this.emitEvent(sessionId, row.workspaceId as WorkspaceId, "session.recovering", "system", "Recovered from HelixDB")
+    this.activeSessionId = sessionId
+
+    return restored
+  }
+
+  // ---------------------------------------------------------------------------
+  // HelixDB Branching (T16.1)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Create a BRANCHED_FROM edge in HelixDB linking the new session to its source.
+   */
+  async branchSession(newSessionId: SessionId, sourceSessionId: SessionId): Promise<void> {
+    if (!getConfig().helixdb.enabled || !this.helixdbClient) return
+
+    const meta = this.metadata.get(newSessionId)
+    const branchPoint = meta?.branchPoint ?? null
+
+    await this.helixdbClient.query({
+      query: `addE("${EDGE_BRANCHED_FROM}", nWithLabelWhere("${LABEL_SESSION}", eq("id", "${newSessionId}")), nWithLabelWhere("${LABEL_SESSION}", eq("id", "${sourceSessionId}")), $props)`,
+      params: {
+        props: {
+          forkedAtEventSeq: branchPoint,
+          createdAt: new Date().toISOString(),
+        },
+      },
+    })
   }
 
   // ---------------------------------------------------------------------------
