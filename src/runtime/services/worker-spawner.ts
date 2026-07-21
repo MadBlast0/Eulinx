@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto"
+import { generateId } from "@/core/uuid"
 import type { WorkerId } from "@/core/types"
 import { brand } from "@/core/types"
 import type { ServiceState } from "@/runtime/service-registry"
@@ -39,7 +39,7 @@ export class WorkerSpawner {
   }
 
   spawn(config: WorkerConfig): WorkerInfo {
-    const workerId = brand<WorkerId>(randomUUID())
+    const workerId = brand<WorkerId>(generateId())
     const worker: WorkerInfo = {
       workerId,
       config,

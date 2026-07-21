@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto"
+import { generateId } from "@/core/uuid"
 import type { WorkspaceId, MergeId } from "@/core/types"
 import { brand } from "@/core/types"
 import type { ServiceState } from "@/runtime/service-registry"
@@ -41,7 +41,7 @@ export class MergeManager {
   apply(artifact: string, workspaceId: WorkspaceId): MergeRecord {
     const lockAcquired = this.lockManager.acquire(`merge:${workspaceId}`, "merge-manager")
     if (!lockAcquired) {
-      const mergeId = brand<MergeId>(randomUUID())
+      const mergeId = brand<MergeId>(generateId())
       const record: MergeRecord = {
         mergeId,
         artifactId: artifact,
@@ -55,7 +55,7 @@ export class MergeManager {
     }
 
     try {
-      const mergeId = brand<MergeId>(randomUUID())
+      const mergeId = brand<MergeId>(generateId())
       const record: MergeRecord = {
         mergeId,
         artifactId: artifact,

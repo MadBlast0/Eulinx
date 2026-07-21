@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto"
+import { generateId } from "@/core/uuid"
 import type { ExecutionId } from "@/core/types"
 import { brand } from "@/core/types"
 import type { ServiceState } from "@/runtime/service-registry"
@@ -44,7 +44,7 @@ export class ExecutionEngine {
   }
 
   execute(task: string): ExecutionInfo {
-    const executionId = brand<ExecutionId>(randomUUID())
+    const executionId = brand<ExecutionId>(generateId())
     const entry: QueuedTask = {
       executionId,
       task,
