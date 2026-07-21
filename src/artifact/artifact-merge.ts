@@ -5,7 +5,7 @@
  * From MergeFlow-Part01 through Part06.
  */
 
-import { randomUUID } from "node:crypto"
+import { generateId } from "@/core/uuid"
 import type {
   ArtifactId,
   MergeId,
@@ -119,7 +119,7 @@ export class ArtifactMerge {
       rollback?: (snapshot: string) => boolean
     }
   ): Promise<MergePipelineResult> {
-    const mergeId = brand<MergeId>(randomUUID())
+    const mergeId = brand<MergeId>(generateId())
 
     // Stage 1: Eligibility (MergeFlow-Part02 §Eligibility)
     const eligibility = this.checkEligibility(artifact, request.workspaceId)
@@ -348,7 +348,7 @@ export class ArtifactMerge {
     message: string
   ): MergeConflict {
     const conflict: MergeConflict = {
-      conflictId: brand<ConflictId>(randomUUID()),
+      conflictId: brand<ConflictId>(generateId()),
       artifactId,
       type,
       path,

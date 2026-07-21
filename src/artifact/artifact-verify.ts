@@ -6,7 +6,7 @@
  * From Verification-Part01 through Part04.
  */
 
-import { randomUUID } from "node:crypto"
+import { generateId } from "@/core/uuid"
 import type {
   ArtifactId,
   WorkerId,

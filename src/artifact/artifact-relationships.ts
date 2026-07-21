@@ -5,7 +5,7 @@
  * supersedes, attached-to. From ArtifactRelationships-Part01 through Part03.
  */
 
-import { randomUUID } from "node:crypto"
+import { generateId } from "@/core/uuid"
 import type { ArtifactId, IsoTimestamp } from "@/core/types"
 import { brand } from "@/core/types"
 import type {
@@ -47,7 +47,7 @@ export class ArtifactRelationships {
       return null // cycle detected
     }
 
-    const id = randomUUID()
+    const id = generateId()
     const relationship: ArtifactRelationship = {
       id,
       fromArtifactId: request.fromArtifactId,

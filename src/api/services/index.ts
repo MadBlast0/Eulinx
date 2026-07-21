@@ -9,6 +9,9 @@
 export { fsService } from "./fs-service"
 export type { FsService, FileEntry } from "./fs-service"
 
+export { dialogService } from "./dialog-service"
+export type { DialogService } from "./dialog-service"
+
 export { gitService } from "./git-service"
 export type { GitService, GitStatus, ChangeEntry, CommitEntry } from "./git-service"
 

@@ -5,7 +5,7 @@
  * From MergeFlow-Part01 and ArtifactManager-Part03.
  */
 
-import { randomUUID } from "node:crypto"
+import { generateId } from "@/core/uuid"
 import type { ArtifactId, WorkspaceId, IsoTimestamp, WorkerId } from "@/core/types"
 import { brand } from "@/core/types"
 import type {
@@ -81,7 +81,7 @@ export class ArtifactImport {
     const contentHash = this.computeHash(source.content)
 
     // Create artifact record
-    const id = brand<ArtifactId>(randomUUID())
+    const id = brand<ArtifactId>(generateId())
     const artifact: Artifact = {
       id,
       workspaceId,

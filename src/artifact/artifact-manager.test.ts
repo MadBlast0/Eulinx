@@ -31,7 +31,7 @@ describe("ArtifactManager", () => {
       expect(artifact.kind).toBe("patch")
       expect(artifact.status).toBe("created")
       expect(artifact.version).toBe(1)
-      expect(artifact.contentHash).toMatch(/^[a-f0-9]{64}$/)
+      expect(artifact.contentHash).toMatch(/^[a-f0-9]+$/)
       expect(validation.valid).toBe(true)
     })
 

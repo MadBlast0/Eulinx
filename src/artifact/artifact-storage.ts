@@ -5,8 +5,21 @@
  * ArtifactArchitecture-Part03 Â§ContentAddressing and Â§StorageTiers.
  */
 
-import { createHash } from "node:crypto"
-import { randomUUID } from "node:crypto"
+import { generateId } from "@/core/uuid"
+
+/**
+ * Simple content hash for browser compatibility.
+ * Uses FNV-1a algorithm — fast, non-cryptographic, sufficient for content addressing.
+ */
+function fnv1aHash(data: Uint8Array): string {
+  let hash = 0x811c9dc5 // FNV offset basis
+  for (let i = 0; i < data.length; i++) {
+    hash ^= data[i]
+    hash = (hash * 0x01000193) >>> 0 // FNV prime, keep as u32
+  }
+  // Convert to hex string with leading zeros
+  return hash.toString(16).padStart(8, "0")
+}
 import type { ArtifactId, WorkspaceId } from "@/core/types"
 import { brand } from "@/core/types"
 import type { Artifact, ContentRef, ArtifactCreateRequest, ArtifactKind, Sensitivity } from "./artifact-types"
@@ -122,13 +135,10 @@ export class ArtifactStorage {
 
   /** Compute content hash from bytes. */
   computeHash(content: string | Uint8Array): string {
-    const hasher = createHash(this.config.checksumAlgo)
-    if (typeof content === "string") {
-      hasher.update(content, "utf-8")
-    } else {
-      hasher.update(content)
-    }
-    return hasher.digest("hex")
+    const bytes = typeof content === "string"
+      ? new TextEncoder().encode(content)
+      : content
+    return fnv1aHash(bytes)
   }
 
   /** Compute content size. */

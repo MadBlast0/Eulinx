@@ -8,7 +8,7 @@
  * Search, History, Verification, Merge, Import, Export.
  */
 
-import { randomUUID } from "node:crypto"
+import { generateId } from "@/core/uuid"
 import type {
   ArtifactId,
   WorkspaceId,
@@ -74,7 +74,7 @@ export class ArtifactManager {
   private readonly export: ArtifactExport
 
   constructor(workspaceId: WorkspaceId) {
-    this.id = randomUUID()
+    this.id = generateId()
     this.workspaceId = workspaceId
     this.registry = new ArtifactRegistry()
     this.storage = new ArtifactStorage()
@@ -130,7 +130,7 @@ export class ArtifactManager {
     }
 
     // Create the artifact
-    const id = brand<ArtifactId>(randomUUID())
+    const id = brand<ArtifactId>(generateId())
     const now = new Date().toISOString() as IsoTimestamp
 
     const contentRef = this.storage.storeContent(id, request.content)
@@ -418,7 +418,7 @@ export class ArtifactManager {
     const parent = this.storage.getArtifact(parentId)
     if (!parent) return undefined
 
-    const newId = brand<ArtifactId>(randomUUID())
+    const newId = brand<ArtifactId>(generateId())
     const contentHash = this.storage.computeHash(content)
     const contentRef = this.storage.storeContent(newId, content)
 
