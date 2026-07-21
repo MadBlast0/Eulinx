@@ -1,4 +1,4 @@
-﻿mod commands;
+mod commands;
 mod error;
 mod ipc;
 mod managers;
@@ -55,31 +55,41 @@ pub fn run() {
         .manage(db)
         .setup(|app| {
             let handle = app.handle().clone();
-            app.manage(Box::new(FsManagerImpl::new(handle.clone())) as Box<dyn crate::managers::FsManager>);
-            app.manage(Box::new(PtyManagerImpl::new(handle.clone())) as Box<dyn crate::managers::PtyManager>);
-            app.manage(Box::new(WindowManagerImpl::new(handle.clone())) as Box<dyn crate::managers::WindowManager>);
-            app.manage(Box::new(SecureStoreManagerImpl::new(handle.clone())) as Box<dyn crate::managers::SecureStoreManager>);
-            app.manage(Box::new(DialogManagerImpl::new(handle)) as Box<dyn crate::managers::DialogManager>);
+            app.manage(FsManagerImpl::new());
+            app.manage(PtyManagerImpl::new(handle.clone()));
+            app.manage(WindowManagerImpl::new(handle.clone()));
+            app.manage(SecureStoreManagerImpl::new(handle.clone()));
+            app.manage(DialogManagerImpl::new(handle));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // PTY
             commands::pty::pty_spawn,
             commands::pty::pty_write,
             commands::pty::pty_resize,
             commands::pty::pty_kill,
+            commands::pty::pty_write_by_pid,
+            commands::pty::pty_resize_by_pid,
+            commands::pty::pty_kill_by_pid,
+            // Filesystem
             commands::fs::dialog_pick_folder,
+            commands::fs::dialog_open_file,
+            commands::fs::dialog_save_file,
             commands::fs::fs_exists,
             commands::fs::fs_list_dir,
             commands::fs::fs_read_text,
             commands::fs::fs_write_text,
             commands::fs::fs_create_dir,
+            commands::fs::fs_remove_file,
             commands::fs::fs_watch_path,
             commands::fs::fs_unwatch_path,
             commands::fs::fs_list_watchers,
+            // Git
             commands::git::git_status,
             commands::git::git_stage_all,
             commands::git::git_commit,
             commands::git::git_push,
+            // Database
             commands::db::db_query,
             commands::db::db_find_by_id,
             commands::db::db_insert,
@@ -87,6 +97,25 @@ pub fn run() {
             commands::db::db_delete,
             commands::db::db_transaction,
             commands::db::db_write_event_log,
+            commands::db::db_get_event_seq,
+            commands::db::db_is_native,
+            // PTY session info
+            commands::db::pty_get_session_info,
+            commands::db::pty_list_sessions,
+            // Window management
+            commands::window::window_set_title,
+            commands::window::window_set_size,
+            commands::window::window_minimize,
+            commands::window::window_maximize,
+            commands::window::window_close,
+            // Secure store
+            commands::store::store_get,
+            commands::store::store_set,
+            commands::store::store_delete,
+            // Dialogs (via manager)
+            commands::dialog::dialog_open_file_via_manager,
+            commands::dialog::dialog_save_file_via_manager,
+            commands::dialog::dialog_confirm,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

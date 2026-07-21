@@ -54,12 +54,26 @@ pub struct FsEntry {
 pub struct GitStatus {
     pub branch: String,
     pub changes: Vec<GitChange>,
+    pub untracked: Vec<GitChange>,
     pub ahead: u32,
     pub behind: u32,
+    pub commits: Vec<GitCommit>,
 }
 
+/// A single staged/modified/renamed file from git status.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GitChange {
     pub path: String,
     pub status: String,
+    pub add: i64,
+    pub del: i64,
+}
+
+/// A single commit from git log.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitCommit {
+    pub hash: String,
+    pub message: String,
+    pub author: String,
+    pub when: String,
 }
