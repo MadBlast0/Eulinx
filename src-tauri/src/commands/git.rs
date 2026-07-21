@@ -3,34 +3,7 @@
 
 use std::process::Command;
 
-/// A staged / modified / renamed file reported by `git status --porcelain`.
-#[derive(Debug, serde::Serialize)]
-pub struct ChangeEntry {
-    pub path: String,
-    pub status: String,
-    pub add: i64,
-    pub del: i64,
-}
-
-/// A single commit from `git log`.
-#[derive(Debug, serde::Serialize)]
-pub struct CommitEntry {
-    pub hash: String,
-    pub message: String,
-    pub author: String,
-    pub when: String,
-}
-
-/// Full snapshot of a repo's working tree and recent history.
-#[derive(Debug, serde::Serialize)]
-pub struct GitStatus {
-    pub branch: String,
-    pub ahead: u32,
-    pub behind: u32,
-    pub changes: Vec<ChangeEntry>,
-    pub untracked: Vec<ChangeEntry>,
-    pub commits: Vec<CommitEntry>,
-}
+use crate::ipc::{GitChange, GitCommit, GitStatus};
 
 /// Run `git` in `repo`, returning captured stdout or a descriptive error.
 fn git(repo: &str, args: &[&str]) -> Result<String, String> {
@@ -106,8 +79,8 @@ pub fn git_status(repo: String) -> Result<GitStatus, String> {
     let mut branch = String::new();
     let mut ahead: u32 = 0;
     let mut behind: u32 = 0;
-    let mut changes: Vec<ChangeEntry> = Vec::new();
-    let mut untracked: Vec<ChangeEntry> = Vec::new();
+    let mut changes: Vec<GitChange> = Vec::new();
+    let mut untracked: Vec<GitChange> = Vec::new();
 
     for line in porcelain.lines() {
         if line.starts_with("## ") {
@@ -123,14 +96,14 @@ pub fn git_status(repo: String) -> Result<GitStatus, String> {
         let status = line[0..2].to_string();
         let path = line[3..].to_string();
         if status.starts_with('?') {
-            untracked.push(ChangeEntry {
+            untracked.push(GitChange {
                 path,
                 status,
                 add: 0,
                 del: 0,
             });
         } else {
-            changes.push(ChangeEntry {
+            changes.push(GitChange {
                 path,
                 status,
                 add: 0,
@@ -157,7 +130,7 @@ pub fn git_status(repo: String) -> Result<GitStatus, String> {
         if path.is_empty() {
             continue
         }
-        untracked.push(ChangeEntry {
+        untracked.push(GitChange {
             path: path.to_string(),
             status: "U".to_string(),
             add: 0,
@@ -167,7 +140,7 @@ pub fn git_status(repo: String) -> Result<GitStatus, String> {
 
     let log = git(&repo, &["log", "-n", "20", "--pretty=format:%h|%s|%an|%ar"])
         .unwrap_or_default();
-    let commits: Vec<CommitEntry> = log
+    let commits: Vec<GitCommit> = log
         .lines()
         .filter_map(|line| {
             let mut parts = line.splitn(4, '|');
@@ -175,7 +148,7 @@ pub fn git_status(repo: String) -> Result<GitStatus, String> {
             let message = parts.next()?.to_string();
             let author = parts.next()?.to_string();
             let when = parts.next()?.to_string();
-            Some(CommitEntry {
+            Some(GitCommit {
                 hash,
                 message,
                 author,

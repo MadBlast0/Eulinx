@@ -2,37 +2,32 @@
 //
 // A project is a user-selected folder on disk. These commands only move bytes
 // and open native pickers; all project/business logic lives in TypeScript.
+//
+// All commands delegate to the FsManager trait implementations.
 
 use std::path::Path;
 
 use tauri::AppHandle;
+use tauri::Manager;
 use tauri::State;
 use tauri_plugin_dialog::DialogExt;
-use tauri_plugin_fs::FsExt;
 
+use crate::managers::fs_manager::FsManagerImpl;
 use crate::state::AppState;
 
-/// Read a UTF-8 file at `path`.
+/// Read a UTF-8 file at `path`. Delegates to FsManager.
 #[tauri::command]
 pub fn fs_read_text(app: AppHandle, path: String) -> Result<String, String> {
-    app.fs()
-        .read_to_string(Path::new(&path))
-        .map_err(|e| format!("read failed: {e}"))
+    let mgr = app.state::<FsManagerImpl>();
+    mgr.read_text_file(&path).map_err(|e| e.to_string())
 }
 
 /// Write (overwrite) a UTF-8 file at `path`, creating parent dirs if needed.
+/// Delegates to FsManager.
 #[tauri::command]
-pub fn fs_write_text(_app: AppHandle, path: String, contents: String) -> Result<(), String> {
-    write_text_impl(&path, &contents)
-}
-
-/// Pure implementation of `fs_write_text`, independent of Tauri, for testing.
-fn write_text_impl(path: &str, contents: &str) -> Result<(), String> {
-    let p = Path::new(path);
-    if let Some(parent) = p.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| format!("create dir failed: {e}"))?;
-    }
-    std::fs::write(p, contents).map_err(|e| format!("write failed: {e}"))
+pub fn fs_write_text(app: AppHandle, path: String, contents: String) -> Result<(), String> {
+    let mgr = app.state::<FsManagerImpl>();
+    mgr.write_text_file(&path, &contents).map_err(|e| e.to_string())
 }
 
 /// True if a file or directory exists at `path`.
@@ -41,15 +36,12 @@ pub fn fs_exists(_app: AppHandle, path: String) -> Result<bool, String> {
     Ok(Path::new(&path).exists())
 }
 
-/// Pure implementation of `fs_create_dir`, independent of Tauri, for testing.
-fn create_dir_impl(path: &str) -> Result<(), String> {
-    std::fs::create_dir_all(Path::new(path)).map_err(|e| format!("create dir failed: {e}"))
-}
-
 /// Create a directory at `path`, including parent directories.
+/// Delegates to FsManager.
 #[tauri::command]
-pub fn fs_create_dir(_app: AppHandle, path: String) -> Result<(), String> {
-    create_dir_impl(&path)
+pub fn fs_create_dir(app: AppHandle, path: String) -> Result<(), String> {
+    let mgr = app.state::<FsManagerImpl>();
+    mgr.create_dir(&path).map_err(|e| e.to_string())
 }
 
 /// Open the native folder picker. Returns the chosen absolute path, or `None`
@@ -62,20 +54,51 @@ pub fn dialog_pick_folder(app: AppHandle) -> Result<Option<String>, String> {
     }
 }
 
-/// A single entry returned by `fs_list_dir`.
-#[derive(Debug, serde::Serialize)]
-pub struct FileEntry {
-    pub name: String,
-    pub path: String,
-    pub is_dir: bool,
-    pub size: Option<u64>,
+/// Open the native file picker for opening a file. Returns the chosen absolute
+/// path, or `None` if the user cancelled.
+#[tauri::command]
+pub fn dialog_open_file(app: AppHandle, filter: Option<String>) -> Result<Option<String>, String> {
+    let builder = app.dialog().file();
+    let builder = if let Some(f) = filter {
+        builder.add_filter("Filter", &[&f])
+    } else {
+        builder
+    };
+    match builder.blocking_pick_file() {
+        Some(path) => Ok(Some(path.to_string())),
+        None => Ok(None),
+    }
+}
+
+/// Open the native file picker for saving a file. Returns the chosen absolute
+/// path, or `None` if the user cancelled.
+#[tauri::command]
+pub fn dialog_save_file(app: AppHandle, default_name: String) -> Result<Option<String>, String> {
+    match app
+        .dialog()
+        .file()
+        .set_file_name(&default_name)
+        .blocking_save_file()
+    {
+        Some(path) => Ok(Some(path.to_string())),
+        None => Ok(None),
+    }
 }
 
 /// List the immediate children of `path`. Directories are returned before
 /// files; within each group entries are sorted alphabetically (case-insensitive).
+/// Delegates to FsManager and returns IPC FsEntry types.
 #[tauri::command]
-pub fn fs_list_dir(_app: AppHandle, path: String) -> Result<Vec<FileEntry>, String> {
-    list_dir_impl(&path)
+pub fn fs_list_dir(app: AppHandle, path: String) -> Result<Vec<crate::ipc::FsEntry>, String> {
+    let mgr = app.state::<FsManagerImpl>();
+    mgr.list_dir(&path).map_err(|e| e.to_string())
+}
+
+/// Remove a file at `path`. Delegates to FsManager.
+#[tauri::command]
+pub fn fs_remove_file(app: AppHandle, path: String) -> Result<(), String> {
+    let mgr = app.state::<FsManagerImpl>();
+    mgr.remove_file(&path).map_err(|e| e.to_string())
 }
 
 /// Start watching a filesystem path for changes.
@@ -96,46 +119,10 @@ pub async fn fs_list_watchers(state: State<'_, AppState>) -> Result<Vec<(String,
     Ok(state.list_watchers().await)
 }
 
-/// Pure implementation of `fs_list_dir`, independent of Tauri, for testing.
-fn list_dir_impl(path: &str) -> Result<Vec<FileEntry>, String> {
-    let dir = std::fs::read_dir(Path::new(path)).map_err(|e| format!("read dir failed: {e}"))?;
-
-    let mut entries: Vec<FileEntry> = Vec::new();
-    for entry in dir {
-        let entry = entry.map_err(|e| format!("read entry failed: {e}"))?;
-        let meta = entry
-            .metadata()
-            .map_err(|e| format!("metadata failed: {e}"))?;
-        let name = entry
-            .file_name()
-            .to_string_lossy()
-            .into_owned();
-        let full = entry.path();
-        entries.push(FileEntry {
-            name,
-            path: full.to_string_lossy().into_owned(),
-            is_dir: meta.is_dir(),
-            size: if meta.is_dir() { None } else { Some(meta.len()) },
-        });
-    }
-
-    entries.sort_by(|a, b| {
-        match a.is_dir.cmp(&b.is_dir) {
-            std::cmp::Ordering::Equal => {
-                let a_lc = a.name.to_lowercase();
-                let b_lc = b.name.to_lowercase();
-                a_lc.cmp(&b_lc)
-            }
-            other => other,
-        }
-    });
-
-    Ok(entries)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::managers::fs_manager::FsManagerImpl;
 
     /// Create a unique temp directory under the OS temp dir.
     fn temp_dir(tag: &str) -> std::path::PathBuf {
@@ -149,16 +136,22 @@ mod tests {
         base
     }
 
+    /// Create a test FsManagerImpl.
+    fn test_fs_manager() -> FsManagerImpl {
+        FsManagerImpl::new()
+    }
+
     #[test]
     fn write_then_read_roundtrip() {
+        let mgr = test_fs_manager();
         let dir = temp_dir("roundtrip");
         let file = dir.join("nested").join("hello.txt");
         let path = file.to_string_lossy().to_string();
 
-        write_text_impl(&path, "hello world").expect("write");
+        mgr.write_text_file(&path, "hello world").expect("write");
         assert!(Path::new(&path).exists(), "parent dirs created and file written");
 
-        let read = std::fs::read_to_string(&file).expect("read");
+        let read = mgr.read_text_file(&path).expect("read");
         assert_eq!(read, "hello world");
 
         std::fs::remove_dir_all(&dir).ok();
@@ -166,12 +159,13 @@ mod tests {
 
     #[test]
     fn list_dir_groups_and_sorts_case_insensitive() {
+        let mgr = test_fs_manager();
         let dir = temp_dir("listing");
         std::fs::create_dir(dir.join("Zebra")).unwrap();
         std::fs::write(dir.join("apple.txt"), b"a").unwrap();
         std::fs::write(dir.join("Banana.txt"), b"bb").unwrap();
 
-        let entries = list_dir_impl(&dir.to_string_lossy()).expect("list");
+        let entries = mgr.list_dir(&dir.to_string_lossy()).expect("list");
         assert_eq!(entries.len(), 3);
 
         // Files are grouped together and sorted case-insensitively.
@@ -191,36 +185,52 @@ mod tests {
 
     #[test]
     fn list_dir_errors_on_missing_path() {
+        let mgr = test_fs_manager();
         let missing = std::env::temp_dir().join("eulinx_fs_does_not_exist_xyz");
-        let result = list_dir_impl(&missing.to_string_lossy());
+        let result = mgr.list_dir(&missing.to_string_lossy());
         assert!(result.is_err());
     }
 
     #[test]
     fn create_dir_single_directory() {
+        let mgr = test_fs_manager();
         let dir = temp_dir("create_single");
         let path = dir.join("newdir").to_string_lossy().to_string();
-        create_dir_impl(&path).expect("create single dir");
+        mgr.create_dir(&path).expect("create single dir");
         assert!(Path::new(&path).is_dir());
         std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
     fn create_dir_nested_directories() {
+        let mgr = test_fs_manager();
         let dir = temp_dir("create_nested");
         let path = dir.join("a").join("b").join("c").to_string_lossy().to_string();
-        create_dir_impl(&path).expect("create nested dirs");
+        mgr.create_dir(&path).expect("create nested dirs");
         assert!(Path::new(&path).is_dir());
         std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
     fn create_dir_existing_succeeds() {
+        let mgr = test_fs_manager();
         let dir = temp_dir("create_existing");
         let path = dir.join("exists").to_string_lossy().to_string();
-        create_dir_impl(&path).expect("create first time");
-        create_dir_impl(&path).expect("create second time (should succeed)");
+        mgr.create_dir(&path).expect("create first time");
+        mgr.create_dir(&path).expect("create second time (should succeed)");
         assert!(Path::new(&path).is_dir());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn remove_file_works() {
+        let mgr = test_fs_manager();
+        let dir = temp_dir("remove");
+        let path = dir.join("to_remove.txt").to_string_lossy().to_string();
+        std::fs::write(&path, "delete me").unwrap();
+        assert!(Path::new(&path).exists());
+        mgr.remove_file(&path).expect("remove");
+        assert!(!Path::new(&path).exists());
         std::fs::remove_dir_all(&dir).ok();
     }
 }

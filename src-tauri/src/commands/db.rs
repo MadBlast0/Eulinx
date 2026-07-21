@@ -3,6 +3,7 @@ use serde_json::Value;
 use tauri::{AppHandle, Manager, State};
 
 use crate::managers::db_manager::{DbManager, DbStatement};
+use crate::state::AppState;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct TransactionStatement {
@@ -48,8 +49,21 @@ pub fn db_delete(db: State<DbManager>, table: String, id: Value) -> Result<(), S
     db.delete(&table, &id_str).map_err(|e| e.to_string())
 }
 
+/// Write an event to the event log, auto-assigning a monotonic sequence number.
 #[tauri::command]
-pub fn db_write_event_log(app: AppHandle, request: crate::ipc::EventLogWriteRequest) -> Result<(), String> {
+pub async fn db_write_event_log(
+    app: AppHandle,
+    mut request: crate::ipc::EventLogWriteRequest,
+) -> Result<(), String> {
+    // Auto-assign sequence from AppState's monotonic counter.
+    let state = app.state::<AppState>();
+    let seq = {
+        let mut counter = state.event_seq.write().await;
+        *counter += 1;
+        *counter
+    };
+    request.sequence = seq;
+
     let db = app.state::<DbManager>();
     db.write_event_log(request).map_err(|e| e.to_string())
 }
@@ -65,6 +79,46 @@ pub fn db_transaction(db: State<DbManager>, statements: Vec<TransactionStatement
         })
         .collect();
     db.transaction(&stmts).map_err(|e| e.to_string())
+}
+
+/// Get the current event sequence counter value.
+#[tauri::command]
+pub async fn db_get_event_seq(app: AppHandle) -> Result<u64, String> {
+    let state = app.state::<AppState>();
+    let seq = state.event_seq.read().await;
+    Ok(*seq)
+}
+
+/// Check if the app is running in native (Tauri) mode.
+#[tauri::command]
+pub fn db_is_native(app: AppHandle) -> Result<bool, String> {
+    let state = app.state::<AppState>();
+    Ok(state.is_native)
+}
+
+/// Get info about an active PTY session.
+#[tauri::command]
+pub async fn pty_get_session_info(
+    app: AppHandle,
+    id: String,
+) -> Result<Option<serde_json::Value>, String> {
+    let state = app.state::<AppState>();
+    let sessions = state.pty_sessions.read().await;
+    Ok(sessions.get(&id).map(|s| {
+        serde_json::json!({
+            "pid": s.pid,
+            "started_at": s.started_at,
+            "cmd": s.cmd,
+        })
+    }))
+}
+
+/// List all active PTY session IDs.
+#[tauri::command]
+pub async fn pty_list_sessions(app: AppHandle) -> Result<Vec<String>, String> {
+    let state = app.state::<AppState>();
+    let sessions = state.pty_sessions.read().await;
+    Ok(sessions.keys().cloned().collect())
 }
 
 #[cfg(test)]
