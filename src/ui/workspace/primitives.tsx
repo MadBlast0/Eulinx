@@ -24,18 +24,21 @@ export function ToolbarButton({
   size = 28,
   className,
   children,
+  disabled,
   ...rest
 }: ToolbarButtonProps) {
   return (
     <button
       type="button"
       data-tip={tip}
+      disabled={disabled}
       className={cn(
         "relative flex items-center justify-center rounded-[var(--Eulinx-radius-sm)] transition-colors",
         "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-        active
+        disabled && "pointer-events-none opacity-30",
+        !disabled && (active
           ? "bg-[color:var(--Eulinx-color-selected)] text-[color:var(--Eulinx-color-text)]"
-          : "text-[color:var(--Eulinx-color-text-muted)] hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]",
+          : "text-[color:var(--Eulinx-color-text-muted)] hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]"),
         className,
       )}
       style={{ width: size, height: size }}

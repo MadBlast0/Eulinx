@@ -135,13 +135,13 @@ function MapOverview() {
     return { minX, minY, maxX, maxY, width: maxX - minX || 200, height: maxY - minY || 150 }
   }, [nodes])
 
-  const padding = 16
-  const viewW = 200
-  const viewH = 100
+  const padding = 12
+  const viewW = 150
+  const viewH = Math.round((150 * 9) / 16)
   const scale = Math.min((viewW - padding * 2) / bounds.width, (viewH - padding * 2) / bounds.height, 1)
 
   return (
-    <div className="mt-2.5 flex min-h-[100px] flex-col gap-1.5">
+    <div className="mt-2.5 flex flex-col gap-1.5">
       <div className="flex items-center gap-1 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
         <MapIcon className="h-3 w-3" strokeWidth={1.5} />
         <span>{nodes.length} nodes</span>
@@ -149,7 +149,7 @@ function MapOverview() {
       <div
         ref={containerRef}
         className="relative overflow-hidden rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-sunken)]"
-        style={{ height: viewH }}
+        style={{ aspectRatio: "16/9", maxHeight: viewH }}
       >
         <svg width={viewW} height={viewH} className="overflow-visible">
           {nodes.map((n) => {
