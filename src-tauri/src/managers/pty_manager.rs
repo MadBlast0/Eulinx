@@ -1,11 +1,13 @@
 use std::collections::HashMap;
+use std::io::Write;
+use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-use tauri::{AppHandle, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::commands::pty::PtyState;
 use crate::ipc::{ApiError, ApiResult};
-use crate::managers::PtyManager;
 use crate::state::AppState;
 
 pub struct PtyManagerImpl {
@@ -20,37 +22,94 @@ impl PtyManagerImpl {
             pid_to_id: Mutex::new(HashMap::new()),
         }
     }
-}
 
-impl PtyManager for PtyManagerImpl {
-    fn spawn(&self, workspace_id: &str, cmd: &str) -> ApiResult<u32> {
+    /// Spawn a real shell. Returns the PID of the spawned process.
+    pub fn spawn(&self, workspace_id: &str, cmd: &str) -> ApiResult<u32> {
         let id = workspace_id.to_string();
         let cmd_str = if cmd.is_empty() { None } else { Some(cmd.to_string()) };
 
-        let handle = self.app.clone();
-        let handle2 = handle.clone();
-        let app_state = handle2.state::<AppState>();
-        crate::commands::pty::pty_spawn(handle, app_state, id.clone(), cmd_str)
-            .map_err(|e| ApiError { code: "PTY_SPAWN".into(), message: e, context: None })?;
+        let (program, flag) = super::pty_manager::resolve_shell(cmd_str.as_deref());
 
-        let state = self.app.state::<PtyState>();
-        let pid = state
-            .children
-            .lock()
-            .unwrap()
-            .get(&id)
-            .and_then(|h| h.child.lock().unwrap().as_ref().map(|c| c.id()))
-            .ok_or_else(|| ApiError {
-                code: "PTY_PID".into(),
-                message: "could not get PID for spawned process".into(),
-                context: None,
-            })?;
+        let mut command = Command::new(&program);
+        command.arg(&flag);
+        command.stdin(Stdio::piped());
+        command.stdout(Stdio::piped());
+        command.stderr(Stdio::piped());
+
+        let mut child = command.spawn().map_err(|e| ApiError {
+            code: "PTY_SPAWN".into(),
+            message: format!("spawn failed: {e}"),
+            context: None,
+        })?;
+        let pid = child.id();
+        let stdin = child.stdin.take().ok_or_else(|| ApiError {
+            code: "PTY_SPAWN".into(),
+            message: "no stdin handle".into(),
+            context: None,
+        })?;
+
+        let app_owned = self.app.clone();
+
+        let out_id = id.clone();
+        let out_app = app_owned.clone();
+        if let Some(out) = child.stdout.take() {
+            std::thread::spawn(move || stream_to_events(out, &out_id, out_app));
+        }
+
+        let err_id = id.clone();
+        let err_app = app_owned.clone();
+        if let Some(err) = child.stderr.take() {
+            std::thread::spawn(move || stream_to_events(err, &err_id, err_app));
+        }
+
+        let exit_id = id.clone();
+        let exit_app = app_owned.clone();
+        let pty_state = app_owned.state::<PtyState>();
+        pty_state.children.lock().unwrap().insert(
+            id.clone(),
+            PtyHandle {
+                child: Mutex::new(Some(child)),
+                stdin: Mutex::new(Some(stdin)),
+                cols: Mutex::new((80, 24)),
+            },
+        );
+
+        let started_at = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_millis().to_string())
+            .unwrap_or_default();
+        let app_state = self.app.state::<AppState>();
+        app_state
+            .pty_sessions
+            .blocking_write()
+            .insert(id.clone(), crate::state::PtySessionState { pid, started_at, cmd: program });
+
+        std::thread::spawn(move || {
+            let code = {
+                let state = exit_app.state::<PtyState>();
+                let guard = state.children.lock().unwrap();
+                if let Some(handle) = guard.get(&exit_id) {
+                    if let Some(child) = handle.child.lock().unwrap().as_mut() {
+                        child.wait().ok().and_then(|s| s.code())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            };
+            let _ = exit_app.emit(
+                &format!("pty://{exit_id}/exit"),
+                PtyExit { id: exit_id.clone(), code },
+            );
+        });
 
         self.pid_to_id.lock().unwrap().insert(pid, id);
         Ok(pid)
     }
 
-    fn write(&self, pid: u32, data: &str) -> ApiResult<()> {
+    /// Write input into a process's stdin by PID.
+    pub fn write(&self, pid: u32, data: &str) -> ApiResult<()> {
         let id = self
             .pid_to_id
             .lock()
@@ -63,11 +122,23 @@ impl PtyManager for PtyManagerImpl {
                 context: None,
             })?;
 
-        crate::commands::pty::pty_write(self.app.clone(), id, data.to_string())
-            .map_err(|e| ApiError { code: "PTY_WRITE".into(), message: e, context: None })
+        let state = self.app.state::<PtyState>();
+        let guard = state.children.lock().unwrap();
+        let handle = guard.get(&id).ok_or_else(|| ApiError {
+            code: "PTY_NOT_FOUND".into(),
+            message: format!("no PTY with id {id}"),
+            context: None,
+        })?;
+        let mut stdin = handle.stdin.lock().unwrap();
+        if let Some(s) = stdin.as_mut() {
+            let _ = s.write_all(data.as_bytes());
+            let _ = s.flush();
+        }
+        Ok(())
     }
 
-    fn resize(&self, pid: u32, cols: u16, rows: u16) -> ApiResult<()> {
+    /// Resize terminal dimensions by PID.
+    pub fn resize(&self, pid: u32, cols: u16, rows: u16) -> ApiResult<()> {
         let id = self
             .pid_to_id
             .lock()
@@ -80,11 +151,27 @@ impl PtyManager for PtyManagerImpl {
                 context: None,
             })?;
 
-        crate::commands::pty::pty_resize(self.app.clone(), id, cols as u32, rows as u32)
-            .map_err(|e| ApiError { code: "PTY_RESIZE".into(), message: e, context: None })
+        let state = self.app.state::<PtyState>();
+        let guard = state.children.lock().unwrap();
+        if let Some(handle) = guard.get(&id) {
+            let mut dims = handle.cols.lock().unwrap();
+            *dims = (cols as u32, rows as u32);
+        }
+
+        let _ = self.app.emit(
+            &format!("pty://{id}/resize"),
+            super::pty_manager::PtyResizePayload {
+                id: id.clone(),
+                cols: cols as u32,
+                rows: rows as u32,
+            },
+        );
+
+        Ok(())
     }
 
-    fn kill(&self, pid: u32) -> ApiResult<()> {
+    /// Kill a process by PID.
+    pub fn kill(&self, pid: u32) -> ApiResult<()> {
         let id = self
             .pid_to_id
             .lock()
@@ -96,10 +183,72 @@ impl PtyManager for PtyManagerImpl {
                 context: None,
             })?;
 
-        let handle = self.app.clone();
-        let handle2 = handle.clone();
-        let app_state = handle2.state::<AppState>();
-        crate::commands::pty::pty_kill(handle, app_state, id)
-            .map_err(|e| ApiError { code: "PTY_KILL".into(), message: e, context: None })
+        let state = self.app.state::<PtyState>();
+        if let Some(handle) = state.children.lock().unwrap().remove(&id) {
+            if let Some(mut child) = handle.child.lock().unwrap().take() {
+                let _ = child.kill();
+            }
+        }
+        let app_state = self.app.state::<AppState>();
+        app_state.pty_sessions.blocking_write().remove(&id);
+        Ok(())
     }
+}
+
+/// Resolve the default shell for the current OS.
+pub(crate) fn resolve_shell(shell: Option<&str>) -> (String, String) {
+    match shell {
+        Some(s) if !s.trim().is_empty() => (s.trim().to_string(), "-i".to_string()),
+        _ => {
+            if cfg!(windows) {
+                ("cmd.exe".to_string(), "/C".to_string())
+            } else if let Ok(sh) = std::env::var("SHELL") {
+                (sh, "-i".to_string())
+            } else {
+                ("/bin/sh".to_string(), "-i".to_string())
+            }
+        }
+    }
+}
+
+pub(crate) struct PtyHandle {
+    pub child: Mutex<Option<Child>>,
+    pub stdin: Mutex<Option<std::process::ChildStdin>>,
+    pub cols: Mutex<(u32, u32)>,
+}
+
+#[derive(Clone, serde::Serialize)]
+struct PtyExit {
+    id: String,
+    code: Option<i32>,
+}
+
+#[derive(Clone, serde::Serialize)]
+pub(crate) struct PtyResizePayload {
+    pub id: String,
+    pub cols: u32,
+    pub rows: u32,
+}
+
+fn stream_to_events<R: std::io::Read>(mut reader: R, id: &str, app: AppHandle) {
+    let mut buf = [0u8; 4096];
+    loop {
+        match reader.read(&mut buf) {
+            Ok(0) => break,
+            Ok(n) => {
+                let chunk = String::from_utf8_lossy(&buf[..n]).to_string();
+                let _ = app.emit(
+                    &format!("pty://{id}/data"),
+                    super::pty_manager::PtyData { id: id.to_string(), chunk },
+                );
+            }
+            Err(_) => break,
+        }
+    }
+}
+
+#[derive(Clone, serde::Serialize)]
+struct PtyData {
+    id: String,
+    chunk: String,
 }

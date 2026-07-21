@@ -1,23 +1,29 @@
 use std::path::Path;
 
-use tauri::AppHandle;
-use tauri_plugin_fs::FsExt;
-
 use crate::ipc::{ApiError, ApiResult, FsEntry};
-use crate::managers::FsManager;
 
-pub struct FsManagerImpl {
-    app: AppHandle,
-}
+pub struct FsManagerImpl;
 
 impl FsManagerImpl {
-    pub fn new(app: AppHandle) -> Self {
-        Self { app }
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// Create a test instance (same as new, but named for clarity in tests).
+    #[cfg(test)]
+    pub fn new_test() -> Self {
+        Self
     }
 }
 
-impl FsManager for FsManagerImpl {
-    fn list_dir(&self, path: &str) -> ApiResult<Vec<FsEntry>> {
+impl Default for FsManagerImpl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl FsManagerImpl {
+    pub fn list_dir(&self, path: &str) -> ApiResult<Vec<FsEntry>> {
         let dir = std::fs::read_dir(Path::new(path))
             .map_err(|e| ApiError { code: "FS_READ_DIR".into(), message: format!("read dir failed: {e}"), context: None })?;
 
@@ -52,14 +58,12 @@ impl FsManager for FsManagerImpl {
         Ok(entries)
     }
 
-    fn read_text_file(&self, path: &str) -> ApiResult<String> {
-        self.app
-            .fs()
-            .read_to_string(Path::new(path))
+    pub fn read_text_file(&self, path: &str) -> ApiResult<String> {
+        std::fs::read_to_string(Path::new(path))
             .map_err(|e| ApiError { code: "FS_READ".into(), message: format!("read failed: {e}"), context: None })
     }
 
-    fn write_text_file(&self, path: &str, content: &str) -> ApiResult<()> {
+    pub fn write_text_file(&self, path: &str, content: &str) -> ApiResult<()> {
         let p = Path::new(path);
         if let Some(parent) = p.parent() {
             std::fs::create_dir_all(parent)
@@ -69,12 +73,12 @@ impl FsManager for FsManagerImpl {
             .map_err(|e| ApiError { code: "FS_WRITE".into(), message: format!("write failed: {e}"), context: None })
     }
 
-    fn create_dir(&self, path: &str) -> ApiResult<()> {
+    pub fn create_dir(&self, path: &str) -> ApiResult<()> {
         std::fs::create_dir_all(Path::new(path))
             .map_err(|e| ApiError { code: "FS_CREATE_DIR".into(), message: format!("create dir failed: {e}"), context: None })
     }
 
-    fn remove_file(&self, path: &str) -> ApiResult<()> {
+    pub fn remove_file(&self, path: &str) -> ApiResult<()> {
         std::fs::remove_file(Path::new(path))
             .map_err(|e| ApiError { code: "FS_REMOVE".into(), message: format!("remove failed: {e}"), context: None })
     }

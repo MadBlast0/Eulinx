@@ -1,7 +1,6 @@
 use tauri::{AppHandle, LogicalSize, Manager};
 
 use crate::ipc::{ApiError, ApiResult};
-use crate::managers::WindowManager;
 
 pub struct WindowManagerImpl {
     app: AppHandle,
@@ -13,8 +12,8 @@ impl WindowManagerImpl {
     }
 }
 
-impl WindowManager for WindowManagerImpl {
-    fn set_title(&self, title: &str) -> ApiResult<()> {
+impl WindowManagerImpl {
+    pub fn set_title(&self, title: &str) -> ApiResult<()> {
         let window = self
             .app
             .get_webview_window("main")
@@ -28,7 +27,7 @@ impl WindowManager for WindowManagerImpl {
             .map_err(|e| ApiError { code: "WINDOW_SET_TITLE".into(), message: e.to_string(), context: None })
     }
 
-    fn set_size(&self, width: u32, height: u32) -> ApiResult<()> {
+    pub fn set_size(&self, width: u32, height: u32) -> ApiResult<()> {
         let window = self
             .app
             .get_webview_window("main")
@@ -42,7 +41,7 @@ impl WindowManager for WindowManagerImpl {
             .map_err(|e| ApiError { code: "WINDOW_SET_SIZE".into(), message: e.to_string(), context: None })
     }
 
-    fn minimize(&self) -> ApiResult<()> {
+    pub fn minimize(&self) -> ApiResult<()> {
         let window = self
             .app
             .get_webview_window("main")
@@ -56,7 +55,7 @@ impl WindowManager for WindowManagerImpl {
             .map_err(|e| ApiError { code: "WINDOW_MINIMIZE".into(), message: e.to_string(), context: None })
     }
 
-    fn maximize(&self) -> ApiResult<()> {
+    pub fn maximize(&self) -> ApiResult<()> {
         let window = self
             .app
             .get_webview_window("main")
@@ -70,7 +69,7 @@ impl WindowManager for WindowManagerImpl {
             .map_err(|e| ApiError { code: "WINDOW_MAXIMIZE".into(), message: e.to_string(), context: None })
     }
 
-    fn close(&self) -> ApiResult<()> {
+    pub fn close(&self) -> ApiResult<()> {
         let window = self
             .app
             .get_webview_window("main")

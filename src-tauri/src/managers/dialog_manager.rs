@@ -2,7 +2,6 @@ use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
 
 use crate::ipc::ApiResult;
-use crate::managers::DialogManager;
 
 pub struct DialogManagerImpl {
     app: AppHandle,
@@ -14,8 +13,8 @@ impl DialogManagerImpl {
     }
 }
 
-impl DialogManager for DialogManagerImpl {
-    fn open_file(&self, filter: Option<&str>) -> ApiResult<Option<String>> {
+impl DialogManagerImpl {
+    pub fn open_file(&self, filter: Option<&str>) -> ApiResult<Option<String>> {
         let builder = self.app.dialog().file();
         let builder = if let Some(f) = filter {
             builder.add_filter("Filter", &[f])
@@ -25,7 +24,7 @@ impl DialogManager for DialogManagerImpl {
         Ok(builder.blocking_pick_file().map(|p| p.to_string()))
     }
 
-    fn save_file(&self, default_name: &str) -> ApiResult<Option<String>> {
+    pub fn save_file(&self, default_name: &str) -> ApiResult<Option<String>> {
         Ok(self
             .app
             .dialog()
@@ -35,7 +34,7 @@ impl DialogManager for DialogManagerImpl {
             .map(|p| p.to_string()))
     }
 
-    fn confirm(&self, title: &str, message: &str) -> ApiResult<bool> {
+    pub fn confirm(&self, title: &str, message: &str) -> ApiResult<bool> {
         Ok(self.app.dialog().message(message).title(title).blocking_show())
     }
 }
