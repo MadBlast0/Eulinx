@@ -4,6 +4,7 @@
  * Persists workflow run state, node states, snapshots, and run contexts.
  * Backed by an in-memory store with optional localStorage persistence for
  * browser/Tauri webview contexts (mirroring src/state/persistence.ts).
+ * When config.helixdb.enabled is set, delegates to HelixDBPersistenceAdapter.
  *
  * The store is the single write path; nothing bypasses it.
  */
@@ -11,6 +12,9 @@
 import type { Result } from "@/core/result"
 import { ok, err } from "@/core/result"
 import type { JsonValue } from "@/core/types"
+import { getConfig } from "@/core/config"
+import { HelixDBWorkflowAdapter } from "@/integrations/helixdb/adapters/helixdb-workflow-adapter"
+import { HelixDBClient } from "@/integrations/helixdb/helixdb-client"
 import type {
   WorkflowRunId,
   NodeId,
@@ -46,27 +50,48 @@ export class PersistenceAdapter implements PersistenceAdapterIface {
   private transitions = new Map<string, unknown[]>()
 
   private readonly storageKey: string | null
+  private readonly delegate: PersistenceAdapterIface | null
 
-  constructor(options?: { storageKey?: string }) {
+  constructor(options?: { storageKey?: string; delegate?: PersistenceAdapterIface }) {
     this.storageKey = options?.storageKey ?? "eulinx:workflow_state"
-    this.hydrate()
+    this.delegate = options?.delegate ?? null
+    if (!this.delegate) {
+      this.hydrate()
+    }
+  }
+
+  /**
+   * Create a PersistenceAdapter with HelixDB delegation when config flag is set.
+   * Falls back to the existing in-memory + localStorage implementation otherwise.
+   */
+  static create(): PersistenceAdapter {
+    const config = getConfig()
+    if (config.helixdb.enabled) {
+      const client = new HelixDBClient(config.helixdb)
+      return new PersistenceAdapter({ delegate: new HelixDBWorkflowAdapter(client) })
+    }
+    return new PersistenceAdapter()
   }
 
   async saveRun(run: WorkflowRun): Promise<Result<void, string>> {
+    if (this.delegate) return this.delegate.saveRun(run)
     this.runs.set(run.runId, run)
     this.flush()
     return ok(undefined)
   }
 
   async loadRun(runId: WorkflowRunId): Promise<Result<WorkflowRun | null, string>> {
+    if (this.delegate) return this.delegate.loadRun(runId)
     return ok(this.runs.get(runId) ?? null)
   }
 
   async loadSnapshot(snapshotId: string): Promise<Result<GraphSnapshot | null, string>> {
+    if (this.delegate) return this.delegate.loadSnapshot(snapshotId)
     return ok(this.snapshots.get(snapshotId)?.snapshot ?? null)
   }
 
   async saveNodeState(state: NodeRuntimeState): Promise<Result<void, string>> {
+    if (this.delegate) return this.delegate.saveNodeState(state)
     const key = `${state.runId}:${state.nodeId}:${state.iterationIndex}`
     this.nodeStates.set(key, state)
     this.flush()
@@ -74,11 +99,13 @@ export class PersistenceAdapter implements PersistenceAdapterIface {
   }
 
   async loadNodeStates(runId: WorkflowRunId): Promise<Result<readonly NodeRuntimeState[], string>> {
+    if (this.delegate) return this.delegate.loadNodeStates(runId)
     const states = [...this.nodeStates.values()].filter((s) => s.runId === runId)
     return ok(states)
   }
 
   async saveRunContext(context: RunContext): Promise<Result<void, string>> {
+    if (this.delegate) return this.delegate.saveRunContext(context)
     const outputs: Record<string, JsonValue> = {}
     for (const [key, output] of context.outputs) {
       outputs[key] = output.value
@@ -98,9 +125,10 @@ export class PersistenceAdapter implements PersistenceAdapterIface {
   }
 
   async loadRunContext(runId: WorkflowRunId): Promise<Result<RunContext | null, string>> {
+    if (this.delegate) return this.delegate.loadRunContext(runId)
     const entry = this.contexts.get(runId)
     if (!entry) return ok(null)
-    const context = new RunContext(entry.context.runId, entry.context.graphVersion)
+    const context = new RunContext(entry.context.runId as WorkflowRunId, entry.context.graphVersion)
     for (const [key, value] of Object.entries(entry.context.outputs)) {
       const parsed = parseOutputKey(key)
       if (parsed) {
@@ -129,6 +157,7 @@ export class PersistenceAdapter implements PersistenceAdapterIface {
     toState: NodeState,
     reason: string,
   ): Promise<Result<void, string>> {
+    if (this.delegate) return this.delegate.appendTransition(runId, seq, nodeId, iterationIndex, fromState, toState, reason)
     const existing = this.transitions.get(runId) ?? []
     existing.push({ seq, nodeId, iterationIndex, fromState, toState, reason })
     this.transitions.set(runId, existing)
@@ -180,6 +209,9 @@ export class PersistenceAdapter implements PersistenceAdapterIface {
 
   /** Register a snapshot so loadSnapshot can resolve it. */
   async saveSnapshot(snapshot: GraphSnapshot): Promise<Result<void, string>> {
+    if (this.delegate && typeof this.delegate === "object" && "saveSnapshot" in this.delegate) {
+      return (this.delegate as { saveSnapshot: (s: GraphSnapshot) => Promise<Result<void, string>> }).saveSnapshot(snapshot)
+    }
     this.snapshots.set(snapshot.snapshotId, {
       snapshotId: snapshot.snapshotId,
       snapshot,

@@ -16,7 +16,7 @@ import type {
   RightTab,
 } from "./types"
 import { useProjects } from "./use-projects"
-import type { GraphNode } from "./project-types"
+import type { GraphEdge, GraphNode } from "./project-types"
 import {
   getNodeTypeMeta,
   type EulinxNodeKind,
@@ -63,6 +63,8 @@ interface WorkspaceContextValue {
   readonly rightSidebarOpen: boolean
   readonly overlay: OverlayKind
   readonly contextMenu: ContextMenuState | null
+  readonly canUndo: boolean
+  readonly canRedo: boolean
   setRightTab(tab: RightTab): void
   setBottomTab(tab: BottomTab): void
   setBottomPanelOpen(open: boolean): void
@@ -76,6 +78,8 @@ interface WorkspaceContextValue {
   addNode(kind: EulinxNodeKind, shell?: string): void
   removeNode(id: string): void
   autoLayout(): void
+  undo(): void
+  redo(): void
 }
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null)
@@ -92,6 +96,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
   const [overlay, setOverlay] = useState<OverlayKind>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
+  const [undoStack, setUndoStack] = useState<{ nodes: GraphNode[]; edges: GraphEdge[] }[]>([])
+  const [redoStack, setRedoStack] = useState<{ nodes: GraphNode[]; edges: GraphEdge[] }[]>([])
 
   const nodes = useMemo<readonly CanvasNode[]>(() => {
     if (!graph) return []
@@ -110,15 +116,45 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  const pushSnapshot = useCallback(() => {
+    const g = projects.graph
+    if (!g) return
+    setUndoStack((prev) => {
+      const next = [{ nodes: [...g.nodes], edges: [...g.edges] }, ...prev]
+      return next.length > 50 ? next.slice(0, 50) : next
+    })
+    setRedoStack([])
+  }, [projects.graph])
+
+  const undo = useCallback(() => {
+    const snapshot = undoStack[0]
+    if (!snapshot || !projects.graph) return
+    setRedoStack((prev) => [{ nodes: [...projects.graph!.nodes], edges: [...projects.graph!.edges] }, ...prev])
+    setUndoStack((prev) => prev.slice(1))
+    projects.setGraphNodes(snapshot.nodes)
+    projects.setGraphEdges(snapshot.edges)
+  }, [undoStack, projects])
+
+  const redo = useCallback(() => {
+    const snapshot = redoStack[0]
+    if (!snapshot || !projects.graph) return
+    setUndoStack((prev) => [{ nodes: [...projects.graph!.nodes], edges: [...projects.graph!.edges] }, ...prev])
+    setRedoStack((prev) => prev.slice(1))
+    projects.setGraphNodes(snapshot.nodes)
+    projects.setGraphEdges(snapshot.edges)
+  }, [redoStack, projects])
+
   const moveNode = useCallback(
     (id: string, x: number, y: number) => {
+      pushSnapshot()
       projects.moveNode(id, x, y)
     },
-    [projects],
+    [projects, pushSnapshot],
   )
 
   const addNode = useCallback(
     (kind: EulinxNodeKind, shell?: string) => {
+      pushSnapshot()
       const id = `node-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
       const x = 200 + Math.random() * 300
       const y = 150 + Math.random() * 200
@@ -141,11 +177,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setSelectedId(id)
       setContextMenu(null)
     },
-    [projects],
+    [projects, pushSnapshot],
   )
 
   const autoLayout = useCallback(() => {
-    const graphNodes = graph?.nodes ?? []
+    const g = projects.graph
+    if (!g) return
+    pushSnapshot()
+    const graphNodes = g.nodes
     if (graphNodes.length > 0) {
       const columns = Math.max(1, Math.ceil(Math.sqrt(graphNodes.length)))
       const originX = 120
@@ -159,15 +198,19 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       })
     }
     setContextMenu(null)
-  }, [graph, projects])
+  }, [projects, pushSnapshot])
 
   const removeNode = useCallback(
     (id: string) => {
+      pushSnapshot()
       projects.removeNode(id)
       setSelectedId((prev) => (prev === id ? null : prev))
     },
-    [projects],
+    [projects, pushSnapshot],
   )
+
+  const canUndo = undoStack.length > 0
+  const canRedo = redoStack.length > 0
 
   const value = useMemo<WorkspaceContextValue>(
     () => ({
@@ -181,6 +224,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       rightSidebarOpen,
       overlay,
       contextMenu,
+      canUndo,
+      canRedo,
       setRightTab,
       setBottomTab,
       setBottomPanelOpen,
@@ -194,6 +239,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       addNode,
       removeNode,
       autoLayout,
+      undo,
+      redo,
     }),
     [
       nodes,
@@ -206,11 +253,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       rightSidebarOpen,
       overlay,
       contextMenu,
+      canUndo,
+      canRedo,
       selectNode,
       moveNode,
       addNode,
       removeNode,
       autoLayout,
+      undo,
+      redo,
     ],
   )
 
