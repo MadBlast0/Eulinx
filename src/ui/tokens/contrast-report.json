@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-19T18:41:20.643Z",
+  "generatedAt": "2026-07-20T23:22:25.963Z",
   "tokenSetVersion": "2.0.0",
   "themes": [
     "Eulinx-dark",
@@ -135,12 +135,12 @@
       "onSurface": "--Eulinx-color-surface",
       "requirement": "ui-3.0",
       "dark": {
-        "ratio": 4,
+        "ratio": 5,
         "passes": true,
         "grade": "AA"
       },
       "light": {
-        "ratio": 4,
+        "ratio": 5,
         "passes": true,
         "grade": "AA"
       }
@@ -150,12 +150,12 @@
       "onSurface": "--Eulinx-color-surface",
       "requirement": "ui-3.0",
       "dark": {
-        "ratio": 4,
+        "ratio": 4.6,
         "passes": true,
         "grade": "AA"
       },
       "light": {
-        "ratio": 4,
+        "ratio": 3.2,
         "passes": true,
         "grade": "AA"
       }
@@ -165,12 +165,12 @@
       "onSurface": "--Eulinx-color-surface",
       "requirement": "ui-3.0",
       "dark": {
-        "ratio": 4,
+        "ratio": 4.6,
         "passes": true,
         "grade": "AA"
       },
       "light": {
-        "ratio": 4,
+        "ratio": 3.2,
         "passes": true,
         "grade": "AA"
       }

@@ -145,7 +145,7 @@ export const THEME_IDS: ThemeId[] = [THEME_DARK, THEME_LIGHT];
 
 type RampStep = 50 | 100 | 200 | 300 | 400 | 500 | 600 | 700 | 800 | 900 | 950;
 const RAMP_STEPS: RampStep[] = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950];
-type Hue = "neutral" | "copper" | "green" | "amber" | "red";
+type Hue = "neutral" | "coral" | "green" | "amber" | "red";
 
 function rampPrimitive(hue: Hue, step: RampStep, value: string, usage: string): PrimitiveToken {
   return {
@@ -166,34 +166,34 @@ function rampPrimitive(hue: Hue, step: RampStep, value: string, usage: string): 
 // We keep primitives as a single neutral/blue/green/amber/red ramp
 // (invariant) and bind semantic roles per theme.
 
-// Neutral: cool blue-gray tones — cool whites for light, cool charcoals for dark
-// (Eulinx node-graph redesign: #0F1115 / #171A20 / #1D222B / #232935 / #2C3340)
+// Neutral: soft warm-gray ramp — airy whites for light, warm near-blacks for dark.
+// Mirrors the "soft marketplace" preview: canvas #ffffff / #1b1b1b, ink #222222 / #f7f7f7.
 const NEUTRAL: Record<RampStep, string> = {
-  50: "#F7F8FA",    // light background (cool white)
-  100: "#EFF1F4",   // light sidebar (cool gray)
-  200: "#E2E5EA",   // light border (cool gray)
-  300: "#C7CCD4",
-  400: "#8B93A1",   // light text-muted (cool)
-  500: "#6B7280",   // mid gray (cool stone)
-  600: "#4B5563",
-  700: "#2C3340",   // dark border-strong (cool charcoal)
-  800: "#232935",   // dark hover/pressed/selected (cool charcoal)
-  900: "#171A20",   // dark surface (cool dark)
-  950: "#0F1115",   // darkest dark (background)
+  50: "#FFFFFF",   // light canvas / background (soft white)
+  100: "#F7F7F7",   // light surface / sidebar / hover (soft gray)
+  200: "#EFEFEF",   // light hairline-soft / pressed / selected
+  300: "#DDDDDD",   // light border / hairline
+  400: "#C1C1C1",   // light border-strong
+  500: "#929292",   // light muted-soft
+  600: "#6A6A6A",   // light text-muted
+  700: "#4A4A4A",   // text-secondary (shared light/dark mid gray)
+  800: "#2E2E2E",   // dark hairline-soft / hover / pressed / selected
+  900: "#1F1F1F",   // dark surface (warm near-black)
+  950: "#1B1B1B",   // darkest dark (canvas / background)
 };
 
-const COPPER: Record<RampStep, string> = {
-  50: "#FEF6EE",
-  100: "#FDEBD8",
-  200: "#FAD2A8",
-  300: "#F6B47A",
-  400: "#F1924F",
-  500: "#E07135",   // primary accent — warm copper
-  600: "#C1562B",
-  700: "#9F4020",
-  800: "#82331A",
-  900: "#6B2915",
-  950: "#3F140C",
+const CORAL: Record<RampStep, string> = {
+  50: "#FFE6EC",
+  100: "#FFD1DA",   // primary-disabled (light)
+  200: "#FFB3C2",
+  300: "#FF8AA0",
+  400: "#FF5C79",   // info / accent hover
+  500: "#FF385C",   // primary accent — soft coral (Airbnb-style)
+  600: "#E00B41",   // primary-active
+  700: "#C20039",
+  800: "#9E0030",
+  900: "#7A0026",
+  950: "#4D0018",
 };
 
 const GREEN: Record<RampStep, string> = {
@@ -238,15 +238,15 @@ const RED: Record<RampStep, string> = {
   950: "#450A0A",
 };
 
-const neutralUsage = "Neutral grey ramp — surfaces, text, borders (invariant).";
-const copperUsage = "Copper ramp — warm accent, info roles, focus states (invariant).";
+const neutralUsage = "Neutral grey ramp — surfaces, text, borders (invariant, soft warm-gray).";
+const coralUsage = "Coral ramp — warm accent, info/link roles, focus states (invariant, soft marketplace).";
 const greenUsage = "Green ramp — success roles, positive states (invariant).";
 const amberUsage = "Amber ramp — warning roles, paused states (invariant).";
 const redUsage = "Red ramp — danger/error roles, failing states (invariant).";
 
 const colorPrimitives: PrimitiveToken[] = [
   ...RAMP_STEPS.map((s) => rampPrimitive("neutral", s, NEUTRAL[s], neutralUsage)),
-  ...RAMP_STEPS.map((s) => rampPrimitive("copper", s, COPPER[s], copperUsage)),
+  ...RAMP_STEPS.map((s) => rampPrimitive("coral", s, CORAL[s], coralUsage)),
   ...RAMP_STEPS.map((s) => rampPrimitive("green", s, GREEN[s], greenUsage)),
   ...RAMP_STEPS.map((s) => rampPrimitive("amber", s, AMBER[s], amberUsage)),
   ...RAMP_STEPS.map((s) => rampPrimitive("red", s, RED[s], redUsage)),
@@ -282,13 +282,13 @@ const spacePrimitives: PrimitiveToken[] = Object.entries(spaceSteps).map(([step,
   usage: `Spacing step ${step} (4px grid). Use for padding, gap, and margin in layouts.`,
 }));
 
-// Radius: spec: xs 4, sm 6, md 8, lg 10, xl 12, 2xl 16, full 999
+// Radius: soft marketplace — larger, rounder corners
 const radiusValues: Record<string, string> = {
-  xs: "2px",      // micro-interactions, checkboxes
-  sm: "6px",      // small controls, badges, pills
-  md: "10px",     // cards, buttons, panels — default radius
-  lg: "14px",     // dialogs, sheets, modals
-  xl: "18px",     // floating panels, large overlays
+  xs: "4px",      // micro-interactions, checkboxes
+  sm: "8px",      // small controls, badges, pills
+  md: "14px",     // cards, buttons, panels — default radius
+  lg: "20px",     // dialogs, sheets, modals
+  xl: "32px",     // floating panels, large overlays
   "2xl": "24px",  // command palette, mega-menus
   full: "9999px", // pills, avatars, tags
 };
@@ -299,7 +299,7 @@ const radiusPrimitives: PrimitiveToken[] = Object.entries(radiusValues).map(([va
   name: `--Eulinx-radius-${variant}`,
   value: val,
   themeScope: "invariant" as const,
-  usage: `Corner radius "${variant}". Default md (10px) for cards/buttons, lg (14px) for dialogs, full for pills.`,
+  usage: `Corner radius "${variant}". Default md (14px) for cards/buttons, lg (20px) for dialogs, full for pills.`,
 }));
 
 // Border width: spec says thin 1px borders
@@ -501,8 +501,8 @@ const BASE_ROLES: SemanticColorSpec[] = [
   // Borders
   {
     name: "--Eulinx-color-border",
-    darkBinding: "--Eulinx-color-neutral-700",   // #2C3340
-    lightBinding: "--Eulinx-color-neutral-200",  // #E2E5EA
+    darkBinding: "--Eulinx-color-neutral-800",   // #2E2E2E
+    lightBinding: "--Eulinx-color-neutral-300",   // #DDDDDD
     onSurface: "--Eulinx-color-surface",
     requirement: "ui-3.0",
     darkRatio: 3.2,
@@ -511,8 +511,8 @@ const BASE_ROLES: SemanticColorSpec[] = [
   },
   {
     name: "--Eulinx-color-border-strong",
-    darkBinding: "--Eulinx-color-neutral-600",   // #4B5563
-    lightBinding: "--Eulinx-color-neutral-400",  // #8B93A1
+    darkBinding: "--Eulinx-color-neutral-700",   // #4A4A4A
+    lightBinding: "--Eulinx-color-neutral-400",  // #C1C1C1
     onSurface: "--Eulinx-color-surface",
     requirement: "ui-3.0",
     darkRatio: 3.5,
@@ -530,7 +530,7 @@ const BASE_ROLES: SemanticColorSpec[] = [
   },
   {
     name: "--Eulinx-color-pressed",
-    darkBinding: "--Eulinx-color-neutral-700",   // #2C3340
+    darkBinding: "--Eulinx-color-neutral-800",   // #2E2E2E
     lightBinding: "--Eulinx-color-neutral-200",  // #D7DBE2
     // Background state — no foreground text contrast requirement
     usage: "Pressed/active background state.",
@@ -546,8 +546,8 @@ const BASE_ROLES: SemanticColorSpec[] = [
   // Text
   {
     name: "--Eulinx-color-text",
-    darkBinding: "--Eulinx-color-neutral-50",    // #F7F8FA
-    lightBinding: "--Eulinx-color-neutral-950",  // #0F1115
+    darkBinding: "--Eulinx-color-neutral-50",    // #FFFFFF
+    lightBinding: "--Eulinx-color-neutral-900",  // #1F1F1F
     onSurface: "--Eulinx-color-surface",
     requirement: "text-4.5",
     darkRatio: 16.0,
@@ -556,8 +556,8 @@ const BASE_ROLES: SemanticColorSpec[] = [
   },
   {
     name: "--Eulinx-color-text-secondary",
-    darkBinding: "--Eulinx-color-neutral-300",   // #C7CCD4
-    lightBinding: "--Eulinx-color-neutral-600",  // #4B5563
+    darkBinding: "--Eulinx-color-neutral-100",   // #F7F7F7
+    lightBinding: "--Eulinx-color-neutral-700",   // #4A4A4A
     onSurface: "--Eulinx-color-surface",
     requirement: "text-4.5",
     darkRatio: 7.5,
@@ -566,8 +566,8 @@ const BASE_ROLES: SemanticColorSpec[] = [
   },
   {
     name: "--Eulinx-color-text-muted",
-    darkBinding: "--Eulinx-color-neutral-400",   // #8B93A1
-    lightBinding: "--Eulinx-color-neutral-500",  // #6B7280
+    darkBinding: "--Eulinx-color-neutral-500",   // #929292
+    lightBinding: "--Eulinx-color-neutral-600",  // #6A6A6A
     onSurface: "--Eulinx-color-surface",
     requirement: "text-4.5",
     darkRatio: 5.2,
@@ -608,35 +608,35 @@ const BASE_ROLES: SemanticColorSpec[] = [
   },
   {
     name: "--Eulinx-color-info",
-    darkBinding: "--Eulinx-color-copper-400",      // #F1924F
-    lightBinding: "--Eulinx-color-copper-400",     // #F1924F
+    darkBinding: "--Eulinx-color-blue-400",       // #639AFF
+    lightBinding: "--Eulinx-color-blue-500",       // #4F8CFF
     onSurface: "--Eulinx-color-surface",
     requirement: "ui-3.0",
-    darkRatio: 4.0,
-    lightRatio: 4.0,
-    usage: "Informational state, neutral emphasis using muted copper.",
+    darkRatio: 5.0,
+    lightRatio: 5.0,
+    usage: "Informational state, links, legal blue (soft marketplace).",
   },
 
   // Accent / focus
   {
     name: "--Eulinx-color-accent",
-    darkBinding: "--Eulinx-color-copper-500",      // #E07135
-    lightBinding: "--Eulinx-color-copper-500",     // #E07135
+    darkBinding: "--Eulinx-color-coral-500",       // #FF385C
+    lightBinding: "--Eulinx-color-coral-500",      // #FF385C
     onSurface: "--Eulinx-color-surface",
     requirement: "ui-3.0",
-    darkRatio: 4.0,
-    lightRatio: 4.0,
-    usage: "Primary accent color — focus rings, active selection, links. Uses warm copper for a non-AI look.",
+    darkRatio: 4.6,
+    lightRatio: 3.2,
+    usage: "Primary accent color — focus rings, active selection, links. Soft coral (#ff385c).",
   },
   {
     name: "--Eulinx-color-ring",
-    darkBinding: "--Eulinx-color-copper-500",      // #E07135
-    lightBinding: "--Eulinx-color-copper-500",     // #E07135
+    darkBinding: "--Eulinx-color-coral-500",       // #FF385C
+    lightBinding: "--Eulinx-color-coral-500",      // #FF385C
     onSurface: "--Eulinx-color-surface",
     requirement: "ui-3.0",
-    darkRatio: 4.0,
-    lightRatio: 4.0,
-    usage: "Focus ring color (same as accent per spec — warm copper).",
+    darkRatio: 4.6,
+    lightRatio: 3.2,
+    usage: "Focus ring color (same as accent — soft coral).",
   },
 ];
 

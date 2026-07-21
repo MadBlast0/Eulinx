@@ -56,8 +56,8 @@ export const colors = {
   },
   // Accent
   accent: {
-    primary: "hsl(240, 5.9%, 10%)",
-    secondary: "hsl(240, 4.8%, 95.9%)",
+    primary: "hsl(351, 100%, 61%)", // soft coral #ff385c
+    secondary: "hsl(240, 3.7%, 15.9%)",
   },
 } as const
 
