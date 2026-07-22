@@ -51,8 +51,8 @@ export interface RuntimeContextOptions {
 }
 
 export function createRuntimeContext(options?: RuntimeContextOptions): RuntimeContext {
-  const correlationId = options?.correlationId ?? brand<string, "CorrelationId">(generateId())
-  const traceId = options?.traceId ?? brand<string, "TraceId">(generateId())
+  const correlationId = options?.correlationId ?? brand<CorrelationId>(generateId())
+  const traceId = options?.traceId ?? brand<TraceId>(generateId())
   const requester = options?.requester ?? { kind: "user" as const }
 
   const logger = createLogger("Runtime").child({

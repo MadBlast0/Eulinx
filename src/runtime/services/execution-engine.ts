@@ -21,11 +21,9 @@ export class ExecutionEngine {
   protected readonly log: Logger
   private readonly executions = new Map<ExecutionId, QueuedTask>()
   private readonly queue: QueuedTask[] = []
-  private readonly eventBus?: EventBus
 
-  constructor(eventBus?: EventBus) {
+  constructor(_eventBus?: EventBus) {
     this.log = createLogger("ExecutionEngine")
-    this.eventBus = eventBus
   }
 
   async start(): Promise<void> {
@@ -100,7 +98,7 @@ export class ExecutionEngine {
     const now = new Date().toISOString()
     for (let i = 0; i < this.queue.length; i++) {
       const entry = this.queue[i]
-      if (entry.state !== "pending") continue
+      if (!entry || entry.state !== "pending") continue
       entry.state = "running"
       entry.startedAt = now
       this.log.info(`Execution started: ${entry.executionId}`)

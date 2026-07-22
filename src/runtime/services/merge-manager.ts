@@ -14,7 +14,9 @@ export class MergeManager {
   protected readonly log: Logger
   private readonly mergeHistory = new Map<MergeId, MergeRecord>()
   private readonly lockManager: LockManager
+  // @ts-ignore — stored for future event-driven features
   private readonly artifactManager: ArtifactManager
+  // @ts-ignore — stored for future event-driven features
   private readonly eventBus?: EventBus
 
   constructor(artifactManager: ArtifactManager, lockManager: LockManager, eventBus?: EventBus) {
@@ -74,7 +76,11 @@ export class MergeManager {
     const record = this.mergeHistory.get(mergeId)
     if (!record) return false
     if (record.rolledBackAt) return false
-    record.rolledBackAt = new Date().toISOString() as MergeRecord["rolledBackAt"]
+    const rolledBackRecord: MergeRecord = {
+      ...record,
+      rolledBackAt: new Date().toISOString() as MergeRecord["rolledBackAt"],
+    }
+    this.mergeHistory.set(mergeId, rolledBackRecord)
     this.log.info(`Merge rolled back: ${mergeId}`)
     return true
   }

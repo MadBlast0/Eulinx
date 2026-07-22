@@ -11,11 +11,9 @@ export class WorkspaceManager {
   protected readonly log: Logger
   private readonly workspaces = new Map<WorkspaceId, WorkspaceMetadata>()
   private activeWorkspaceId: WorkspaceId | null = null
-  private readonly eventBus?: EventBus
 
-  constructor(eventBus?: EventBus) {
+  constructor(_eventBus?: EventBus) {
     this.log = createLogger("WorkspaceManager")
-    this.eventBus = eventBus
   }
 
   async start(): Promise<void> {

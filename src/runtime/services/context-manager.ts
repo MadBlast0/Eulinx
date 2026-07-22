@@ -18,12 +18,10 @@ export class ContextManager {
   protected state: ServiceState = "registered"
   protected readonly log: Logger
   private readonly windows = new Map<SessionId, ContextWindow>()
-  private readonly eventBus?: EventBus
   private readonly memoryManager?: MemoryManager
 
-  constructor(eventBus?: EventBus, memoryManager?: MemoryManager) {
+  constructor(_eventBus?: EventBus, memoryManager?: MemoryManager) {
     this.log = createLogger("ContextManager")
-    this.eventBus = eventBus
     this.memoryManager = memoryManager
   }
 

@@ -13,12 +13,10 @@ export class WorkerSpawner {
   protected readonly log: Logger
   private readonly workers = new Map<WorkerId, WorkerInfo>()
   private readonly processLifecycle: ProcessLifecycle
-  private readonly eventBus?: EventBus
 
-  constructor(processLifecycle: ProcessLifecycle, eventBus?: EventBus) {
+  constructor(processLifecycle: ProcessLifecycle, _eventBus?: EventBus) {
     this.log = createLogger("WorkerSpawner")
     this.processLifecycle = processLifecycle
-    this.eventBus = eventBus
   }
 
   async start(): Promise<void> {
@@ -57,7 +55,11 @@ export class WorkerSpawner {
     if (worker.processId !== undefined) {
       await this.processLifecycle.kill(worker.processId)
     }
-    worker.state = "terminated"
+    const terminatedWorker: WorkerInfo = {
+      ...worker,
+      state: "terminated",
+    }
+    this.workers.set(workerId, terminatedWorker)
     this.workers.delete(workerId)
     this.log.info(`Worker terminated: ${workerId}`)
     return true

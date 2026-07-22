@@ -20,11 +20,9 @@ export class ProcessLifecycle {
   protected state: ServiceState = "registered"
   protected readonly log: Logger
   private readonly processes = new Map<number, ManagedProcess>()
-  private readonly eventBus?: EventBus
 
-  constructor(eventBus?: EventBus) {
+  constructor(_eventBus?: EventBus) {
     this.log = createLogger("ProcessLifecycle")
-    this.eventBus = eventBus
   }
 
   async start(): Promise<void> {

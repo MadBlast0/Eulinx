@@ -15,11 +15,9 @@ export class LockManager {
   protected state: ServiceState = "registered"
   protected readonly log: Logger
   private readonly locks = new Map<string, LockEntry>()
-  private readonly eventBus?: EventBus
 
-  constructor(eventBus?: EventBus) {
+  constructor(_eventBus?: EventBus) {
     this.log = createLogger("LockManager")
-    this.eventBus = eventBus
   }
 
   async start(): Promise<void> {
