@@ -6,7 +6,7 @@
  */
 
 import type { WorkspaceId } from "@/core/types"
-import type { MemoryPolicy, SensitivityLevel, MemoryRecord } from "./memory-types"
+import type { MemoryPolicy, MemoryRecord } from "./memory-types"
 
 // ---------------------------------------------------------------------------
 // Default Policy

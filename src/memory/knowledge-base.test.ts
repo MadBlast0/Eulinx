@@ -6,10 +6,10 @@ import { describe, it, expect } from "vitest"
 import { VectorMemoryStore } from "./memory-vector"
 import { EmbeddingService } from "./embedding-service"
 import { KnowledgeBase } from "./knowledge-base"
-import { brand } from "@/core/types"
+import { brand, type WorkspaceId } from "@/core/types"
 import { chunkText } from "./chunker"
 
-const WS = brand<string, "WorkspaceId">("ws-kb")
+const WS = brand<WorkspaceId>("ws-kb")
 
 function makeKb(): KnowledgeBase {
   return new KnowledgeBase(new VectorMemoryStore(new EmbeddingService()))

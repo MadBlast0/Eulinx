@@ -43,7 +43,8 @@ export class ShortTermMemoryStore {
     const existing = this.getForScope(params.workspaceId, params.workerId)
     if (existing.length >= this.policy.maxStmPerWorker) {
       // Evict oldest
-      const oldest = existing.sort((a, b) => a.createdAt.localeCompare(b.createdAt))[0]
+      const sorted = [...existing].sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      const oldest = sorted[0]
       if (oldest) this.records.delete(oldest.id)
     }
 

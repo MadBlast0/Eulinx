@@ -3,12 +3,11 @@
  */
 
 import { describe, it, expect } from "vitest"
-import type { WorkspaceId } from "@/core/types"
 import { VectorMemoryStore } from "./memory-vector"
 import { EmbeddingService, cosineSimilarity } from "./embedding-service"
-import { brand } from "@/core/types"
+import { brand, type WorkspaceId } from "@/core/types"
 
-const WS = brand<string, "WorkspaceId">("ws-test")
+const WS = brand<WorkspaceId>("ws-test")
 
 async function seed(store: VectorMemoryStore, ws: WorkspaceId) {
   await store.index({
@@ -93,7 +92,7 @@ describe("VectorMemoryStore hybrid search", () => {
   it("scopes results to the workspace", async () => {
     const store = new VectorMemoryStore(new EmbeddingService())
     await seed(store, WS)
-    const other = brand<string, "WorkspaceId">("other")
+    const other = brand<WorkspaceId>("other")
     const results = await store.search({ text: "neural", workspaceId: other })
     expect(results.length).toBe(0)
   })

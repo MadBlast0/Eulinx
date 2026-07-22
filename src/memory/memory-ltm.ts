@@ -213,7 +213,7 @@ export class EpisodicMemoryStore {
       updatedAt: now,
       eventType: params.eventType,
       eventTimestamp: params.eventTimestamp,
-      参与者: params.participant,
+      participant: params.participant,
       outcome: params.outcome,
       sourceRef: params.sourceRef,
       metadata: params.metadata ?? {},

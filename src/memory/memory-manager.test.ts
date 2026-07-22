@@ -3,12 +3,11 @@
  */
 
 import { describe, it, expect } from "vitest"
-import type { WorkspaceId, WorkerId, SessionId, IsoTimestamp } from "@/core/types"
+import type { WorkspaceId, WorkerId, IsoTimestamp } from "@/core/types"
 import { MemoryManager } from "./memory-manager"
 
 function ws(id: string): WorkspaceId { return id as unknown as WorkspaceId }
 function wid(id: string): WorkerId { return id as unknown as WorkerId }
-function sid(id: string): SessionId { return id as unknown as SessionId }
 
 describe("MemoryManager", () => {
   describe("writeStm", () => {
