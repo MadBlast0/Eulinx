@@ -6,10 +6,10 @@
  * Handles restoring sessions after app restart or crash.
  */
 
-import type { SessionId, WorkspaceId, IsoTimestamp } from "@/core/types"
+import type { SessionId, WorkspaceId } from "@/core/types"
 import type { PersistedSessionState } from "@/state/session-state"
 import type { SessionSnapshot } from "./session-types"
-import { SESSION_TERMINAL, SESSION_ACTIVE } from "@/state/session-state"
+import { SESSION_TERMINAL } from "@/state/session-state"
 
 // ---------------------------------------------------------------------------
 // Recovery Input

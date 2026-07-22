@@ -119,7 +119,7 @@ export interface SessionSnapshot {
   readonly activeWorkerIds: readonly WorkerId[]
   readonly activeTaskIds: readonly string[]
   readonly artifactIds: readonly string[]
-  readonly metrics: Record<string, number>
+  readonly metrics: Record<string, number | string | undefined>
   readonly createdAt: IsoTimestamp
 }
 
@@ -138,7 +138,7 @@ export interface SessionContext {
   readonly activeWorkerIds: readonly WorkerId[]
   readonly activeTaskIds: readonly string[]
   readonly recentEvents: readonly SessionContextEvent[]
-  readonly metrics: Record<string, number>
+  readonly metrics: Record<string, number | string | undefined>
 }
 
 export interface SessionContextEvent {

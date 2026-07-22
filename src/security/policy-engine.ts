@@ -117,7 +117,7 @@ export class PolicyEngine {
 
     // Check conditions
     if (rule.conditions) {
-      for (const [key, value] of Object.entries(rule.conditions)) {
+      for (const [_key, value] of Object.entries(rule.conditions)) {
         if (request.resourceId !== value) return false
       }
     }

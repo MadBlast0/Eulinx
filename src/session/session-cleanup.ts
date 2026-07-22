@@ -1,4 +1,4 @@
-﻿/**
+/**
  * P07-SESSION-CLEANUP â€” Session Cleanup
  *
  * Session-Part04: Security and cleanup.
@@ -6,7 +6,7 @@
  * Handles resource cleanup when a session ends or is destroyed.
  */
 
-import type { SessionId, WorkspaceId, WorkerId, IsoTimestamp } from "@/core/types"
+import type { SessionId, IsoTimestamp } from "@/core/types"
 import type { PersistedSessionState } from "@/state/session-state"
 import { SESSION_TERMINAL } from "@/state/session-state"
 

@@ -21,7 +21,7 @@ import type {
   SessionContextEvent,
   SessionHistoryEntry,
 } from "./session-types"
-import type { PersistedSessionState, SessionMetrics } from "@/state/session-state"
+import type { PersistedSessionState, SessionMetrics, SessionState } from "@/state/session-state"
 import {
   createPersistedSessionState,
   transitionSessionState,
@@ -271,7 +271,7 @@ export class SessionManager {
       row.kind as "chat" | "terminal" | "agent",
     )
 
-    const restored = transitionSessionState(state, (row.state as string) ?? "created", "Recovered from HelixDB")
+    const restored = transitionSessionState(state, ((row.state as string) ?? "created") as SessionState, "Recovered from HelixDB")
     this.sessions.set(sessionId, restored)
 
     const now = new Date().toISOString() as IsoTimestamp

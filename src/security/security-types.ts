@@ -5,7 +5,7 @@
  * From PermissionManager-Part01 through Part06.
  */
 
-import type { WorkerId, SessionId, WorkspaceId, PluginId } from "@/core/types"
+import type { WorkerId, SessionId, WorkspaceId } from "@/core/types"
 
 // ---------------------------------------------------------------------------
 // Actor Types

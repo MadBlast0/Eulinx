@@ -2,9 +2,9 @@
  * P07-SESSION-CREATE — Session Manager Tests
  */
 
-import { describe, it, expect, vi } from "vitest"
+import { describe, it, expect } from "vitest"
 import type { SessionId, WorkspaceId, WorkerId } from "@/core/types"
-import { SessionManager, DEFAULT_SESSION_MANAGER_CONFIG } from "./session-manager"
+import { SessionManager } from "./session-manager"
 import type { SessionCreateRequest } from "./session-types"
 
 function sid(id: string): SessionId { return id as unknown as SessionId }
