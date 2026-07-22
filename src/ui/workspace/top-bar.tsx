@@ -1,31 +1,28 @@
 import { useCallback } from "react"
 import {
-  ChevronDown,
-  Copy,
   Minus,
   PanelLeft,
   PanelRight,
   Search,
+  Square,
   X,
 } from "lucide-react"
 import { ToolbarButton } from "./primitives"
 import { AppIcon } from "./app-icon"
 import { useWorkspace } from "./use-workspace"
-import { useProjects } from "./use-projects"
-import { windowService } from "@/api/services"
+import { getCurrentWindow } from "@tauri-apps/api/window"
 
 export function TopBar() {
   const { toggleLeftSidebar, toggleRightSidebar, setOverlay } = useWorkspace()
-  const { activeProject, activeView } = useProjects()
 
-  const handleWindowMinimize = useCallback(() => {
-    windowService.minimize()
+  const handleWindowMinimize = useCallback(async () => {
+    await getCurrentWindow().minimize()
   }, [])
-  const handleWindowMaximize = useCallback(() => {
-    windowService.toggleMaximize()
+  const handleWindowMaximize = useCallback(async () => {
+    await getCurrentWindow().toggleMaximize()
   }, [])
-  const handleWindowClose = useCallback(() => {
-    windowService.close()
+  const handleWindowClose = useCallback(async () => {
+    await getCurrentWindow().close()
   }, [])
 
   return (
@@ -33,7 +30,7 @@ export function TopBar() {
       className="flex h-full items-center gap-2 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-toolbar)] px-3"
       style={{ WebkitAppRegion: "drag" }}
     >
-      {/* Left group: app icon, sidebar toggle, breadcrumb */}
+      {/* Left group: app icon, sidebar toggle */}
       <div className="flex shrink-0 items-center gap-2" style={{ WebkitAppRegion: "no-drag" }}>
         <button
           type="button"
@@ -49,24 +46,6 @@ export function TopBar() {
         <ToolbarButton tip="Toggle left sidebar" onClick={toggleLeftSidebar}>
           <PanelLeft className="h-4 w-4" strokeWidth={1.5} />
         </ToolbarButton>
-
-        <button
-          type="button"
-          aria-label="Select workspace"
-          className="flex items-center gap-1 rounded-[var(--Eulinx-radius-sm)] px-2 py-1.5 text-[12px] font-medium text-[color:var(--Eulinx-color-text)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        >
-          <AppIcon className="h-3.5 w-3.5" />
-          Personal
-          <ChevronDown className="h-3 w-3 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
-        </button>
-
-        <div className="flex items-center gap-1.5 text-[12px] text-[color:var(--Eulinx-color-text-muted)]">
-          <span>Eulinx</span>
-          <span className="text-[color:var(--Eulinx-color-border-strong)]">/</span>
-          <span className="text-[color:var(--Eulinx-color-text)]">
-            {activeView?.name ?? activeProject?.name ?? "Eulinx"}
-          </span>
-        </div>
       </div>
 
       {/* Center: global search / command palette */}
@@ -85,14 +64,16 @@ export function TopBar() {
         </button>
       </div>
 
-      {/* Right group: sidebar toggle, window controls */}
+      {/* Right group: sidebar toggle, divider, window controls */}
       <div className="flex shrink-0 items-center gap-1" style={{ WebkitAppRegion: "no-drag" }}>
         <ToolbarButton tip="Toggle right sidebar" onClick={toggleRightSidebar}>
           <PanelRight className="h-4 w-4" strokeWidth={1.5} />
         </ToolbarButton>
 
+        <div className="mx-1 h-5 w-px bg-[color:var(--Eulinx-color-border)]" />
+
         {/* Window controls */}
-        <div className="ml-1 flex items-center">
+        <div className="flex items-center">
           <button
             type="button"
             aria-label="Minimize"
@@ -107,7 +88,7 @@ export function TopBar() {
             onClick={handleWindowMaximize}
             className="flex h-7 w-[46px] items-center justify-center rounded-none text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)] focus-visible:outline-none"
           >
-            <Copy className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <Square className="h-3 w-3" strokeWidth={1.5} />
           </button>
           <button
             type="button"
