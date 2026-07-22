@@ -35,6 +35,11 @@ impl DialogManagerImpl {
     }
 
     pub fn confirm(&self, title: &str, message: &str) -> ApiResult<bool> {
-        Ok(self.app.dialog().message(message).title(title).blocking_show())
+        Ok(self
+            .app
+            .dialog()
+            .message(message)
+            .title(title)
+            .blocking_show())
     }
 }

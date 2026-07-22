@@ -5,10 +5,14 @@ use rusqlite::{Connection, OptionalExtension};
 use serde_json::Value;
 
 use crate::error::AppError;
+use crate::event_log::types::{
+    EventLogResult, EventLogStats, EventRangeQuery, GapCause, GapReport, PersistedEventEnvelope,
+    SeqGap,
+};
 
 /// Version of the on-disk SQLite schema. Bump this when migrations change.
 /// Mirrors `SCHEMA_VERSION` in `src/database/schema.ts`.
-pub const SCHEMA_VERSION: i32 = 1;
+pub const SCHEMA_VERSION: i32 = 2;
 
 /// Result of opening the database against the on-disk schema version.
 #[derive(Debug, PartialEq, Eq)]
@@ -101,7 +105,10 @@ impl DbManager {
     }
 
     fn init_pragmas(&self) -> Result<(), AppError> {
-        let conn = self.conn.lock().map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
         conn.pragma_update(None, "journal_mode", "WAL")
             .map_err(|e| AppError::Internal(format!("pragma WAL failed: {e}")))?;
         conn.pragma_update(None, "foreign_keys", "ON")
@@ -137,7 +144,10 @@ impl DbManager {
     }
 
     fn user_version(&self) -> Result<i32, AppError> {
-        let conn = self.conn.lock().map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
         let version: i32 = conn
             .query_row("PRAGMA user_version", [], |row| row.get(0))
             .map_err(|e| AppError::Internal(format!("read user_version failed: {e}")))?;
@@ -145,14 +155,20 @@ impl DbManager {
     }
 
     fn set_user_version(&self, version: i32) -> Result<(), AppError> {
-        let conn = self.conn.lock().map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
         conn.pragma_update(None, "user_version", version)
             .map_err(|e| AppError::Internal(format!("set user_version failed: {e}")))?;
         Ok(())
     }
 
     fn create_core_tables(&self) -> Result<(), AppError> {
-        let conn = self.conn.lock().map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
 
         // Generic entity tables: id (text/int pk) + JSON payload.
         for table in entity_tables() {
@@ -188,6 +204,35 @@ impl DbManager {
         )
         .map_err(|e| AppError::Internal(format!("create schema_migrations failed: {e}")))?;
 
+        // Event log persistence table — stores serialized event envelopes
+        // for the event bus. Indexed by workspace, sequence, execution, and correlation.
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS event_persisted_log (
+                seq INTEGER NOT NULL,
+                event_id TEXT NOT NULL PRIMARY KEY,
+                event_type TEXT NOT NULL,
+                payload TEXT NOT NULL,
+                service TEXT NOT NULL,
+                workspace_id TEXT NOT NULL,
+                session_id TEXT,
+                execution_id TEXT,
+                correlation_id TEXT,
+                causation_id TEXT,
+                emitted_at TEXT NOT NULL
+            );
+             CREATE INDEX IF NOT EXISTS idx_event_log_workspace_seq
+                ON event_persisted_log (workspace_id, seq);
+             CREATE INDEX IF NOT EXISTS idx_event_log_execution
+                ON event_persisted_log (execution_id);
+             CREATE INDEX IF NOT EXISTS idx_event_log_correlation
+                ON event_persisted_log (correlation_id);
+             CREATE INDEX IF NOT EXISTS idx_event_log_type
+                ON event_persisted_log (event_type);",
+        )
+        .map_err(|e| {
+            AppError::Internal(format!("create event_persisted_log + indexes failed: {e}"))
+        })?;
+
         Ok(())
     }
 
@@ -195,8 +240,23 @@ impl DbManager {
         match version {
             1 => {
                 self.create_core_tables()?;
-                let conn =
-                    self.conn.lock().map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+                let conn = self
+                    .conn
+                    .lock()
+                    .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+                let now = now_iso();
+                conn.execute(
+                    "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (?1, ?2)",
+                    rusqlite::params![version, now],
+                )
+                .map_err(|e| AppError::Internal(format!("record migration failed: {e}")))?;
+            }
+            2 => {
+                self.create_core_tables()?;
+                let conn = self
+                    .conn
+                    .lock()
+                    .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
                 let now = now_iso();
                 conn.execute(
                     "INSERT OR IGNORE INTO schema_migrations (version, applied_at) VALUES (?1, ?2)",
@@ -232,7 +292,10 @@ impl DbManager {
     /// the JSON `data` column.
     pub fn query(&self, table: &str, filter: Option<&Value>) -> Result<Vec<Value>, AppError> {
         self.validate_table(table)?;
-        let conn = self.conn.lock().map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
 
         let mut stmt = conn
             .prepare(&format!("SELECT data FROM \"{table}\""))
@@ -270,7 +333,10 @@ impl DbManager {
     /// Find a single row by id.
     pub fn find_by_id(&self, table: &str, id: &str) -> Result<Option<Value>, AppError> {
         self.validate_table(table)?;
-        let conn = self.conn.lock().map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
 
         let mut stmt = conn
             .prepare(&format!("SELECT data FROM \"{table}\" WHERE id = ?1"))
@@ -306,9 +372,14 @@ impl DbManager {
             .map_err(|e| AppError::Internal(format!("serialize failed: {e}")))?;
         let updated_at = extract_updated_at(obj).to_string();
 
-        let conn = self.conn.lock().map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
         conn.execute(
-            &format!("INSERT OR REPLACE INTO \"{table}\" (id, data, updated_at) VALUES (?1, ?2, ?3)"),
+            &format!(
+                "INSERT OR REPLACE INTO \"{table}\" (id, data, updated_at) VALUES (?1, ?2, ?3)"
+            ),
             rusqlite::params![id, raw, updated_at],
         )
         .map_err(|e| AppError::Internal(format!("insert failed: {e}")))?;
@@ -320,7 +391,10 @@ impl DbManager {
     /// Update an existing row by merging `data` over the stored object.
     pub fn update(&self, table: &str, id: &str, data: &Value) -> Result<Value, AppError> {
         self.validate_table(table)?;
-        let conn = self.conn.lock().map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
 
         let existing: Option<String> = {
             let mut stmt = conn
@@ -331,7 +405,8 @@ impl DbManager {
                 .map_err(|e| AppError::Internal(format!("update find failed: {e}")))?
         };
 
-        let existing = existing.ok_or_else(|| AppError::NotFound(format!("row {id} in {table}")))?;
+        let existing =
+            existing.ok_or_else(|| AppError::NotFound(format!("row {id} in {table}")))?;
         let mut base: Value = serde_json::from_str(&existing)
             .map_err(|e| AppError::Internal(format!("row parse failed: {e}")))?;
 
@@ -354,10 +429,16 @@ impl DbManager {
     /// Delete a row by id.
     pub fn delete(&self, table: &str, id: &str) -> Result<(), AppError> {
         self.validate_table(table)?;
-        let conn = self.conn.lock().map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
 
         let affected = conn
-            .execute(&format!("DELETE FROM \"{table}\" WHERE id = ?1"), rusqlite::params![id])
+            .execute(
+                &format!("DELETE FROM \"{table}\" WHERE id = ?1"),
+                rusqlite::params![id],
+            )
             .map_err(|e| AppError::Internal(format!("delete failed: {e}")))?;
 
         if affected == 0 {
@@ -370,7 +451,10 @@ impl DbManager {
     /// Run multiple statements sequentially inside a single transaction with
     /// rollback-on-error. Each statement is `{ table, action, data }`.
     pub fn transaction(&self, statements: &[DbStatement]) -> Result<Vec<Value>, AppError> {
-        let mut conn = self.conn.lock().map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+        let mut conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
         let tx = conn
             .transaction()
             .map_err(|e| AppError::Internal(format!("begin tx failed: {e}")))?;
@@ -387,9 +471,10 @@ impl DbManager {
                         .get("id")
                         .and_then(|v| v.as_str())
                         .ok_or_else(|| AppError::InvalidInput("statement missing 'id'".into()))?;
-                    let updated_at =
-                        extract_updated_at(stmt.data.as_object().unwrap_or(&serde_json::Map::new()))
-                            .to_string();
+                    let updated_at = extract_updated_at(
+                        stmt.data.as_object().unwrap_or(&serde_json::Map::new()),
+                    )
+                    .to_string();
                     if stmt.action == "insert" {
                         tx.execute(
                             &format!(
@@ -444,8 +529,14 @@ impl DbManager {
         Ok(results)
     }
 
-    pub fn write_event_log(&self, request: crate::ipc::EventLogWriteRequest) -> Result<(), AppError> {
-        let conn = self.conn.lock().map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+    pub fn write_event_log(
+        &self,
+        request: crate::ipc::EventLogWriteRequest,
+    ) -> Result<(), AppError> {
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
         let data = serde_json::to_string(&request.payload)
             .map_err(|e| AppError::Internal(format!("serialize payload failed: {e}")))?;
         conn.execute(
@@ -454,6 +545,363 @@ impl DbManager {
         )
         .map_err(|e| AppError::Internal(format!("write event log failed: {e}")))?;
         Ok(())
+    }
+
+    /// Write a batch of persisted event envelopes in a single transaction.
+    /// Uses INSERT OR IGNORE to skip duplicate event_ids.
+    pub fn write_event_log_batch(
+        &self,
+        events: &[PersistedEventEnvelope],
+    ) -> Result<EventLogResult, AppError> {
+        let mut conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+        let tx = conn
+            .transaction()
+            .map_err(|e| AppError::Internal(format!("begin tx failed: {e}")))?;
+
+        let mut written = 0u32;
+        let mut first_seq = u64::MAX;
+        let mut last_seq = 0u64;
+
+        for event in events {
+            let affected = tx
+                .execute(
+                    "INSERT OR IGNORE INTO event_persisted_log \
+                     (seq, event_id, event_type, payload, service, workspace_id, \
+                      session_id, execution_id, correlation_id, causation_id, emitted_at) \
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+                    rusqlite::params![
+                        event.sequence as i64,
+                        event.event_id,
+                        event.event_type,
+                        event.payload,
+                        event.service,
+                        event.workspace_id,
+                        event.session_id,
+                        event.execution_id,
+                        event.correlation_id,
+                        event.causation_id,
+                        event.emitted_at,
+                    ],
+                )
+                .map_err(|e| AppError::Internal(format!("insert event failed: {e}")))?;
+
+            if affected > 0 {
+                written += 1;
+                if event.sequence < first_seq {
+                    first_seq = event.sequence;
+                }
+                if event.sequence > last_seq {
+                    last_seq = event.sequence;
+                }
+            }
+        }
+
+        tx.commit()
+            .map_err(|e| AppError::Internal(format!("commit failed: {e}")))?;
+
+        if written == 0 {
+            return Ok(EventLogResult {
+                written: 0,
+                first_sequence: 0,
+                last_sequence: 0,
+            });
+        }
+
+        Ok(EventLogResult {
+            written,
+            first_sequence: first_seq,
+            last_sequence: last_seq,
+        })
+    }
+
+    /// Query the persisted event log with optional filters.
+    /// Builds a dynamic WHERE clause from the fields set in `query`.
+    pub fn query_event_log(
+        &self,
+        query: &EventRangeQuery,
+    ) -> Result<Vec<PersistedEventEnvelope>, AppError> {
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+
+        let mut sql = String::from(
+            "SELECT seq, event_id, event_type, payload, service, workspace_id, \
+             session_id, execution_id, correlation_id, causation_id, emitted_at \
+             FROM event_persisted_log WHERE workspace_id = ?",
+        );
+        let mut params: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
+        params.push(Box::new(query.workspace_id.clone()));
+
+        if let Some(fs) = query.from_sequence {
+            sql.push_str(" AND seq >= ?");
+            params.push(Box::new(fs as i64));
+        }
+        if let Some(ts) = query.to_sequence {
+            sql.push_str(" AND seq <= ?");
+            params.push(Box::new(ts as i64));
+        }
+        if let Some(ref eid) = query.execution_id {
+            sql.push_str(" AND execution_id = ?");
+            params.push(Box::new(eid.clone()));
+        }
+        if let Some(ref cid) = query.correlation_id {
+            sql.push_str(" AND correlation_id = ?");
+            params.push(Box::new(cid.clone()));
+        }
+        if let Some(ref types) = query.event_types {
+            if !types.is_empty() {
+                let placeholders = vec!["?"; types.len()].join(",");
+                sql.push_str(&format!(" AND event_type IN ({placeholders})"));
+                for t in types {
+                    params.push(Box::new(t.clone()));
+                }
+            }
+        }
+
+        sql.push_str(" ORDER BY seq ASC");
+        if let Some(lim) = query.limit {
+            sql.push_str(" LIMIT ?");
+            params.push(Box::new(lim as i64));
+        }
+
+        let mut stmt = conn
+            .prepare(&sql)
+            .map_err(|e| AppError::Internal(format!("prepare query failed: {e}")))?;
+
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> =
+            params.iter().map(|p| p.as_ref()).collect();
+
+        let rows = stmt
+            .query_map(param_refs.as_slice(), |row| {
+                Ok(PersistedEventEnvelope {
+                    sequence: row.get::<_, i64>(0)? as u64,
+                    event_id: row.get(1)?,
+                    event_type: row.get(2)?,
+                    payload: row.get(3)?,
+                    service: row.get(4)?,
+                    workspace_id: row.get(5)?,
+                    session_id: row.get(6)?,
+                    execution_id: row.get(7)?,
+                    correlation_id: row.get(8)?,
+                    causation_id: row.get(9)?,
+                    emitted_at: row.get(10)?,
+                })
+            })
+            .map_err(|e| AppError::Internal(format!("query failed: {e}")))?;
+
+        let mut results = Vec::new();
+        for row in rows {
+            results.push(row.map_err(|e| AppError::Internal(format!("row read failed: {e}")))?);
+        }
+        Ok(results)
+    }
+
+    /// Return the minimum and maximum sequence numbers for a workspace.
+    /// Used for gap detection. Returns (0, 0) when no events exist.
+    pub fn get_event_log_range(&self, workspace_id: &str) -> Result<(u64, u64), AppError> {
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+        let (min_seq, max_seq): (i64, i64) = conn
+            .query_row(
+                "SELECT COALESCE(MIN(seq), 0), COALESCE(MAX(seq), 0) \
+                 FROM event_persisted_log WHERE workspace_id = ?1",
+                rusqlite::params![workspace_id],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .map_err(|e| AppError::Internal(format!("query range failed: {e}")))?;
+        Ok((min_seq as u64, max_seq as u64))
+    }
+
+    /// Prune old events from the persisted log.
+    /// Deletes events where:
+    /// - emitted_at < before_timestamp
+    /// - execution_id is NULL or not in retained_execution_ids
+    /// - event_type does NOT start with 'merge.' or 'permission.'
+    pub fn prune_event_log(
+        &self,
+        before_timestamp: &str,
+        retained_execution_ids: &[String],
+    ) -> Result<u64, AppError> {
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+
+        let mut params: Vec<Box<dyn rusqlite::types::ToSql>> = Vec::new();
+        params.push(Box::new(before_timestamp.to_string()));
+
+        let mut sql = String::from(
+            "DELETE FROM event_persisted_log WHERE emitted_at < ?",
+        );
+
+        if retained_execution_ids.is_empty() {
+            sql.push_str(" AND execution_id IS NULL");
+        } else {
+            let placeholders = vec!["?"; retained_execution_ids.len()].join(",");
+            sql.push_str(&format!(
+                " AND (execution_id IS NULL OR execution_id NOT IN ({placeholders}))"
+            ));
+            for eid in retained_execution_ids {
+                params.push(Box::new(eid.clone()));
+            }
+        }
+
+        sql.push_str(" AND event_type NOT LIKE 'merge.%'");
+        sql.push_str(" AND event_type NOT LIKE 'permission.%'");
+
+        let mut stmt = conn
+            .prepare(&sql)
+            .map_err(|e| AppError::Internal(format!("prepare prune failed: {e}")))?;
+
+        let param_refs: Vec<&dyn rusqlite::types::ToSql> =
+            params.iter().map(|p| p.as_ref()).collect();
+
+        let affected = stmt
+            .execute(param_refs.as_slice())
+            .map_err(|e| AppError::Internal(format!("prune failed: {e}")))?;
+
+        Ok(affected as u64)
+    }
+
+    /// Detect gaps in the event sequence for a workspace.
+    /// Returns a GapReport with any missing sequence ranges.
+    pub fn detect_log_gaps(&self, workspace_id: &str) -> Result<GapReport, AppError> {
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+
+        let mut stmt = conn
+            .prepare(
+                "SELECT seq FROM event_persisted_log WHERE workspace_id = ?1 ORDER BY seq ASC",
+            )
+            .map_err(|e| AppError::Internal(format!("prepare gap detection failed: {e}")))?;
+
+        let rows = stmt
+            .query_map(rusqlite::params![workspace_id], |row| {
+                row.get::<_, i64>(0).map(|s| s as u64)
+            })
+            .map_err(|e| AppError::Internal(format!("query sequences failed: {e}")))?;
+
+        let mut sequences: Vec<u64> = Vec::new();
+        for row in rows {
+            sequences.push(row.map_err(|e| AppError::Internal(format!("row read failed: {e}")))?);
+        }
+
+        let mut gaps = Vec::new();
+
+        if sequences.is_empty() {
+            return Ok(GapReport {
+                complete: true,
+                gaps,
+            });
+        }
+
+        // Gap before the first retained sequence — likely pruned
+        if sequences[0] > 1 {
+            gaps.push(SeqGap {
+                from_sequence: 1,
+                to_sequence: sequences[0] - 1,
+                likely_cause: GapCause::Pruned,
+            });
+        }
+
+        // Gaps between consecutive retained sequences
+        for window in sequences.windows(2) {
+            let current = window[0];
+            let next = window[1];
+            if next != current + 1 {
+                gaps.push(SeqGap {
+                    from_sequence: current + 1,
+                    to_sequence: next - 1,
+                    likely_cause: GapCause::Unknown,
+                });
+            }
+        }
+
+        Ok(GapReport {
+            complete: gaps.is_empty(),
+            gaps,
+        })
+    }
+
+    /// Look up a single event by its event_id (PRIMARY KEY).
+    pub fn get_event_by_id(
+        &self,
+        event_id: &str,
+    ) -> Result<Option<PersistedEventEnvelope>, AppError> {
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+
+        let mut stmt = conn
+            .prepare(
+                "SELECT seq, event_id, event_type, payload, service, workspace_id, \
+                 session_id, execution_id, correlation_id, causation_id, emitted_at \
+                 FROM event_persisted_log WHERE event_id = ?1",
+            )
+            .map_err(|e| AppError::Internal(format!("prepare get by id failed: {e}")))?;
+
+        let result = stmt
+            .query_row(rusqlite::params![event_id], |row| {
+                Ok(PersistedEventEnvelope {
+                    sequence: row.get::<_, i64>(0)? as u64,
+                    event_id: row.get(1)?,
+                    event_type: row.get(2)?,
+                    payload: row.get(3)?,
+                    service: row.get(4)?,
+                    workspace_id: row.get(5)?,
+                    session_id: row.get(6)?,
+                    execution_id: row.get(7)?,
+                    correlation_id: row.get(8)?,
+                    causation_id: row.get(9)?,
+                    emitted_at: row.get(10)?,
+                })
+            })
+            .optional()
+            .map_err(|e| AppError::Internal(format!("get by id failed: {e}")))?;
+
+        Ok(result)
+    }
+
+    /// Return aggregate statistics about the persisted event log for a workspace.
+    pub fn get_event_log_stats(&self, workspace_id: &str) -> Result<EventLogStats, AppError> {
+        let conn = self
+            .conn
+            .lock()
+            .map_err(|_| AppError::Internal("db lock poisoned".into()))?;
+
+        let (total, min_seq, max_seq): (i64, i64, i64) = conn
+            .query_row(
+                "SELECT COUNT(*), COALESCE(MIN(seq), 0), COALESCE(MAX(seq), 0) \
+                 FROM event_persisted_log WHERE workspace_id = ?1",
+                rusqlite::params![workspace_id],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .map_err(|e| AppError::Internal(format!("query stats failed: {e}")))?;
+
+        let page_count: i64 = conn
+            .pragma_query_value(None, "page_count", |row| row.get(0))
+            .map_err(|e| AppError::Internal(format!("pragma page_count failed: {e}")))?;
+        let page_size: i64 = conn
+            .pragma_query_value(None, "page_size", |row| row.get(0))
+            .map_err(|e| AppError::Internal(format!("pragma page_size failed: {e}")))?;
+
+        let size_bytes = (page_count * page_size) as u64;
+
+        Ok(EventLogStats {
+            total_events: total as u64,
+            min_sequence: min_seq as u64,
+            max_sequence: max_seq as u64,
+            size_bytes,
+        })
     }
 
     fn validate_table(&self, table: &str) -> Result<(), AppError> {
@@ -509,15 +957,17 @@ fn ymd_from_days(days: i64) -> (i64, u32, u32) {
     let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
     let mp = (5 * doy + 2) / 153;
     let d = (doy - (153 * mp + 2) / 5 + 1) as u32;
-    let m = if mp < 10 { (mp + 3) as u32 } else { (mp - 9) as u32 };
+    let m = if mp < 10 {
+        (mp + 3) as u32
+    } else {
+        (mp - 9) as u32
+    };
     let y = if m <= 2 { y + 1 } else { y };
     (y, m, d)
 }
 
 fn extract_updated_at(obj: &serde_json::Map<String, Value>) -> &str {
-    obj.get("updated_at")
-        .and_then(|v| v.as_str())
-        .unwrap_or("")
+    obj.get("updated_at").and_then(|v| v.as_str()).unwrap_or("")
 }
 
 fn merge_object(base: &mut Value, patch: &Value) {
@@ -606,5 +1056,478 @@ mod tests {
         let all = db.query("workspace", None).expect("query");
         assert_eq!(all.len(), 0, "nothing should be committed after rollback");
     }
-}
 
+    #[test]
+    fn write_batch_and_query_back() {
+        let db = DbManager::open_memory().expect("open");
+        db.migrate().expect("migrate");
+
+        let events = vec![
+            PersistedEventEnvelope {
+                sequence: 1,
+                event_id: "evt_1".into(),
+                event_type: "test.type".into(),
+                payload: r#"{"key":"value"}"#.into(),
+                service: "test-svc".into(),
+                workspace_id: "ws_1".into(),
+                session_id: Some("ses_1".into()),
+                execution_id: Some("ex_1".into()),
+                correlation_id: Some("corr_1".into()),
+                causation_id: Some("caus_1".into()),
+                emitted_at: "2026-01-01T00:00:00.000Z".into(),
+            },
+            PersistedEventEnvelope {
+                sequence: 2,
+                event_id: "evt_2".into(),
+                event_type: "test.other".into(),
+                payload: r#"{"n":42}"#.into(),
+                service: "test-svc".into(),
+                workspace_id: "ws_1".into(),
+                session_id: None,
+                execution_id: None,
+                correlation_id: None,
+                causation_id: None,
+                emitted_at: "2026-01-02T00:00:00.000Z".into(),
+            },
+        ];
+
+        let result = db.write_event_log_batch(&events).expect("write batch");
+        assert_eq!(result.written, 2);
+        assert_eq!(result.first_sequence, 1);
+        assert_eq!(result.last_sequence, 2);
+
+        let query = EventRangeQuery {
+            workspace_id: "ws_1".into(),
+            from_sequence: None,
+            to_sequence: None,
+            execution_id: None,
+            correlation_id: None,
+            event_types: None,
+            limit: None,
+        };
+        let results = db.query_event_log(&query).expect("query");
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].event_id, "evt_1");
+        assert_eq!(results[1].event_id, "evt_2");
+    }
+
+    #[test]
+    fn write_batch_deduplicates_event_id() {
+        let db = DbManager::open_memory().expect("open");
+        db.migrate().expect("migrate");
+
+        let event = PersistedEventEnvelope {
+            sequence: 1,
+            event_id: "evt_dup".into(),
+            event_type: "test.type".into(),
+            payload: "{}".into(),
+            service: "test".into(),
+            workspace_id: "ws_1".into(),
+            session_id: None,
+            execution_id: None,
+            correlation_id: None,
+            causation_id: None,
+            emitted_at: "2026-01-01T00:00:00.000Z".into(),
+        };
+
+        let r1 = db.write_event_log_batch(&[event.clone()]).expect("first write");
+        assert_eq!(r1.written, 1);
+
+        let r2 = db.write_event_log_batch(&[event.clone()]).expect("duplicate write");
+        assert_eq!(r2.written, 0, "duplicate event_id should be ignored");
+    }
+
+    #[test]
+    fn query_with_filters() {
+        let db = DbManager::open_memory().expect("open");
+        db.migrate().expect("migrate");
+
+        let events = vec![
+            PersistedEventEnvelope {
+                sequence: 1,
+                event_id: "e1".into(),
+                event_type: "type.a".into(),
+                payload: "{}".into(),
+                service: "s1".into(),
+                workspace_id: "ws_f".into(),
+                session_id: None,
+                execution_id: Some("ex_a".into()),
+                correlation_id: Some("corr_x".into()),
+                causation_id: None,
+                emitted_at: "2026-01-01T00:00:00.000Z".into(),
+            },
+            PersistedEventEnvelope {
+                sequence: 2,
+                event_id: "e2".into(),
+                event_type: "type.b".into(),
+                payload: "{}".into(),
+                service: "s1".into(),
+                workspace_id: "ws_f".into(),
+                session_id: None,
+                execution_id: Some("ex_b".into()),
+                correlation_id: Some("corr_y".into()),
+                causation_id: None,
+                emitted_at: "2026-01-02T00:00:00.000Z".into(),
+            },
+            PersistedEventEnvelope {
+                sequence: 3,
+                event_id: "e3".into(),
+                event_type: "type.a".into(),
+                payload: "{}".into(),
+                service: "s1".into(),
+                workspace_id: "ws_f".into(),
+                session_id: None,
+                execution_id: Some("ex_a".into()),
+                correlation_id: Some("corr_x".into()),
+                causation_id: None,
+                emitted_at: "2026-01-03T00:00:00.000Z".into(),
+            },
+        ];
+        db.write_event_log_batch(&events).expect("write batch");
+
+        // Filter by execution_id
+        let q = EventRangeQuery {
+            workspace_id: "ws_f".into(),
+            from_sequence: None,
+            to_sequence: None,
+            execution_id: Some("ex_a".into()),
+            correlation_id: None,
+            event_types: None,
+            limit: None,
+        };
+        let results = db.query_event_log(&q).expect("query by execution");
+        assert_eq!(results.len(), 2);
+
+        // Filter by event_types
+        let q = EventRangeQuery {
+            workspace_id: "ws_f".into(),
+            from_sequence: None,
+            to_sequence: None,
+            execution_id: None,
+            correlation_id: None,
+            event_types: Some(vec!["type.b".into()]),
+            limit: None,
+        };
+        let results = db.query_event_log(&q).expect("query by type");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].event_id, "e2");
+
+        // Filter by sequence range
+        let q = EventRangeQuery {
+            workspace_id: "ws_f".into(),
+            from_sequence: Some(2),
+            to_sequence: Some(2),
+            execution_id: None,
+            correlation_id: None,
+            event_types: None,
+            limit: None,
+        };
+        let results = db.query_event_log(&q).expect("query by range");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].event_id, "e2");
+
+        // Filter by correlation_id
+        let q = EventRangeQuery {
+            workspace_id: "ws_f".into(),
+            from_sequence: None,
+            to_sequence: None,
+            execution_id: None,
+            correlation_id: Some("corr_y".into()),
+            event_types: None,
+            limit: None,
+        };
+        let results = db.query_event_log(&q).expect("query by correlation");
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].event_id, "e2");
+
+        // Limit
+        let q = EventRangeQuery {
+            workspace_id: "ws_f".into(),
+            from_sequence: None,
+            to_sequence: None,
+            execution_id: None,
+            correlation_id: None,
+            event_types: None,
+            limit: Some(1),
+        };
+        let results = db.query_event_log(&q).expect("query with limit");
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn range_detection() {
+        let db = DbManager::open_memory().expect("open");
+        db.migrate().expect("migrate");
+
+        let (min, max) = db.get_event_log_range("ws_r").expect("empty range");
+        assert_eq!(min, 0);
+        assert_eq!(max, 0);
+
+        let events = vec![
+            PersistedEventEnvelope {
+                sequence: 10,
+                event_id: "r1".into(),
+                event_type: "t".into(),
+                payload: "{}".into(),
+                service: "s".into(),
+                workspace_id: "ws_r".into(),
+                session_id: None,
+                execution_id: None,
+                correlation_id: None,
+                causation_id: None,
+                emitted_at: "2026-01-01T00:00:00.000Z".into(),
+            },
+            PersistedEventEnvelope {
+                sequence: 20,
+                event_id: "r2".into(),
+                event_type: "t".into(),
+                payload: "{}".into(),
+                service: "s".into(),
+                workspace_id: "ws_r".into(),
+                session_id: None,
+                execution_id: None,
+                correlation_id: None,
+                causation_id: None,
+                emitted_at: "2026-01-02T00:00:00.000Z".into(),
+            },
+        ];
+        db.write_event_log_batch(&events).expect("write batch");
+
+        let (min, max) = db.get_event_log_range("ws_r").expect("range");
+        assert_eq!(min, 10);
+        assert_eq!(max, 20);
+    }
+
+    #[test]
+    fn gap_detection() {
+        let db = DbManager::open_memory().expect("open");
+        db.migrate().expect("migrate");
+
+        let report = db.detect_log_gaps("ws_g").expect("detect gaps empty");
+        assert!(report.complete);
+        assert!(report.gaps.is_empty());
+
+        let events = vec![
+            PersistedEventEnvelope {
+                sequence: 2,
+                event_id: "g1".into(),
+                event_type: "t".into(),
+                payload: "{}".into(),
+                service: "s".into(),
+                workspace_id: "ws_g".into(),
+                session_id: None,
+                execution_id: None,
+                correlation_id: None,
+                causation_id: None,
+                emitted_at: "2026-01-01T00:00:00.000Z".into(),
+            },
+            PersistedEventEnvelope {
+                sequence: 5,
+                event_id: "g2".into(),
+                event_type: "t".into(),
+                payload: "{}".into(),
+                service: "s".into(),
+                workspace_id: "ws_g".into(),
+                session_id: None,
+                execution_id: None,
+                correlation_id: None,
+                causation_id: None,
+                emitted_at: "2026-01-02T00:00:00.000Z".into(),
+            },
+        ];
+        db.write_event_log_batch(&events).expect("write batch");
+
+        let report = db.detect_log_gaps("ws_g").expect("detect gaps");
+        assert!(!report.complete);
+        assert_eq!(report.gaps.len(), 2);
+
+        // Gap before first sequence: 1 (pruned)
+        assert_eq!(report.gaps[0].from_sequence, 1);
+        assert_eq!(report.gaps[0].to_sequence, 1);
+        assert!(matches!(report.gaps[0].likely_cause, GapCause::Pruned));
+
+        // Gap between 2 and 5: 3-4 (unknown)
+        assert_eq!(report.gaps[1].from_sequence, 3);
+        assert_eq!(report.gaps[1].to_sequence, 4);
+        assert!(matches!(report.gaps[1].likely_cause, GapCause::Unknown));
+    }
+
+    #[test]
+    fn event_by_id_lookup() {
+        let db = DbManager::open_memory().expect("open");
+        db.migrate().expect("migrate");
+
+        let found = db.get_event_by_id("nonexistent").expect("lookup missing");
+        assert!(found.is_none());
+
+        let event = PersistedEventEnvelope {
+            sequence: 1,
+            event_id: "lookup_me".into(),
+            event_type: "test.lookup".into(),
+            payload: r#"{"found":true}"#.into(),
+            service: "svc".into(),
+            workspace_id: "ws_l".into(),
+            session_id: None,
+            execution_id: None,
+            correlation_id: None,
+            causation_id: None,
+            emitted_at: "2026-01-01T00:00:00.000Z".into(),
+        };
+        db.write_event_log_batch(&[event]).expect("write batch");
+
+        let found = db.get_event_by_id("lookup_me").expect("lookup exists");
+        assert!(found.is_some());
+        let env = found.unwrap();
+        assert_eq!(env.event_type, "test.lookup");
+        assert_eq!(env.payload, r#"{"found":true}"#);
+    }
+
+    #[test]
+    fn prune_logic() {
+        let db = DbManager::open_memory().expect("open");
+        db.migrate().expect("migrate");
+
+        let events = vec![
+            // Old event, no execution - should be pruned
+            PersistedEventEnvelope {
+                sequence: 1,
+                event_id: "old_no_exec".into(),
+                event_type: "test.old".into(),
+                payload: "{}".into(),
+                service: "s".into(),
+                workspace_id: "ws_p".into(),
+                session_id: None,
+                execution_id: None,
+                correlation_id: None,
+                causation_id: None,
+                emitted_at: "2025-01-01T00:00:00.000Z".into(),
+            },
+            // Old event, retained execution - should be kept
+            PersistedEventEnvelope {
+                sequence: 2,
+                event_id: "old_retained".into(),
+                event_type: "test.old".into(),
+                payload: "{}".into(),
+                service: "s".into(),
+                workspace_id: "ws_p".into(),
+                session_id: None,
+                execution_id: Some("keep_ex".into()),
+                correlation_id: None,
+                causation_id: None,
+                emitted_at: "2025-01-01T00:00:00.000Z".into(),
+            },
+            // Old event, non-retained execution - should be pruned
+            PersistedEventEnvelope {
+                sequence: 3,
+                event_id: "old_non_retained".into(),
+                event_type: "test.old".into(),
+                payload: "{}".into(),
+                service: "s".into(),
+                workspace_id: "ws_p".into(),
+                session_id: None,
+                execution_id: Some("prune_ex".into()),
+                correlation_id: None,
+                causation_id: None,
+                emitted_at: "2025-01-01T00:00:00.000Z".into(),
+            },
+            // merge. event - should be kept regardless
+            PersistedEventEnvelope {
+                sequence: 4,
+                event_id: "merge_event".into(),
+                event_type: "merge.completed".into(),
+                payload: "{}".into(),
+                service: "s".into(),
+                workspace_id: "ws_p".into(),
+                session_id: None,
+                execution_id: None,
+                correlation_id: None,
+                causation_id: None,
+                emitted_at: "2025-01-01T00:00:00.000Z".into(),
+            },
+            // permission. event - should be kept regardless
+            PersistedEventEnvelope {
+                sequence: 5,
+                event_id: "permission_event".into(),
+                event_type: "permission.granted".into(),
+                payload: "{}".into(),
+                service: "s".into(),
+                workspace_id: "ws_p".into(),
+                session_id: None,
+                execution_id: None,
+                correlation_id: None,
+                causation_id: None,
+                emitted_at: "2025-01-01T00:00:00.000Z".into(),
+            },
+            // Recent event - should be kept (not before timestamp)
+            PersistedEventEnvelope {
+                sequence: 6,
+                event_id: "recent_event".into(),
+                event_type: "test.recent".into(),
+                payload: "{}".into(),
+                service: "s".into(),
+                workspace_id: "ws_p".into(),
+                session_id: None,
+                execution_id: None,
+                correlation_id: None,
+                causation_id: None,
+                emitted_at: "2026-06-01T00:00:00.000Z".into(),
+            },
+        ];
+        db.write_event_log_batch(&events).expect("write batch");
+
+        let deleted = db
+            .prune_event_log("2026-01-01T00:00:00.000Z", &["keep_ex".to_string()])
+            .expect("prune");
+        assert_eq!(deleted, 2, "should prune old_no_exec and old_non_retained");
+
+        // Verify remaining events
+        let q = EventRangeQuery {
+            workspace_id: "ws_p".into(),
+            from_sequence: None,
+            to_sequence: None,
+            execution_id: None,
+            correlation_id: None,
+            event_types: None,
+            limit: None,
+        };
+        let remaining = db.query_event_log(&q).expect("query after prune");
+        let ids: Vec<&str> = remaining.iter().map(|e| e.event_id.as_str()).collect();
+        assert!(ids.contains(&"old_retained"));
+        assert!(ids.contains(&"merge_event"));
+        assert!(ids.contains(&"permission_event"));
+        assert!(ids.contains(&"recent_event"));
+        assert!(!ids.contains(&"old_no_exec"));
+        assert!(!ids.contains(&"old_non_retained"));
+    }
+
+    #[test]
+    fn empty_workspace_returns_empty() {
+        let db = DbManager::open_memory().expect("open");
+        db.migrate().expect("migrate");
+
+        let q = EventRangeQuery {
+            workspace_id: "ws_empty".into(),
+            from_sequence: None,
+            to_sequence: None,
+            execution_id: None,
+            correlation_id: None,
+            event_types: None,
+            limit: None,
+        };
+        let results = db.query_event_log(&q).expect("query empty");
+        assert!(results.is_empty());
+
+        let (min, max) = db.get_event_log_range("ws_empty").expect("range empty");
+        assert_eq!(min, 0);
+        assert_eq!(max, 0);
+
+        let report = db.detect_log_gaps("ws_empty").expect("gaps empty");
+        assert!(report.complete);
+        assert!(report.gaps.is_empty());
+
+        let stats = db.get_event_log_stats("ws_empty").expect("stats empty");
+        assert_eq!(stats.total_events, 0);
+        assert_eq!(stats.min_sequence, 0);
+        assert_eq!(stats.max_sequence, 0);
+    }
+}

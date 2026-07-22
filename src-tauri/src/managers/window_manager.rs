@@ -22,9 +22,11 @@ impl WindowManagerImpl {
                 message: "main window not found".into(),
                 context: None,
             })?;
-        window
-            .set_title(title)
-            .map_err(|e| ApiError { code: "WINDOW_SET_TITLE".into(), message: e.to_string(), context: None })
+        window.set_title(title).map_err(|e| ApiError {
+            code: "WINDOW_SET_TITLE".into(),
+            message: e.to_string(),
+            context: None,
+        })
     }
 
     pub fn set_size(&self, width: u32, height: u32) -> ApiResult<()> {
@@ -38,7 +40,11 @@ impl WindowManagerImpl {
             })?;
         window
             .set_size(LogicalSize::new(width as f64, height as f64))
-            .map_err(|e| ApiError { code: "WINDOW_SET_SIZE".into(), message: e.to_string(), context: None })
+            .map_err(|e| ApiError {
+                code: "WINDOW_SET_SIZE".into(),
+                message: e.to_string(),
+                context: None,
+            })
     }
 
     pub fn minimize(&self) -> ApiResult<()> {
@@ -50,9 +56,11 @@ impl WindowManagerImpl {
                 message: "main window not found".into(),
                 context: None,
             })?;
-        window
-            .minimize()
-            .map_err(|e| ApiError { code: "WINDOW_MINIMIZE".into(), message: e.to_string(), context: None })
+        window.minimize().map_err(|e| ApiError {
+            code: "WINDOW_MINIMIZE".into(),
+            message: e.to_string(),
+            context: None,
+        })
     }
 
     pub fn maximize(&self) -> ApiResult<()> {
@@ -64,9 +72,11 @@ impl WindowManagerImpl {
                 message: "main window not found".into(),
                 context: None,
             })?;
-        window
-            .maximize()
-            .map_err(|e| ApiError { code: "WINDOW_MAXIMIZE".into(), message: e.to_string(), context: None })
+        window.maximize().map_err(|e| ApiError {
+            code: "WINDOW_MAXIMIZE".into(),
+            message: e.to_string(),
+            context: None,
+        })
     }
 
     pub fn close(&self) -> ApiResult<()> {
@@ -78,8 +88,10 @@ impl WindowManagerImpl {
                 message: "main window not found".into(),
                 context: None,
             })?;
-        window
-            .close()
-            .map_err(|e| ApiError { code: "WINDOW_CLOSE".into(), message: e.to_string(), context: None })
+        window.close().map_err(|e| ApiError {
+            code: "WINDOW_CLOSE".into(),
+            message: e.to_string(),
+            context: None,
+        })
     }
 }

@@ -26,7 +26,11 @@ impl PtyManagerImpl {
     /// Spawn a real shell. Returns the PID of the spawned process.
     pub fn spawn(&self, workspace_id: &str, cmd: &str) -> ApiResult<u32> {
         let id = workspace_id.to_string();
-        let cmd_str = if cmd.is_empty() { None } else { Some(cmd.to_string()) };
+        let cmd_str = if cmd.is_empty() {
+            None
+        } else {
+            Some(cmd.to_string())
+        };
 
         let (program, flag) = super::pty_manager::resolve_shell(cmd_str.as_deref());
 
@@ -79,10 +83,14 @@ impl PtyManagerImpl {
             .map(|d| d.as_millis().to_string())
             .unwrap_or_default();
         let app_state = self.app.state::<AppState>();
-        app_state
-            .pty_sessions
-            .blocking_write()
-            .insert(id.clone(), crate::state::PtySessionState { pid, started_at, cmd: program });
+        app_state.pty_sessions.blocking_write().insert(
+            id.clone(),
+            crate::state::PtySessionState {
+                pid,
+                started_at,
+                cmd: program,
+            },
+        );
 
         std::thread::spawn(move || {
             let code = {
@@ -100,7 +108,10 @@ impl PtyManagerImpl {
             };
             let _ = exit_app.emit(
                 &format!("pty://{exit_id}/exit"),
-                PtyExit { id: exit_id.clone(), code },
+                PtyExit {
+                    id: exit_id.clone(),
+                    code,
+                },
             );
         });
 
@@ -239,7 +250,10 @@ fn stream_to_events<R: std::io::Read>(mut reader: R, id: &str, app: AppHandle) {
                 let chunk = String::from_utf8_lossy(&buf[..n]).to_string();
                 let _ = app.emit(
                     &format!("pty://{id}/data"),
-                    super::pty_manager::PtyData { id: id.to_string(), chunk },
+                    super::pty_manager::PtyData {
+                        id: id.to_string(),
+                        chunk,
+                    },
                 );
             }
             Err(_) => break,
