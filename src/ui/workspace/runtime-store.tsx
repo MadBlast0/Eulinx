@@ -42,6 +42,8 @@ interface RuntimeContextValue {
   readonly eventEntries: readonly EventEntry[]
   pushLog(source: string, tone: Tone, text: string): void
   pushEvent(severity: Tone, label: string): void
+  clearLogs(): void
+  clearEvents(): void
   healthCheck(): void
 }
 
@@ -127,6 +129,14 @@ export function RuntimeProvider({ children }: { children: ReactNode }) {
     setEventEntries((prev) => [...prev, { severity, label, time }])
   }, [])
 
+  const clearLogs = useCallback(() => {
+    setLogLines([])
+  }, [])
+
+  const clearEvents = useCallback(() => {
+    setEventEntries([])
+  }, [])
+
   const healthCheck = useCallback((): void => {
     const next = buildServices()
     setServices(next)
@@ -135,8 +145,8 @@ export function RuntimeProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<RuntimeContextValue>(() => {
     const healthyCount = services.filter((s) => s.health === "healthy").length
-    return { services, lastChecked, healthyCount, logLines, eventEntries, pushLog, pushEvent, healthCheck }
-  }, [services, lastChecked, healthCheck, logLines, eventEntries, pushLog, pushEvent])
+    return { services, lastChecked, healthyCount, logLines, eventEntries, pushLog, pushEvent, clearLogs, clearEvents, healthCheck }
+  }, [services, lastChecked, healthCheck, logLines, eventEntries, pushLog, pushEvent, clearLogs, clearEvents])
 
   return <RuntimeContext.Provider value={value}>{children}</RuntimeContext.Provider>
 }

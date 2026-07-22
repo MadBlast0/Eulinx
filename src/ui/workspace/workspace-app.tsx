@@ -110,6 +110,7 @@ function WorkspaceShell() {
   const {
     leftSidebarOpen,
     rightSidebarOpen,
+    bottomPanelOpen,
     setOverlay,
     selectedId,
     removeNode,
@@ -120,7 +121,8 @@ function WorkspaceShell() {
   const {
     layout,
     focusedRegion,
-    setRegionSize,
+    setRegionDelta,
+    toggleRegion,
     bulkSetLayout,
     setFocusedRegion,
   } = useLayout()
@@ -215,7 +217,7 @@ function WorkspaceShell() {
 
   const sidebarVisible = leftSidebarOpen && !sidebarRegion.collapsed
   const inspectorVisible = rightSidebarOpen && !inspectorRegion.collapsed
-  const panelVisible = !panelRegion.collapsed
+  const panelVisible = bottomPanelOpen && !panelRegion.collapsed
 
   const sidebarSize = sidebarVisible ? sidebarRegion.size : 0
   const inspectorSize = inspectorVisible ? inspectorRegion.size : 0
@@ -223,23 +225,23 @@ function WorkspaceShell() {
 
   const handleSidebarResize = useCallback(
     (delta: number) => {
-      setRegionSize("sidebar", sidebarRegion.size + delta)
+      setRegionDelta("sidebar", delta)
     },
-    [setRegionSize, sidebarRegion.size],
+    [setRegionDelta],
   )
 
   const handleInspectorResize = useCallback(
     (delta: number) => {
-      setRegionSize("inspector", inspectorRegion.size - delta)
+      setRegionDelta("inspector", -delta)
     },
-    [setRegionSize, inspectorRegion.size],
+    [setRegionDelta],
   )
 
   const handlePanelResize = useCallback(
     (delta: number) => {
-      setRegionSize("panel", panelRegion.size + delta)
+      setRegionDelta("panel", -delta)
     },
-    [setRegionSize, panelRegion.size],
+    [setRegionDelta],
   )
 
   const handleFocusRegion = useCallback(

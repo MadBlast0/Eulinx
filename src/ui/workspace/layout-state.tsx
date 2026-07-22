@@ -90,6 +90,7 @@ interface LayoutContextValue {
   readonly layout: LayoutState
   readonly focusedRegion: FocusRegion
   setRegionSize(id: RegionId, size: number): void
+  setRegionDelta(id: RegionId, delta: number): void
   toggleRegion(id: RegionId): void
   resetLayout(): void
   bulkSetLayout(l: LayoutState): void
@@ -107,6 +108,21 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
       const region = prev.regions[id]
       if (!region || !region.collapsible) return prev
       const clamped = Math.max(region.minSize, Math.min(region.maxSize, size))
+      return {
+        ...prev,
+        regions: {
+          ...prev.regions,
+          [id]: { ...region, size: clamped, collapsed: false },
+        },
+      }
+    })
+  }, [])
+
+  const setRegionDelta = useCallback((id: RegionId, delta: number) => {
+    setLayout((prev) => {
+      const region = prev.regions[id]
+      if (!region || !region.collapsible) return prev
+      const clamped = Math.max(region.minSize, Math.min(region.maxSize, region.size + delta))
       return {
         ...prev,
         regions: {
@@ -144,12 +160,13 @@ export function LayoutProvider({ children }: { children: ReactNode }) {
       layout,
       focusedRegion,
       setRegionSize,
+      setRegionDelta,
       toggleRegion,
       resetLayout: reset,
       bulkSetLayout: bulkSet,
       setFocusedRegion,
     }),
-    [layout, focusedRegion, setRegionSize, toggleRegion, reset, bulkSet],
+    [layout, focusedRegion, setRegionSize, setRegionDelta, toggleRegion, reset, bulkSet],
   )
 
   return <LayoutContext.Provider value={value}>{children}</LayoutContext.Provider>
