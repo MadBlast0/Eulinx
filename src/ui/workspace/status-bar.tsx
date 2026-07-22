@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
-import { Boxes } from "lucide-react"
+import { Boxes, PanelBottom } from "lucide-react"
 import { useProjects } from "./use-projects"
+import { useWorkspace } from "./use-workspace"
 
 function StatusItem({ children }: { children: React.ReactNode }) {
   return (
@@ -28,6 +29,7 @@ function formatClock(): string {
 
 export function StatusBar() {
   const { activeProject, graph, projects } = useProjects()
+  const { bottomPanelOpen, setBottomPanelOpen } = useWorkspace()
   const clock = useClock()
 
   const nodeCount = graph?.nodes.length ?? 0
@@ -54,6 +56,19 @@ export function StatusBar() {
       <StatusItem>Projects: {projects.length}</StatusItem>
       <StatusItem>Nodes: {nodeCount}</StatusItem>
       <StatusItem>{clock}</StatusItem>
+      <button
+        type="button"
+        onClick={() => setBottomPanelOpen(!bottomPanelOpen)}
+        className={`flex h-full cursor-pointer items-center gap-1.5 border-l border-[color:var(--Eulinx-color-border)] px-2 text-[11px] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)] ${
+          bottomPanelOpen
+            ? "text-[color:var(--Eulinx-color-accent)]"
+            : "text-[color:var(--Eulinx-color-text-muted)]"
+        }`}
+        aria-label={bottomPanelOpen ? "Hide bottom panel" : "Show bottom panel"}
+      >
+        <PanelBottom className="h-3 w-3" strokeWidth={1.5} />
+        Panel
+      </button>
     </div>
   )
 }

@@ -1,13 +1,14 @@
 import { useState } from "react"
 import {
   Activity,
+  ChevronsDownUp,
+  ChevronsUpDown,
   Database,
-  Maximize2,
   Minimize2,
   ScrollText,
   TerminalSquare,
+  Trash2,
   Triangle,
-  X,
 } from "lucide-react"
 import { cn } from "@/utils/cn"
 import type { BottomTab } from "./types"
@@ -21,6 +22,7 @@ import {
 } from "./panels/registry"
 import { useRuntime } from "./runtime-store"
 import { useMemory } from "./memory-store"
+import { useLayout } from "./layout-state"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -69,12 +71,15 @@ export function BottomPanel() {
   const { bottomTab, setBottomTab, bottomPanelOpen, setBottomPanelOpen } = useWorkspace()
   const { logLines, eventEntries } = useRuntime()
   const { entries: memoryEntries } = useMemory()
+  const { layout, setRegionSize } = useLayout()
 
   const [dockView, setDockView] = useState<DockView>({ kind: "tab", tab: bottomTab })
 
   if (!bottomPanelOpen) return null
 
   const activePanelKey = dockView.kind === "panel" ? dockView.key : null
+  const panelRegion = layout.regions.panel
+  const isMaximized = panelRegion.size >= panelRegion.maxSize
 
   const memoryDisplay: readonly MemoryEntry[] = memoryEntries.map((e) => ({
     key: e.title,
@@ -84,8 +89,7 @@ export function BottomPanel() {
 
   return (
     <div
-      className="flex shrink-0 flex-col border-t border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-sidebar)]"
-      style={{ height: "var(--wsx-panel-h)" }}
+      className="flex h-full shrink-0 flex-col border-t border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-sidebar)]"
     >
       <div
         className="flex h-9 shrink-0 items-center gap-0 border-b border-[color:var(--Eulinx-color-border)] px-2"
@@ -150,11 +154,25 @@ export function BottomPanel() {
         <ToolbarSep />
 
         <div className="flex gap-0.5">
-          <ToolbarButton tip="Clear" size={26} aria-label="Clear">
-            <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <ToolbarButton
+            tip="Clear"
+            size={26}
+            aria-label="Clear"
+            onClick={() => setBottomTab(bottomTab)}
+          >
+            <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
           </ToolbarButton>
-          <ToolbarButton tip="Maximize panel" size={26} aria-label="Maximize panel">
-            <Maximize2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <ToolbarButton
+            tip={isMaximized ? "Restore panel" : "Maximize panel"}
+            size={26}
+            aria-label={isMaximized ? "Restore panel" : "Maximize panel"}
+            onClick={() => setRegionSize("panel", isMaximized ? panelRegion.defaultSize : panelRegion.maxSize)}
+          >
+            {isMaximized ? (
+              <ChevronsDownUp className="h-3.5 w-3.5" strokeWidth={1.5} />
+            ) : (
+              <ChevronsUpDown className="h-3.5 w-3.5" strokeWidth={1.5} />
+            )}
           </ToolbarButton>
           <ToolbarButton
             tip="Close panel"
