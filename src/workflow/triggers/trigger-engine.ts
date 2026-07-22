@@ -9,7 +9,7 @@
  * directly — file polling and webhook registration are injected.
  */
 
-import type { RunTrigger, TriggerKind } from "../workflow-types"
+import type { RunTrigger, TriggerKind, JsonValue } from "../workflow-types"
 import type {
   ReadSnapshotFn,
   WebhookRegisterFn,
@@ -36,7 +36,7 @@ export interface TriggerEngineDeps {
 function buildTrigger(
   kind: TriggerKind,
   firedBy: string,
-  payload: Record<string, unknown>,
+  payload: Record<string, JsonValue>,
 ): RunTrigger {
   return {
     triggerId: `trig_${kind}_${Date.now().toString(36)}`,
@@ -109,7 +109,7 @@ export class TriggerEngine {
   private async dispatch(
     workflowId: string,
     kind: TriggerKind,
-    payload: Record<string, unknown>,
+    payload: Record<string, JsonValue>,
   ): Promise<void> {
     const trigger = buildTrigger(kind, "trigger_engine", payload)
     await this.deps.run(workflowId, trigger)

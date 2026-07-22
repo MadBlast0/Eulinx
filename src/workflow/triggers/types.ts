@@ -7,6 +7,7 @@
  */
 
 import type { TriggerKind } from "../workflow-types"
+import type { JsonValue } from "@/core/types"
 
 // ---------------------------------------------------------------------------
 // Declarative trigger config (attached to a WorkflowDefinition.trigger)
@@ -45,7 +46,7 @@ export type WorkflowTriggerConfig =
 
 export type TriggerContext = {
   readonly firedBy: string
-  readonly payload: Record<string, unknown>
+  readonly payload: Record<string, JsonValue>
 }
 
 export type TriggerFireFn = (
@@ -68,3 +69,16 @@ export interface TriggerProducer {
 
 // Re-export the kind union for narrowers elsewhere.
 export type { TriggerKind } from "../workflow-types"
+
+// ---------------------------------------------------------------------------
+// Injected callbacks for file_watch and webhook triggers
+// ---------------------------------------------------------------------------
+
+/** Read a file path's content/hash snapshot. Returns empty string if absent. */
+export type ReadSnapshotFn = (path: string) => Promise<string> | string
+
+/** Register a webhook endpoint. Called once per webhook trigger. */
+export type WebhookRegisterFn = (
+  path: string,
+  handler: () => void,
+) => void

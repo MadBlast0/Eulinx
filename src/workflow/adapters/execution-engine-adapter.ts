@@ -12,7 +12,6 @@ import type { ExecutionEngineAdapter as ExecutionEngineAdapterIface } from "../w
 import type { ExecutionEngine } from "@/runtime/services/execution-engine"
 import type { ExecutionInfo, ExecutionState } from "@/runtime/services/types"
 import type { ExecutionId } from "@/core/types"
-import { brand } from "@/core/types"
 
 export class ExecutionEngineAdapter implements ExecutionEngineAdapterIface {
   constructor(private readonly engine: ExecutionEngine) {}

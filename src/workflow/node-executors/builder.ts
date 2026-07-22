@@ -18,7 +18,8 @@
  *   }
  */
 
-import type { JsonValue, ArtifactId, ArtifactKind, SessionId } from "@/core/types"
+import type { JsonValue, ArtifactId, SessionId } from "@/core/types"
+import type { ArtifactKind } from "@/artifact/artifact-types"
 import type { WorkflowNodeResult } from "../workflow-types"
 import {
   type ExecutorInput,

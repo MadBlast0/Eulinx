@@ -15,13 +15,12 @@ import type {
   WorkflowNodeResult,
   NodeId,
 } from "../workflow-types"
-import type { JsonValue, ArtifactId } from "@/core/types"
+import type { JsonValue } from "@/core/types"
 import type { RunContext } from "../run-context"
 import type { SchedulerAdapter, ExecutionEngineAdapter, PersistenceAdapter } from "../workflow-engine"
 import type { ArtifactVerification } from "@/artifact/artifact-verify"
 import type { ArtifactManager } from "@/artifact/artifact-manager"
 import type { MergeManager } from "@/runtime/services/merge-manager"
-import type { ArtifactId } from "@/core/types"
 
 /**
  * The MCP tool provider interface that an MCP node executor depends on.

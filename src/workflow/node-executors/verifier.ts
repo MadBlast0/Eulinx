@@ -14,7 +14,9 @@
  *   }
  */
 
-import type { JsonValue, ArtifactId, VerificationFinding } from "@/core/types"
+import type { JsonValue, ArtifactId } from "@/core/types"
+import { brand } from "@/core/types"
+import type { VerificationFinding } from "@/artifact/artifact-types"
 import type { WorkflowNodeResult } from "../workflow-types"
 import {
   type ExecutorInput,
@@ -92,7 +94,7 @@ export function createVerifierExecutor(deps: VerifierExecutorDeps): NodeExecutor
 
       const verdict = verification.createDeterministicVerdict(
         artifactId,
-        artifactId,
+        brand(artifactId as string),
         fingerprint,
         outcome as "pass" | "fail",
         findings.map(
@@ -115,7 +117,7 @@ export function createVerifierExecutor(deps: VerifierExecutorDeps): NodeExecutor
       const nonEmpty = content.trim().length > 0
       const verdict = verification.createDeterministicVerdict(
         artifactId,
-        artifactId,
+        brand(artifactId as string),
         fingerprint,
         nonEmpty ? "pass" : "fail",
         [

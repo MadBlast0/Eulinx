@@ -116,9 +116,9 @@ export type {
   ExecutorInput,
   ExecutorServices,
   McpToolProvider,
-  BuilderBackend,
-  VerifierExecutorDeps,
 } from "./node-executors/types"
+export type { BuilderBackend } from "./node-executors/builder"
+export type { VerifierExecutorDeps } from "./node-executors/verifier"
 export { NodeExecutorRegistry } from "./node-executors"
 export { evaluateExpression, compileExpression } from "./node-executors/expression"
 
