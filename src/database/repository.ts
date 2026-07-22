@@ -103,9 +103,9 @@ class LocalStorageAdapter implements StorageAdapter {
     const store = this.getStore<T>(table)
     const index = store.findIndex((row) => (row as Record<string, unknown>).id === id)
     if (index === -1) throw new DatabaseError('not_found', `Row not found in ${table}: ${id}`)
-    store[index] = { ...store[index], ...data }
+    store[index] = { ...store[index], ...data } as T
     this.setStore(table, store)
-    return store[index]
+    return store[index]!
   }
 
   async remove(table: string, id: IdType): Promise<void> {
@@ -204,7 +204,7 @@ async function getAdapter(): Promise<StorageAdapter> {
   return adapterPromise
 }
 
-export abstract class BaseRepository<T extends Record<string, unknown>, TId extends IdType> {
+export abstract class BaseRepository<T extends object, TId extends IdType> {
   abstract readonly tableName: string
 
   protected async adapter(): Promise<StorageAdapter> {
@@ -213,22 +213,22 @@ export abstract class BaseRepository<T extends Record<string, unknown>, TId exte
 
   async findById(id: TId): Promise<T | null> {
     const a = await this.adapter()
-    return a.findById<T>(this.tableName, id)
+    return a.findById(this.tableName, id) as Promise<T | null>
   }
 
   async findAll(filter?: Partial<T>): Promise<T[]> {
     const a = await this.adapter()
-    return a.query<T>(this.tableName, filter as Record<string, unknown> | undefined)
+    return a.query(this.tableName, filter as Record<string, unknown> | undefined) as Promise<T[]>
   }
 
   async create(data: Omit<T, 'id'>): Promise<T> {
     const a = await this.adapter()
-    return a.insert<T>(this.tableName, data as unknown as Record<string, unknown>)
+    return a.insert(this.tableName, data as unknown as Record<string, unknown>) as Promise<T>
   }
 
   async update(id: TId, data: Partial<T>): Promise<T> {
     const a = await this.adapter()
-    return a.update<T>(this.tableName, id, data as unknown as Record<string, unknown>)
+    return a.update(this.tableName, id, data as unknown as Record<string, unknown>) as Promise<T>
   }
 
   async delete(id: TId): Promise<void> {

@@ -33,7 +33,7 @@ function now(): string {
 
 export const taskService = {
   create(title: string): Task {
-    const id = brand<string, "TaskId">(`task_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`)
+    const id = brand<TaskId>(`task_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`)
     const at = now()
     const task: TaskRecord = { id, title, status: "pending", createdAt: at, updatedAt: at }
     tasks.set(id, task)

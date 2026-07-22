@@ -46,7 +46,7 @@ export async function saveRuntimeState(state: RuntimeState): Promise<void> {
       }
     }
 
-    for (const step of state.steps.steps ?? []) {
+    for (const step of state.steps ?? []) {
       const existing = await stepRepo.findById(step.id)
       if (existing) {
         await stepRepo.update(step.id, step)

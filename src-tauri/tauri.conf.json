@@ -7,7 +7,7 @@
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
     "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "pnpm build"
+    "beforeBuildCommand": "pnpm icons && pnpm build"
   },
   "app": {
     "windows": [
@@ -31,11 +31,25 @@
     "targets": "all",
     "icon": [
       "icons/32x32.png",
+      "icons/64x64.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "embedBootstrapper"
+      }
+    },
+    "appx": {
+      "logoImage": "icons/Square44x44Logo.png",
+      "logoWideImage": "icons/Square150x150Logo.png",
+      "logoSquareImage": "icons/Square150x150Logo.png",
+      "certificateThumbprint": null,
+      "digestAlgorithm": "SHA256",
+      "timestampUrl": ""
+    }
   },
   "plugins": {
     "shell": { "open": true }

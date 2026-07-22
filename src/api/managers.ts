@@ -16,6 +16,7 @@ import { MemoryManager } from "@/memory/memory-manager"
 import { ProviderManager } from "@/providers-ai/provider-manager"
 import { SessionManager } from "@/session/session-manager"
 import { brand } from "@/core/types"
+import type { WorkspaceId } from "@/core/types"
 
 let workerSpawner: WorkerSpawner | null = null
 let lockManager: LockManager | null = null
@@ -35,7 +36,7 @@ export function getLockManager(): LockManager {
 }
 
 export function getArtifactManager(): ArtifactManager {
-  if (!artifactManager) artifactManager = new ArtifactManager(brand<string, "WorkspaceId">("default"))
+  if (!artifactManager) artifactManager = new ArtifactManager(brand<WorkspaceId>("default"))
   return artifactManager
 }
 

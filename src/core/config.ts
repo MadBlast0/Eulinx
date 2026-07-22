@@ -199,7 +199,7 @@ export function loadConfigFromEnv(): Result<AppConfig, CoreError> {
   }
 
   if (helixdbEnabled !== undefined || helixdbHost !== undefined || helixdbPort !== undefined) {
-    const helixdbOverrides: Partial<HelixDBConfig> = {}
+    const helixdbOverrides: { enabled?: boolean; host?: string; port?: number } = {}
     if (helixdbEnabled !== undefined) {
       helixdbOverrides.enabled = helixdbEnabled === "true"
     }
@@ -213,7 +213,7 @@ export function loadConfigFromEnv(): Result<AppConfig, CoreError> {
       }
       helixdbOverrides.port = port
     }
-    partials.push({ helixdb: { ...currentConfig.helixdb, ...helixdbOverrides } })
+    partials.push({ helixdb: { ...currentConfig.helixdb, ...helixdbOverrides } as HelixDBConfig })
   }
 
   if (partials.length === 0) return loadConfig()

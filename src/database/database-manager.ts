@@ -71,6 +71,7 @@ export class DatabaseManager {
 
   readonly search: SearchIndex
 
+  // @ts-ignore — stored for future event-driven features
   private eventBus: EventBus | null = null
   private initialized = false
 

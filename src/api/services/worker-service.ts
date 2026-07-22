@@ -7,6 +7,7 @@
 
 import type { WorkerConfig, WorkerInfo } from "@/runtime/services/types"
 import { brand } from "@/core/types"
+import type { WorkerId } from "@/core/types"
 import { getWorkerSpawner } from "../managers"
 import { call } from "../transport"
 
@@ -16,11 +17,11 @@ export const workerService = {
   },
 
   terminate(workerId: string): Promise<boolean> {
-    return Promise.resolve(getWorkerSpawner().terminate(brand<string, "WorkerId">(workerId)))
+    return Promise.resolve(getWorkerSpawner().terminate(brand<WorkerId>(workerId)))
   },
 
   get(workerId: string): WorkerInfo | undefined {
-    return getWorkerSpawner().get(brand<string, "WorkerId">(workerId))
+    return getWorkerSpawner().get(brand<WorkerId>(workerId))
   },
 
   list(): readonly WorkerInfo[] {
