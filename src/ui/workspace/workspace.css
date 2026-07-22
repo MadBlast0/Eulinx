@@ -170,48 +170,16 @@
   z-index: 10;
   flex-shrink: 0;
   background: transparent;
-  transition: background 120ms;
 }
 .wsx-pane-divider[data-direction="vertical"] {
-  width: 5px;
+  width: 6px;
+  height: 100%;
   cursor: col-resize;
 }
 .wsx-pane-divider[data-direction="horizontal"] {
-  height: 5px;
+  height: 6px;
+  width: 100%;
   cursor: row-resize;
-}
-.wsx-pane-divider:hover,
-.wsx-pane-divider:active {
-  background: var(--wsx-accent-dim);
-}
-.wsx-pane-divider::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  border-radius: 2px;
-  transition: background 120ms, opacity 120ms;
-  opacity: 0;
-}
-.wsx-pane-divider[data-direction="vertical"]::after {
-  left: 2px;
-  right: 2px;
-  top: 0;
-  bottom: 0;
-  background: var(--wsx-accent);
-  opacity: 0;
-}
-.wsx-pane-divider[data-direction="horizontal"]::after {
-  top: 2px;
-  bottom: 2px;
-  left: 0;
-  right: 0;
-  background: var(--wsx-accent);
-  opacity: 0;
-}
-.wsx-pane-divider:hover::after,
-.wsx-pane-divider:active::after {
-  opacity: 0.5;
 }
 
 /* Focus ring — subtle inset shadow instead of harsh outline */

@@ -104,7 +104,7 @@ const SURFACES: Record<SurfaceKey, ComponentType> = {
   knowledge: KnowledgeWorkspace,
 }
 
-const DIVIDER_WIDTH = 5
+const DIVIDER_WIDTH = 6
 
 function WorkspaceShell() {
   const {
@@ -321,7 +321,7 @@ function WorkspaceShell() {
       </div>
 
       {sidebarVisible && (
-        <div style={{ gridArea: "div-l" }}>
+        <div style={{ gridArea: "div-l", height: "100%", overflow: "hidden" }}>
           <PaneDivider direction="vertical" onResize={handleSidebarResize} />
         </div>
       )}
@@ -384,7 +384,7 @@ function WorkspaceShell() {
       </div>
 
       {inspectorVisible && (
-        <div style={{ gridArea: "div-r" }}>
+        <div style={{ gridArea: "div-r", height: "100%", overflow: "hidden" }}>
           <PaneDivider direction="vertical" onResize={handleInspectorResize} />
         </div>
       )}
