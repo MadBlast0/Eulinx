@@ -11,7 +11,6 @@ import { brand } from "@/core/types"
 import type {
   Artifact,
   ArtifactKind,
-  ArtifactCreateRequest,
   ArtifactExportBundle,
   Sensitivity,
 } from "./artifact-types"
@@ -192,7 +191,7 @@ export class ArtifactImport {
 
   /** Detect content type from source. */
   private detectContentType(
-    source: ImportSource,
+    _source: ImportSource,
     kind: ArtifactKind
   ): string {
     const typeMap: Record<ArtifactKind, string> = {
@@ -211,6 +210,7 @@ export class ArtifactImport {
       review: "text/markdown",
       verification_result: "application/json",
       merge_result: "application/json",
+      file: "application/octet-stream",
     }
     return typeMap[kind] ?? "text/plain"
   }

@@ -257,6 +257,7 @@ export interface VerificationVerdict {
   readonly outcome: VerdictOutcome
   readonly authoritative: boolean
   readonly class: "deterministic" | "ai"
+  readonly method?: string
   readonly score?: number
   readonly threshold?: number
   readonly findings: readonly VerificationFinding[]

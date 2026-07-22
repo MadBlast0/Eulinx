@@ -6,15 +6,12 @@
  * From Verification-Part01 through Part04.
  */
 
-import { generateId } from "@/core/uuid"
 import type {
   ArtifactId,
   WorkerId,
   IsoTimestamp,
 } from "@/core/types"
-import { brand } from "@/core/types"
 import type {
-  Artifact,
   VerificationVerdict,
   VerificationFinding,
   VerdictOutcome,
@@ -123,7 +120,7 @@ export class ArtifactVerification {
     )
 
     const requiredVerdicts = requiredMethods
-      ? verdicts.filter((v) => requiredMethods.includes(v.method))
+      ? verdicts.filter((v) => v.method !== undefined && requiredMethods.includes(v.method))
       : verdicts.filter((v) => v.class === "deterministic" && v.authoritative)
 
     const allRequiredPassed =
@@ -172,7 +169,8 @@ export class ArtifactVerification {
     fingerprint: string,
     outcome: VerdictOutcome,
     findings: readonly VerificationFinding[],
-    durationMs: number
+    durationMs: number,
+    method?: string
   ): VerificationVerdict {
     return {
       artifactId,
@@ -181,6 +179,7 @@ export class ArtifactVerification {
       outcome,
       authoritative: true,
       class: "deterministic",
+      method,
       findings,
       durationMs,
       createdAt: new Date().toISOString() as IsoTimestamp,
@@ -199,7 +198,8 @@ export class ArtifactVerification {
     score: number,
     threshold: number,
     findings: readonly VerificationFinding[],
-    durationMs: number
+    durationMs: number,
+    method?: string
   ): VerificationVerdict {
     return {
       artifactId,
@@ -208,6 +208,7 @@ export class ArtifactVerification {
       outcome,
       authoritative: false, // AI is always advisory
       class: "ai",
+      method,
       score,
       threshold,
       findings,

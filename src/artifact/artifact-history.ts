@@ -186,7 +186,7 @@ export class ArtifactHistory {
    */
   maxSequence(): number {
     return this.records.length > 0
-      ? this.records[this.records.length - 1].sequence
+      ? this.records[this.records.length - 1]!.sequence // Safe: length > 0 guaranteed by guard
       : 0
   }
 }

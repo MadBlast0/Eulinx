@@ -84,7 +84,7 @@ export class ArtifactLifecycle {
   validateTransition(
     from: ArtifactStatus,
     to: ArtifactStatus,
-    reason?: string
+    _reason?: string
   ): { valid: boolean; event?: ArtifactLifecycleEvent; error?: string } {
     if (!this.canTransition(from, to)) {
       return {

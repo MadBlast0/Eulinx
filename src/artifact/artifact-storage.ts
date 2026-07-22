@@ -5,8 +5,6 @@
  * ArtifactArchitecture-Part03 Â§ContentAddressing and Â§StorageTiers.
  */
 
-import { generateId } from "@/core/uuid"
-
 /**
  * Simple content hash for browser compatibility.
  * Uses FNV-1a algorithm — fast, non-cryptographic, sufficient for content addressing.
@@ -14,15 +12,14 @@ import { generateId } from "@/core/uuid"
 function fnv1aHash(data: Uint8Array): string {
   let hash = 0x811c9dc5 // FNV offset basis
   for (let i = 0; i < data.length; i++) {
-    hash ^= data[i]
+    hash ^= data[i]!
     hash = (hash * 0x01000193) >>> 0 // FNV prime, keep as u32
   }
   // Convert to hex string with leading zeros
   return hash.toString(16).padStart(8, "0")
 }
-import type { ArtifactId, WorkspaceId } from "@/core/types"
-import { brand } from "@/core/types"
-import type { Artifact, ContentRef, ArtifactCreateRequest, ArtifactKind, Sensitivity } from "./artifact-types"
+import type { ArtifactId } from "@/core/types"
+import type { Artifact, ContentRef } from "./artifact-types"
 
 // ---------------------------------------------------------------------------
 // Storage Configuration
@@ -62,7 +59,7 @@ interface SerializableArtifact {
 
 function serialize(store: Map<string, StoredArtifact>): string {
   const entries: SerializableArtifact[] = []
-  for (const [id, stored] of store) {
+  for (const [_id, stored] of store) {
     const content = typeof stored.content === "string"
       ? stored.content
       : new TextDecoder("utf-8", { fatal: false }).decode(stored.content)

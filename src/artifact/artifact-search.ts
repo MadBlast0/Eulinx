@@ -67,8 +67,9 @@ export class ArtifactSearch {
 
     // Filter by tags
     if (query.tags && query.tags.length > 0) {
+      const tags = query.tags
       candidates = candidates.filter((a) =>
-        query.tags!.some((t) => a.tags.includes(t))
+        tags.some((t) => a.tags.includes(t))
       )
     }
 

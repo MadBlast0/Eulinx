@@ -15,6 +15,8 @@ import type {
   IsoTimestamp,
   WorkerId,
   TaskId,
+  WorkflowId,
+  SessionId,
 } from "@/core/types"
 import { brand } from "@/core/types"
 import type {
@@ -29,7 +31,7 @@ import type {
   ArtifactRelationshipRequest,
   ArtifactRelationship,
   ArtifactValidationResult,
-  ArtifactExportBundle,
+  ArtifactValidationError,
   VerificationState,
   MergeState,
   Sensitivity,
@@ -207,7 +209,7 @@ export class ArtifactManager {
    * Structural validation, not semantic (correctness is verification's job).
    */
   validateArtifact(artifact: Artifact): ArtifactValidationResult {
-    const errors: ArtifactValidationResult["errors"] = []
+    const errors: ArtifactValidationError[] = []
     const warnings: string[] = []
 
     // Check kind is registered
@@ -326,7 +328,7 @@ export class ArtifactManager {
     }
     if (filter.tags && filter.tags.length > 0) {
       results = results.filter((a) =>
-        filter.tags!.some((t) => a.tags.includes(t))
+        filter.tags?.some((t) => a.tags.includes(t)) ?? false
       )
     }
     if (filter.parentArtifactId) {
@@ -413,7 +415,7 @@ export class ArtifactManager {
   createVersion(
     parentId: ArtifactId,
     content: string | Uint8Array,
-    contentType: string
+    _contentType: string
   ): { artifact: Artifact; validation: ArtifactValidationResult } | undefined {
     const parent = this.storage.getArtifact(parentId)
     if (!parent) return undefined
@@ -593,7 +595,7 @@ export class ArtifactManager {
   /** Export artifacts matching a filter. */
   exportArtifacts(
     filter: Omit<Parameters<ArtifactExport["export"]>[0], "workspaceId">,
-    artifactIds: readonly ArtifactId[]
+    _artifactIds: readonly ArtifactId[]
   ) {
     return this.export.export(
       { ...filter, workspaceId: this.workspaceId },
@@ -678,7 +680,7 @@ export class ArtifactManager {
       pendingMerge,
       lastCreatedAt: all.length > 0
         ? all.reduce((latest, a) =>
-            a.createdAt > latest ? a.createdAt : latest, all[0].createdAt
+            a.createdAt > latest ? a.createdAt : latest, all[0]!.createdAt
           )
         : undefined,
     }

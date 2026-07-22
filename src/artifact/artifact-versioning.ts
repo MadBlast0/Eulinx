@@ -6,8 +6,7 @@
  */
 
 import type { ArtifactId, IsoTimestamp } from "@/core/types"
-import type { Artifact, ArtifactKind, ArtifactDiff, DiffHunk } from "./artifact-types"
-import { brand } from "@/core/types"
+import type { Artifact, ArtifactDiff, DiffHunk } from "./artifact-types"
 
 // ---------------------------------------------------------------------------
 // Version Chain Node
@@ -99,6 +98,7 @@ export class ArtifactVersioning {
     chain.reverse()
 
     const latest = chain[chain.length - 1]
+    if (!chain[0] || !latest) return undefined
     return {
       rootId: chain[0].artifact.id,
       versions: chain,
@@ -141,8 +141,9 @@ export class ArtifactVersioning {
 
     // Walk from latest to root, return first verified
     for (let i = chain.versions.length - 1; i >= 0; i--) {
-      if (chain.versions[i].artifact.verificationState === "passed") {
-        return chain.versions[i].artifact
+      const version = chain.versions[i]
+      if (version && version.artifact.verificationState === "passed") {
+        return version.artifact
       }
     }
     return undefined
@@ -169,7 +170,7 @@ export class ArtifactVersioning {
       kind: from.kind,
       summary: hunks.length === 0
         ? "No changes"
-        : `${hunks.length} hunk(s), ${hunks.reduce((s, h) => s + h.newLineLines, 0)} line(s) changed`,
+        : `${hunks.length} hunk(s), ${hunks.reduce((s, h) => s + h.newLines, 0)} line(s) changed`,
       hunks,
     }
   }
@@ -250,9 +251,10 @@ export class ArtifactVersioning {
     // Check version numbers are contiguous from 1
     for (let i = 0; i < chain.versions.length; i++) {
       const expectedVersion = i + 1
-      if (chain.versions[i].artifact.version !== expectedVersion) {
+      const version = chain.versions[i]
+      if (version && version.artifact.version !== expectedVersion) {
         errors.push(
-          `Version gap: expected ${expectedVersion} at index ${i}, got ${chain.versions[i].artifact.version}`
+          `Version gap: expected ${expectedVersion} at index ${i}, got ${version.artifact.version}`
         )
       }
     }

@@ -7,9 +7,7 @@
 
 import { generateId } from "@/core/uuid"
 import type { ArtifactId, IsoTimestamp } from "@/core/types"
-import { brand } from "@/core/types"
 import type {
-  Artifact,
   ArtifactRelationship,
   ArtifactRelation,
   ArtifactRelationshipRequest,
@@ -64,13 +62,15 @@ export class ArtifactRelationships {
     if (!this.bySource.has(request.fromArtifactId)) {
       this.bySource.set(request.fromArtifactId, new Set())
     }
-    this.bySource.get(request.fromArtifactId)!.add(id)
+    const sourceSet = this.bySource.get(request.fromArtifactId)
+    if (sourceSet) sourceSet.add(id)
 
     // Index by target
     if (!this.byTarget.has(request.toArtifactId)) {
       this.byTarget.set(request.toArtifactId, new Set())
     }
-    this.byTarget.get(request.toArtifactId)!.add(id)
+    const targetSet = this.byTarget.get(request.toArtifactId)
+    if (targetSet) targetSet.add(id)
 
     return relationship
   }

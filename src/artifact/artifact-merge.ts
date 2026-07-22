@@ -17,8 +17,6 @@ import { brand } from "@/core/types"
 import type {
   Artifact,
   MergeResult,
-  MergeState,
-  ArtifactStatus,
 } from "./artifact-types"
 import { ArtifactLifecycle } from "./artifact-lifecycle"
 
