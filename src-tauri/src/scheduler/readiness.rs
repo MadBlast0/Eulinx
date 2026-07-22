@@ -1,5 +1,4 @@
 use crate::scheduler::time_utils::now_iso;
-use std::collections::{HashMap, HashSet};
 
 use crate::scheduler::types::{
     BlockerKind, ReadinessBlocker, ReadinessContext, ReadinessResult, SchedulingUnit,
@@ -182,6 +181,20 @@ pub fn blocker_to_wait_queue(kind: &BlockerKind) -> &'static str {
         BlockerKind::Resource => "runnable",
         BlockerKind::ToolUnavailable => "dependency_wait",
         BlockerKind::WorkspaceUnavailable => "incoming",
+    }
+}
+
+pub fn blocker_to_wait_state(kind: &BlockerKind) -> &'static str {
+    match kind {
+        BlockerKind::Dependency => "waiting_for_dependencies",
+        BlockerKind::Permission => "waiting_for_permission",
+        BlockerKind::Approval => "waiting_for_approval",
+        BlockerKind::Lock => "waiting_for_lock",
+        BlockerKind::Budget => "waiting_for_budget",
+        BlockerKind::RuntimeState => "queued",
+        BlockerKind::Resource => "ready",
+        BlockerKind::ToolUnavailable => "waiting_for_dependencies",
+        BlockerKind::WorkspaceUnavailable => "queued",
     }
 }
 

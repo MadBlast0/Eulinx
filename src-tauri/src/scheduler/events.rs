@@ -1,6 +1,5 @@
 use crate::scheduler::types::{
-    BlockerKind, FailureCategory, SchedulingPriority, SchedulingState, SchedulingUnit,
-    SchedulingUnitKind,
+    BlockerKind, FailureCategory, SchedulingPriority, SchedulingState, SchedulingUnitKind,
 };
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use serde::{Deserialize, Serialize};

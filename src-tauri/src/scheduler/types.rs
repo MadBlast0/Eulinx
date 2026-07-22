@@ -609,6 +609,19 @@ pub struct SchedulerConfig {
     pub enable_aging: bool,
     #[serde(rename = "agingIntervalMs")]
     pub aging_interval_ms: u64,
+    pub fairness: FairnessConfig,
+}
+
+impl Default for SchedulerConfig {
+    fn default() -> Self {
+        Self {
+            max_concurrency: 8,
+            budget: UNLIMITED_BUDGET_POOL,
+            enable_aging: true,
+            aging_interval_ms: 30_000,
+            fairness: DEFAULT_FAIRNESS_CONFIG,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------

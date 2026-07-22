@@ -18,39 +18,37 @@ use crate::scheduler::readiness::partition_by_readiness;
 use crate::scheduler::retries::RetryQueue;
 use crate::scheduler::time_utils::now_iso;
 use crate::scheduler::types::{
-    BlockerKind, ConcurrencyConfig, DeadEntry, FailureCategory, QueueKind, QueueSnapshotEntry,
-    RateLimitConfig, ReadinessContext, RetryPolicy, SchedulerConfig, SchedulerLifecycleState,
-    SchedulerMetrics, SchedulerQueueSnapshot, SchedulingState, SchedulingUnit,
-    SchedulingUnitKind, TickResultJson, TokenBucketConfig,
+    BlockerKind, BudgetPoolConfig, ConcurrencyConfig, DeadEntry, FailureCategory, QueueKind,
+    QueueSnapshotEntry, RateLimitConfig, ReadinessContext, RetryPolicy, SchedulerConfig,
+    SchedulerLifecycleState, SchedulerMetrics, SchedulerQueueSnapshot, SchedulingState,
+    SchedulingUnit, SchedulingUnitKind, TickResultJson, TokenBucketConfig, TokenBucketState,
 };
 use crate::scheduler::types::SchedulerEvent as SimpleEvent;
 use crate::scheduler::events::SchedulerEvent as DetailedEvent;
 
 fn get_wait_queue_for_blocker(kind: &BlockerKind) -> QueueKind {
-    match kind {
-        BlockerKind::Dependency => QueueKind::DependencyWait,
-        BlockerKind::Permission => QueueKind::PermissionWait,
-        BlockerKind::Approval => QueueKind::ApprovalWait,
-        BlockerKind::Lock => QueueKind::LockWait,
-        BlockerKind::Budget => QueueKind::BudgetWait,
-        BlockerKind::RuntimeState => QueueKind::Incoming,
-        BlockerKind::Resource => QueueKind::Runnable,
-        BlockerKind::ToolUnavailable => QueueKind::DependencyWait,
-        BlockerKind::WorkspaceUnavailable => QueueKind::Incoming,
+    match crate::scheduler::readiness::blocker_to_wait_queue(kind) {
+        "dependency_wait" => QueueKind::DependencyWait,
+        "permission_wait" => QueueKind::PermissionWait,
+        "approval_wait" => QueueKind::ApprovalWait,
+        "lock_wait" => QueueKind::LockWait,
+        "budget_wait" => QueueKind::BudgetWait,
+        "incoming" => QueueKind::Incoming,
+        "runnable" => QueueKind::Runnable,
+        _ => QueueKind::DependencyWait,
     }
 }
 
 fn get_wait_state_for_blocker(kind: &BlockerKind) -> SchedulingState {
-    match kind {
-        BlockerKind::Dependency => SchedulingState::WaitingForDependencies,
-        BlockerKind::Permission => SchedulingState::WaitingForPermission,
-        BlockerKind::Approval => SchedulingState::WaitingForApproval,
-        BlockerKind::Lock => SchedulingState::WaitingForLock,
-        BlockerKind::Budget => SchedulingState::WaitingForBudget,
-        BlockerKind::RuntimeState => SchedulingState::Queued,
-        BlockerKind::Resource => SchedulingState::Ready,
-        BlockerKind::ToolUnavailable => SchedulingState::WaitingForDependencies,
-        BlockerKind::WorkspaceUnavailable => SchedulingState::Queued,
+    match crate::scheduler::readiness::blocker_to_wait_state(kind) {
+        "waiting_for_dependencies" => SchedulingState::WaitingForDependencies,
+        "waiting_for_permission" => SchedulingState::WaitingForPermission,
+        "waiting_for_approval" => SchedulingState::WaitingForApproval,
+        "waiting_for_lock" => SchedulingState::WaitingForLock,
+        "waiting_for_budget" => SchedulingState::WaitingForBudget,
+        "queued" => SchedulingState::Queued,
+        "ready" => SchedulingState::Ready,
+        _ => SchedulingState::Queued,
     }
 }
 
@@ -256,6 +254,8 @@ impl Scheduler {
 
         self.concurrency.release(unit_id);
         self.budget.release(unit_id);
+        self.rate_limiter
+            .return_tokens(Some(&unit.workspace_id), 1.0);
         self.metrics.increment_cancellation();
 
         let mut unit = unit;
@@ -288,6 +288,8 @@ impl Scheduler {
 
         self.concurrency.release(unit_id);
         self.budget.release(unit_id);
+        self.rate_limiter
+            .return_tokens(Some(&unit.workspace_id), 1.0);
         self.metrics.record_completed();
 
         let mut unit = unit;
@@ -326,6 +328,8 @@ impl Scheduler {
 
         self.concurrency.release(unit_id);
         self.budget.release(unit_id);
+        self.rate_limiter
+            .return_tokens(Some(&unit.workspace_id), 1.0);
         self.metrics.increment_retry();
 
         let attempt = self
@@ -548,7 +552,7 @@ impl Scheduler {
         for (mut unit, result) in blocked {
             let unit_kind = unit.kind.clone();
             let unit_priority = unit.priority.clone();
-            let unit_workspace = unit.workspace_id.clone();
+            let _unit_workspace = unit.workspace_id.clone();
             let blocker = &result.blockers[0];
             let target_queue = get_wait_queue_for_blocker(&blocker.kind);
             let target_state = get_wait_state_for_blocker(&blocker.kind);
@@ -644,8 +648,38 @@ impl Scheduler {
             let unit_id = unit.id.clone();
             let workspace_id = unit.workspace_id.clone();
 
+            // Rate limit check
+            if !self.rate_limiter.is_allowed(Some(&workspace_id), 1.0) {
+                self.queues
+                    .get_mut(&QueueKind::Runnable)
+                    .unwrap()
+                    .enqueue(unit);
+                break;
+            }
+
+            // Budget reservation check
+            if let Some(ref estimate) = unit.budget_estimate {
+                if !self.budget.can_reserve(estimate) {
+                    self.rate_limiter.return_tokens(Some(&workspace_id), 1.0);
+                    let mut unit = unit;
+                    unit.state = SchedulingState::Queued;
+                    unit.updated_at = now_iso();
+                    self.queues
+                        .get_mut(&QueueKind::BudgetWait)
+                        .unwrap()
+                        .enqueue(unit);
+                    events.push(SimpleEvent::UnitBlocked);
+                    continue;
+                }
+                self.budget.reserve(&unit_id, estimate);
+            }
+
             let acquired = self.concurrency.acquire(unit_id.clone(), kind);
             if !acquired {
+                self.rate_limiter.return_tokens(Some(&workspace_id), 1.0);
+                if unit.budget_estimate.is_some() {
+                    self.budget.release(&unit_id);
+                }
                 self.queues
                     .get_mut(&QueueKind::Runnable)
                     .unwrap()
@@ -726,6 +760,57 @@ impl Scheduler {
             .map_or(0, |q| q.len() as u64);
         self.metrics.set_running_count(running_count);
     }
+
+    pub fn rate_limit_state(&self) -> (TokenBucketState, Option<TokenBucketState>) {
+        let global = self.rate_limiter.get_global_state();
+        let per_group = self
+            .rate_limiter
+            .get_group_state("default")
+            .or_else(|| self.rate_limiter.get_group_state(""));
+        (global, per_group)
+    }
+
+    pub fn budget_config(&self) -> &BudgetPoolConfig {
+        self.budget.get_config()
+    }
+
+    pub fn budget_reservations(&self) -> usize {
+        self.budget.active_reservations()
+    }
+
+    pub fn concurrency_running_count(&self) -> usize {
+        self.queues
+            .get(&QueueKind::Running)
+            .map_or(0, |q| q.len())
+    }
+
+    pub fn concurrency_remaining_capacity(&self) -> u32 {
+        self.concurrency.remaining_capacity()
+    }
+
+    pub fn concurrency_running_unit_ids(&self) -> Vec<String> {
+        self.concurrency.get_running_unit_ids()
+    }
+
+    pub fn dead_queue_get(&self, unit_id: &str) -> Option<&DeadEntry> {
+        self.dead_queue.get(unit_id)
+    }
+
+    pub fn dead_queue_remove(&mut self, unit_id: &str) -> Option<DeadEntry> {
+        self.dead_queue.remove(unit_id)
+    }
+
+    pub fn dead_queue_len(&self) -> usize {
+        self.dead_queue.len()
+    }
+
+    pub fn dead_queue_clear(&mut self) {
+        self.dead_queue.clear()
+    }
+
+    pub fn dead_queue_get_by_category(&self, category: &FailureCategory) -> Vec<&DeadEntry> {
+        self.dead_queue.get_by_category(category)
+    }
 }
 
 #[cfg(test)]
@@ -740,6 +825,7 @@ mod tests {
             budget: UNLIMITED_BUDGET_POOL,
             enable_aging: false,
             aging_interval_ms: 30_000,
+            fairness: crate::scheduler::types::DEFAULT_FAIRNESS_CONFIG,
         }
     }
 
@@ -1040,6 +1126,7 @@ mod tests {
             budget: UNLIMITED_BUDGET_POOL,
             enable_aging: false,
             aging_interval_ms: 30_000,
+            fairness: crate::scheduler::types::DEFAULT_FAIRNESS_CONFIG,
         };
         let mut scheduler = Scheduler::new(config);
         scheduler.start().unwrap();

@@ -30,6 +30,7 @@ pub struct GraphMirror {
     pub outgoing: HashMap<NodeId, Vec<EdgeId>>,
     pub incoming: HashMap<NodeId, Vec<EdgeId>>,
     pub states: HashMap<String, NodeRuntimeState>,
+    pub edge_states: HashMap<EdgeId, EdgeRuntimeState>,
     pub ready_set: HashSet<String>,
     pub running_set: HashSet<String>,
     pub topo_order: Vec<NodeId>,
@@ -352,6 +353,12 @@ pub fn build_mirror(
         }
     }
 
+    // Initialize edge states
+    let mut edge_states = HashMap::with_capacity(edges.len());
+    for edge_id in edges.keys() {
+        edge_states.insert(edge_id.clone(), EdgeRuntimeState::Pending);
+    }
+
     GraphMirror {
         snapshot_id: snapshot.snapshot_id.clone(),
         nodes,
@@ -359,6 +366,7 @@ pub fn build_mirror(
         outgoing,
         incoming,
         states,
+        edge_states,
         ready_set,
         running_set,
         topo_order,

@@ -133,6 +133,8 @@ impl WorkflowEngine {
             run_seq: 0,
             context_id: String::new(),
             restart_generation: 0,
+            budget_spent: RunBudgetSpent::default(),
+            node_runs: Vec::new(),
         };
 
         self.persistence
@@ -206,7 +208,7 @@ impl WorkflowEngine {
 
         self.emit(
             "run.created",
-            &serde_json::json!({ "run_id": run_id }),
+            &serde_json::json!({ "run_id": run_id, "snapshot_id": snapshot.snapshot_id }),
         );
 
         Ok(run)
@@ -232,7 +234,7 @@ impl WorkflowEngine {
         if run.state == WorkflowRunState::Pausing
             || run.state == WorkflowRunState::Cancelling
         {
-            drop(run);
+            let _ = run;
             self.finish_transition(run_id)?;
             return Ok(TickResult {
                 admitted: vec![],
@@ -243,7 +245,7 @@ impl WorkflowEngine {
                 run_completed: false,
             });
         }
-        drop(run);
+        let _ = run;
 
         let mirror = self
             .mirrors
@@ -273,7 +275,7 @@ impl WorkflowEngine {
             });
             keys
         };
-        drop(mirror);
+        let _ = mirror;
 
         if ready_states.is_empty() && !has_running {
             return self.finalize_run(run_id);
@@ -359,6 +361,20 @@ impl WorkflowEngine {
         let mut deferred_ids = Vec::new();
         let mut rejected_ids = Vec::new();
 
+        let (workspace_id, project_id, session_id, determinism_seed, mode) = {
+            let run = self
+                .runs
+                .get(run_id)
+                .ok_or(WorkflowError::RunNotFound { run_id: run_id.to_string() })?;
+            (
+                run.workspace_id.clone(),
+                run.project_id.clone(),
+                run.session_id.clone(),
+                run.determinism_seed.clone(),
+                run.mode.clone(),
+            )
+        };
+
         {
             let run = self
                 .runs
@@ -370,14 +386,35 @@ impl WorkflowEngine {
                 .ok_or(WorkflowError::RunNotFound { run_id: run_id.to_string() })?;
 
             for candidate_key in &response.admitted {
-                mirror.ready_set.remove(candidate_key);
-                if let Some(state) = mirror.states.get_mut(candidate_key) {
-                    state.state = NodeState::Running;
-                    state.attempt += 1;
-                    let execution_id = uuid::Uuid::new_v4().to_string();
-                    state.execution_id = Some(execution_id.clone());
-                    mirror.running_set.insert(candidate_key.clone());
+                let (node_id, iteration_index) = parse_state_key(candidate_key)
+                    .map_err(|e| WorkflowError::InternalError { message: e })?;
 
+                let current_attempt = mirror
+                    .states
+                    .get(candidate_key)
+                    .map(|s| s.attempt)
+                    .unwrap_or(0);
+
+                let execution_id = uuid::Uuid::new_v4().to_string();
+
+                update_node_state(
+                    mirror,
+                    &node_id,
+                    iteration_index,
+                    &NodeStateUpdate {
+                        state: Some(NodeState::Running),
+                        attempt: Some(current_attempt + 1),
+                        execution_id: Some(Some(execution_id.clone())),
+                        ..Default::default()
+                    },
+                )
+                .map_err(|_e| WorkflowError::IllegalNodeTransition {
+                    node_id: node_id.clone(),
+                    from: "ready".to_string(),
+                    to: "running".to_string(),
+                })?;
+
+                if let Some(state) = mirror.states.get(candidate_key) {
                     if let Err(e) = self.persistence.save_node_state(state) {
                         return Err(WorkflowError::PersistenceFailed { message: e });
                     }
@@ -416,17 +453,17 @@ impl WorkflowEngine {
                             .unwrap_or(serde_json::Value::Null),
                         inputs: HashMap::new(),
                         iteration_index: state.iteration_index,
-                        workspace_id: run.workspace_id.clone(),
-                        project_id: run.project_id.clone(),
-                        session_id: run.session_id.clone(),
+                        workspace_id: workspace_id.clone(),
+                        project_id: project_id.clone(),
+                        session_id: session_id.clone(),
                         owner_ref,
                         timeout_ms: mirror
                             .nodes
                             .get(&state.node_id)
                             .map(|n| n.timeout_ms)
                             .unwrap_or(30000),
-                        deterministic_seed: run.determinism_seed.clone(),
-                        mode: run.mode.clone(),
+                        deterministic_seed: determinism_seed.clone(),
+                        mode: mode.clone(),
                     };
 
                     if let Err(e) = self.executor.execute(&exec_req) {
@@ -455,26 +492,46 @@ impl WorkflowEngine {
             }
 
             for rejected in &response.rejected {
-                mirror.ready_set.remove(&rejected.key);
-                mirror.running_set.remove(&rejected.key);
-                if let Some(state) = mirror.states.get_mut(&rejected.key) {
-                    state.state = NodeState::Failed;
-                    run.failed_node_count += 1;
-                    rejected_ids.push(rejected.key.clone());
+                let (node_id, iteration_index) = parse_state_key(&rejected.key)
+                    .map_err(|e| WorkflowError::InternalError { message: e })?;
 
+                if let Err(e) = update_node_state(
+                    mirror,
+                    &node_id,
+                    iteration_index,
+                    &NodeStateUpdate {
+                        state: Some(NodeState::Failed),
+                        ..Default::default()
+                    },
+                ) {
+                    events.push((
+                        "node.transition_error".to_string(),
+                        serde_json::json!({
+                            "run_id": run_id,
+                            "node_id": node_id,
+                            "error": e,
+                        }),
+                    ));
+                    continue;
+                }
+
+                run.failed_node_count += 1;
+                rejected_ids.push(rejected.key.clone());
+
+                if let Some(state) = mirror.states.get(&rejected.key) {
                     if let Err(e) = self.persistence.save_node_state(state) {
                         return Err(WorkflowError::PersistenceFailed { message: e });
                     }
-
-                    events.push((
-                        "node.failed".to_string(),
-                        serde_json::json!({
-                            "run_id": run_id,
-                            "node_id": rejected.key,
-                            "reason": rejected.reason,
-                        }),
-                    ));
                 }
+
+                events.push((
+                    "node.failed".to_string(),
+                    serde_json::json!({
+                        "run_id": run_id,
+                        "node_id": rejected.key,
+                        "reason": rejected.reason,
+                    }),
+                ));
             }
 
             if let Err(e) = self.persistence.save_run(run) {
@@ -510,9 +567,9 @@ impl WorkflowEngine {
         if is_run_terminal(&run.state) {
             return Ok(());
         }
-        drop(run);
+        let _ = run;
 
-        let (state_key, state) = {
+        let (state_key, _state) = {
             let mirror = self
                 .mirrors
                 .get(run_id)
@@ -541,16 +598,35 @@ impl WorkflowEngine {
                 .get_mut(run_id)
                 .ok_or(WorkflowError::RunNotFound { run_id: run_id.to_string() })?;
 
-            mirror.running_set.remove(&state_key);
-
             match result {
                 WorkflowNodeResult::Success { .. } => {
-                    let mut state = state;
-                    state.state = NodeState::Succeeded;
+                    let (node_id, iteration_index) = parse_state_key(&state_key)
+                        .map_err(|e| WorkflowError::InternalError { message: e })?;
+
+                    update_node_state(
+                        mirror,
+                        &node_id,
+                        iteration_index,
+                        &NodeStateUpdate {
+                            state: Some(NodeState::Succeeded),
+                            ..Default::default()
+                        },
+                    )
+                    .map_err(|_e| WorkflowError::IllegalNodeTransition {
+                        node_id: node_id.clone(),
+                        from: "running".to_string(),
+                        to: "succeeded".to_string(),
+                    })?;
+
                     run.completed_node_count += 1;
 
-                    if let Some(edge_ids) = mirror.outgoing.get(&state.node_id) {
+                    if let Some(edge_ids) = mirror.outgoing.get(&node_id) {
                         for eid in edge_ids {
+                            // Transition edge to Fired
+                            mirror
+                                .edge_states
+                                .insert(eid.clone(), EdgeRuntimeState::Traversed);
+
                             if let Some(edge) = mirror.edges.get(eid) {
                                 let target_keys: Vec<String> = mirror
                                     .states
@@ -566,7 +642,8 @@ impl WorkflowEngine {
                                 for tk in target_keys {
                                     if let Some(ts) = mirror.states.get_mut(&tk) {
                                         if ts.state == NodeState::Pending {
-                                            ts.remaining_deps = ts.remaining_deps.saturating_sub(1);
+                                            ts.remaining_deps =
+                                                ts.remaining_deps.saturating_sub(1);
                                             if ts.remaining_deps == 0 {
                                                 ts.state = NodeState::Ready;
                                                 mirror.ready_set.insert(tk);
@@ -578,10 +655,11 @@ impl WorkflowEngine {
                         }
                     }
 
-                    if let Err(e) = self.persistence.save_node_state(&state) {
-                        return Err(WorkflowError::PersistenceFailed { message: e });
+                    if let Some(state) = mirror.states.get(&state_key) {
+                        if let Err(e) = self.persistence.save_node_state(state) {
+                            return Err(WorkflowError::PersistenceFailed { message: e });
+                        }
                     }
-                    mirror.states.insert(state_key, state);
 
                     events.push((
                         "node.succeeded".to_string(),
@@ -592,55 +670,88 @@ impl WorkflowEngine {
                     ));
                 }
                 WorkflowNodeResult::Failure { failure, .. } => {
-                    let max_retries = 3;
-                    let mut state = state;
-                    let should_retry = state.attempt < max_retries;
+                    let max_retries = DEFAULT_RETRY_POLICY.max_attempts;
+                    let (node_id, iteration_index) = parse_state_key(&state_key)
+                        .map_err(|e| WorkflowError::InternalError { message: e })?;
+
+                    let current_attempt = mirror
+                        .states
+                        .get(&state_key)
+                        .map(|s| s.attempt)
+                        .unwrap_or(0);
+
+                    let should_retry = current_attempt < max_retries;
 
                     if should_retry {
-                        state.state = NodeState::Ready;
-                        state.execution_id = None;
-                        mirror.ready_set.insert(state_key.clone());
+                        update_node_state(
+                            mirror,
+                            &node_id,
+                            iteration_index,
+                            &NodeStateUpdate {
+                                state: Some(NodeState::Ready),
+                                execution_id: Some(None),
+                                ..Default::default()
+                            },
+                        )
+                        .map_err(|_e| WorkflowError::IllegalNodeTransition {
+                            node_id: node_id.clone(),
+                            from: "running".to_string(),
+                            to: "ready".to_string(),
+                        })?;
 
                         events.push((
                             "node.retrying".to_string(),
                             serde_json::json!({
                                 "run_id": run_id,
-                                "node_id": state.node_id,
-                                "attempt": state.attempt,
+                                "node_id": node_id,
+                                "attempt": current_attempt,
                                 "max_retries": max_retries,
                             }),
                         ));
                     } else {
-                        state.state = NodeState::Failed;
+                        update_node_state(
+                            mirror,
+                            &node_id,
+                            iteration_index,
+                            &NodeStateUpdate {
+                                state: Some(NodeState::Failed),
+                                ..Default::default()
+                            },
+                        )
+                        .map_err(|_e| WorkflowError::IllegalNodeTransition {
+                            node_id: node_id.clone(),
+                            from: "running".to_string(),
+                            to: "failed".to_string(),
+                        })?;
+
                         run.failed_node_count += 1;
 
                         events.push((
                             "node.failed".to_string(),
                             serde_json::json!({
                                 "run_id": run_id,
-                                "node_id": state.node_id,
+                                "node_id": node_id,
                                 "execution_id": execution_id,
                                 "error": failure.message,
                             }),
                         ));
                     }
 
-                    if let Err(e) = self.persistence.save_node_state(&state) {
-                        return Err(WorkflowError::PersistenceFailed { message: e });
+                    if let Some(state) = mirror.states.get(&state_key) {
+                        if let Err(e) = self.persistence.save_node_state(state) {
+                            return Err(WorkflowError::PersistenceFailed { message: e });
+                        }
                     }
 
-                    let node_id_for_policy = state.node_id.clone();
-                    mirror.states.insert(state_key.clone(), state);
-
                     if !should_retry {
-                        if let Some(node_def) = mirror.nodes.get(&node_id_for_policy) {
+                        if let Some(node_def) = mirror.nodes.get(&node_id) {
                             if node_def.failure_policy == Some(FailurePolicy::FailRun) {
                                 run.state = WorkflowRunState::Failed;
                                 events.push((
                                     "run.failed".to_string(),
                                     serde_json::json!({
                                         "run_id": run_id,
-                                        "failed_node": node_id_for_policy,
+                                        "failed_node": node_id,
                                     }),
                                 ));
                             }

@@ -70,6 +70,7 @@ pub fn run() {
                 budget: crate::scheduler::types::UNLIMITED_BUDGET_POOL,
                 enable_aging: true,
                 aging_interval_ms: 30_000,
+                fairness: crate::scheduler::types::DEFAULT_FAIRNESS_CONFIG,
             };
             app.manage(crate::managers::scheduler_manager::SchedulerManager::new(
                 handle.clone(),
@@ -152,6 +153,14 @@ pub fn run() {
             commands::scheduler_cmd::scheduler_get_queue_snapshot,
             commands::scheduler_cmd::scheduler_get_metrics,
             commands::scheduler_cmd::scheduler_get_dead_queue,
+            commands::scheduler_cmd::scheduler_get_rate_limit_state,
+            commands::scheduler_cmd::scheduler_get_budget_info,
+            commands::scheduler_cmd::scheduler_get_concurrency_info,
+            commands::scheduler_cmd::scheduler_dead_queue_get,
+            commands::scheduler_cmd::scheduler_dead_queue_remove,
+            commands::scheduler_cmd::scheduler_dead_queue_len,
+            commands::scheduler_cmd::scheduler_dead_queue_clear,
+            commands::scheduler_cmd::scheduler_dead_queue_get_by_category,
             // Workflow
             commands::workflow_cmd::workflow_init,
             commands::workflow_cmd::workflow_create_run,

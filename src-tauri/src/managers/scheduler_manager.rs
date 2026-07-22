@@ -9,7 +9,21 @@ use crate::scheduler::scheduler::Scheduler;
 use crate::scheduler::types::{
     DeadEntry, FailureCategory, SchedulerConfig, SchedulerEvent, SchedulerLifecycleState,
     SchedulerMetrics, SchedulerQueueSnapshot, SchedulingUnitJson, TickResultJson,
+    TokenBucketState,
 };
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct BudgetInfo {
+    pub config: crate::scheduler::types::BudgetPoolConfig,
+    pub active_reservations: usize,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ConcurrencyInfo {
+    pub running_count: usize,
+    pub remaining_capacity: u32,
+    pub running_unit_ids: Vec<String>,
+}
 
 pub struct SchedulerManager {
     scheduler: Mutex<Option<Scheduler>>,
@@ -158,6 +172,64 @@ impl SchedulerManager {
         )
     }
 
+    pub fn get_rate_limit_state(
+        &self,
+    ) -> ApiResult<(TokenBucketState, Option<TokenBucketState>)> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.rate_limit_state())))
+    }
+
+    pub fn get_budget_info(&self) -> ApiResult<BudgetInfo> {
+        Self::map_err(self.with_scheduler(|s| {
+            Ok(BudgetInfo {
+                config: s.budget_config().clone(),
+                active_reservations: s.budget_reservations(),
+            })
+        }))
+    }
+
+    pub fn get_concurrency_info(&self) -> ApiResult<ConcurrencyInfo> {
+        Self::map_err(self.with_scheduler(|s| {
+            Ok(ConcurrencyInfo {
+                running_count: s.concurrency_running_count(),
+                remaining_capacity: s.concurrency_remaining_capacity(),
+                running_unit_ids: s.concurrency_running_unit_ids(),
+            })
+        }))
+    }
+
+    pub fn dead_queue_get(&self, unit_id: String) -> ApiResult<Option<DeadEntry>> {
+        Self::map_err(self.with_scheduler(|s| {
+            Ok(s.dead_queue_get(&unit_id).cloned())
+        }))
+    }
+
+    pub fn dead_queue_remove(&self, unit_id: String) -> ApiResult<Option<DeadEntry>> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.dead_queue_remove(&unit_id))))
+    }
+
+    pub fn dead_queue_len(&self) -> ApiResult<usize> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.dead_queue_len())))
+    }
+
+    pub fn dead_queue_clear(&self) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| {
+            s.dead_queue_clear();
+            Ok(())
+        }))
+    }
+
+    pub fn dead_queue_get_by_category(
+        &self,
+        category: FailureCategory,
+    ) -> ApiResult<Vec<DeadEntry>> {
+        Self::map_err(self.with_scheduler(|s| {
+            Ok(s.dead_queue_get_by_category(&category)
+                .into_iter()
+                .cloned()
+                .collect())
+        }))
+    }
+
     fn emit_scheduler_event(&self, event: &SchedulerEvent, _payload: Option<Value>) {
         let event_name = match event {
             SchedulerEvent::Started => "scheduler://started",
@@ -196,6 +268,7 @@ mod tests {
             budget: crate::scheduler::types::UNLIMITED_BUDGET_POOL,
             enable_aging: true,
             aging_interval_ms: 30_000,
+            fairness: crate::scheduler::types::DEFAULT_FAIRNESS_CONFIG,
         };
         let manager = SchedulerManager::new(app, config);
         assert!(manager.scheduler.lock().unwrap().is_none());
@@ -212,6 +285,7 @@ mod tests {
             budget: crate::scheduler::types::UNLIMITED_BUDGET_POOL,
             enable_aging: false,
             aging_interval_ms: 0,
+            fairness: crate::scheduler::types::DEFAULT_FAIRNESS_CONFIG,
         };
         let manager = SchedulerManager::new(app, config);
 
@@ -228,6 +302,7 @@ mod tests {
             budget: crate::scheduler::types::UNLIMITED_BUDGET_POOL,
             enable_aging: false,
             aging_interval_ms: 0,
+            fairness: crate::scheduler::types::DEFAULT_FAIRNESS_CONFIG,
         };
         let manager = SchedulerManager::new(app, config);
 
@@ -244,6 +319,7 @@ mod tests {
             budget: crate::scheduler::types::UNLIMITED_BUDGET_POOL,
             enable_aging: true,
             aging_interval_ms: 30_000,
+            fairness: crate::scheduler::types::DEFAULT_FAIRNESS_CONFIG,
         };
         let manager = SchedulerManager::new(app, config);
         manager.initialize().unwrap();
@@ -259,6 +335,7 @@ mod tests {
             budget: crate::scheduler::types::UNLIMITED_BUDGET_POOL,
             enable_aging: false,
             aging_interval_ms: 0,
+            fairness: crate::scheduler::types::DEFAULT_FAIRNESS_CONFIG,
         };
         let manager = SchedulerManager::new(app, config);
 

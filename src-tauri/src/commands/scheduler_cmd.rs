@@ -1,9 +1,9 @@
 use tauri::State;
 
-use crate::managers::scheduler_manager::SchedulerManager;
+use crate::managers::scheduler_manager::{BudgetInfo, ConcurrencyInfo, SchedulerManager};
 use crate::scheduler::types::{
     DeadEntry, FailureCategory, SchedulerLifecycleState, SchedulerMetrics,
-    SchedulerQueueSnapshot, SchedulingUnitJson, TickResultJson,
+    SchedulerQueueSnapshot, SchedulingUnitJson, TickResultJson, TokenBucketState,
 };
 
 #[tauri::command]
@@ -119,6 +119,67 @@ pub fn scheduler_get_dead_queue(
     manager: State<'_, SchedulerManager>,
 ) -> Result<Vec<DeadEntry>, String> {
     manager.get_dead_queue().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn scheduler_get_rate_limit_state(
+    manager: State<'_, SchedulerManager>,
+) -> Result<(TokenBucketState, Option<TokenBucketState>), String> {
+    manager.get_rate_limit_state().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn scheduler_get_budget_info(
+    manager: State<'_, SchedulerManager>,
+) -> Result<BudgetInfo, String> {
+    manager.get_budget_info().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn scheduler_get_concurrency_info(
+    manager: State<'_, SchedulerManager>,
+) -> Result<ConcurrencyInfo, String> {
+    manager.get_concurrency_info().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn scheduler_dead_queue_get(
+    manager: State<'_, SchedulerManager>,
+    unit_id: String,
+) -> Result<Option<DeadEntry>, String> {
+    manager.dead_queue_get(unit_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn scheduler_dead_queue_remove(
+    manager: State<'_, SchedulerManager>,
+    unit_id: String,
+) -> Result<Option<DeadEntry>, String> {
+    manager.dead_queue_remove(unit_id).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn scheduler_dead_queue_len(
+    manager: State<'_, SchedulerManager>,
+) -> Result<usize, String> {
+    manager.dead_queue_len().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn scheduler_dead_queue_clear(
+    manager: State<'_, SchedulerManager>,
+) -> Result<(), String> {
+    manager.dead_queue_clear().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn scheduler_dead_queue_get_by_category(
+    manager: State<'_, SchedulerManager>,
+    category: FailureCategory,
+) -> Result<Vec<DeadEntry>, String> {
+    manager
+        .dead_queue_get_by_category(category)
+        .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

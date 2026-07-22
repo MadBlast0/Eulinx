@@ -281,6 +281,7 @@ pub enum WorkflowError {
     ContextWriteConflict { key: String },
     ResultForUnknownExecution { execution_id: String },
     ResultForNonRunningNode { node_id: String },
+    InternalError { message: String },
 }
 
 impl fmt::Display for WorkflowError {
@@ -517,6 +518,17 @@ pub struct RunBudgetSpent {
     pub tokens: u64,
 }
 
+impl Default for RunBudgetSpent {
+    fn default() -> Self {
+        Self {
+            wall_clock_ms: 0,
+            node_runs: 0,
+            cost_usd: 0.0,
+            tokens: 0,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct RunFailure {
@@ -570,6 +582,10 @@ pub struct WorkflowRun {
     pub restart_generation: u32,
     #[serde(rename = "determinismSeed")]
     pub determinism_seed: DeterminismSeed,
+    #[serde(rename = "budgetSpent")]
+    pub budget_spent: RunBudgetSpent,
+    #[serde(rename = "nodeRuns")]
+    pub node_runs: Vec<NodeRun>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -788,6 +804,12 @@ pub struct WorkflowEngineConfig {
     pub default_run_budget: RunBudget,
 }
 
+impl Default for WorkflowEngineConfig {
+    fn default() -> Self {
+        DEFAULT_ENGINE_CONFIG
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
@@ -806,17 +828,11 @@ pub const RUN_STATE_TERMINAL: &[WorkflowRunState] = &[
 ];
 
 pub fn is_node_terminal(state: &NodeState) -> bool {
-    matches!(
-        state,
-        NodeState::Succeeded | NodeState::Failed | NodeState::Skipped | NodeState::Cancelled
-    )
+    NODE_STATE_TERMINAL.contains(state)
 }
 
 pub fn is_run_terminal(state: &WorkflowRunState) -> bool {
-    matches!(
-        state,
-        WorkflowRunState::Succeeded | WorkflowRunState::Failed | WorkflowRunState::Cancelled
-    )
+    RUN_STATE_TERMINAL.contains(state)
 }
 
 pub const DEFAULT_RETRY_POLICY: RetryPolicy = RetryPolicy {
@@ -1670,6 +1686,8 @@ mod tests {
             failure: None,
             restart_generation: 0,
             determinism_seed: "seed-1".into(),
+            budget_spent: RunBudgetSpent::default(),
+            node_runs: Vec::new(),
         };
         let json = serde_json::to_string(&run).unwrap();
         let deserialized: WorkflowRun = serde_json::from_str(&json).unwrap();
