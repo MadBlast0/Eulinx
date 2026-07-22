@@ -9,8 +9,6 @@ import type {
   PromptTemplate,
   RenderedPrompt,
   PromptProfile,
-  PromptCacheEntry,
-  PromptValidationResult,
   PromptEvent,
   PromptEventType,
 } from "./prompt-types"
@@ -22,7 +20,7 @@ import { createLogger } from "@/core/logger"
 import type { Logger } from "@/core/logger"
 import type { Result } from "@/core/result"
 import { err, ok } from "@/core/result"
-import type { CoreError } from "@/core/error"
+import { CoreError } from "@/core/error"
 
 // ---------------------------------------------------------------------------
 // Prompt Manager
@@ -56,19 +54,13 @@ export class PromptManager {
     // Validate
     const validation = this.validator.validateTemplate(template)
     if (!validation.valid) {
-      return err({
-        code: "validation_error",
-        message: `Invalid template: ${validation.errors.map((e) => e.message).join(", ")}`,
-      })
+      return err(new CoreError("validation_error", `Invalid template: ${validation.errors.map((e) => e.message).join(", ")}`))
     }
 
     // Check version doesn't exist
     const existing = this.templates.get(template.id)
     if (existing?.some((t) => t.version === template.version)) {
-      return err({
-        code: "validation_error",
-        message: `Version ${template.version} already exists for template ${template.id}`,
-      })
+      return err(new CoreError("validation_error", `Version ${template.version} already exists for template ${template.id}`))
     }
 
     // Store
@@ -89,10 +81,13 @@ export class PromptManager {
   ): Result<PromptTemplate, CoreError> {
     const versions = this.templates.get(id)
     if (!versions || versions.length === 0) {
-      return err({ code: "validation_error", message: `Template not found: ${id}` })
+      return err(new CoreError("validation_error", `Template not found: ${id}`))
     }
 
     const latest = versions[versions.length - 1]
+    if (!latest) {
+      return err(new CoreError("validation_error", `Template not found: ${id}`))
+    }
     const newVersion: PromptTemplate = {
       ...latest,
       ...updates,
@@ -102,10 +97,7 @@ export class PromptManager {
 
     const validation = this.validator.validateTemplate(newVersion)
     if (!validation.valid) {
-      return err({
-        code: "validation_error",
-        message: `Invalid template: ${validation.errors.map((e) => e.message).join(", ")}`,
-      })
+      return err(new CoreError("validation_error", `Invalid template: ${validation.errors.map((e) => e.message).join(", ")}`))
     }
 
     versions.push(newVersion)
@@ -150,7 +142,7 @@ export class PromptManager {
   ): Promise<Result<OptimizationResult, CoreError>> {
     const template = this.getTemplate(id)
     if (!template) {
-      return err({ code: "validation_error", message: `Template not found: ${id}` })
+      return err(new CoreError("validation_error", `Template not found: ${id}`))
     }
 
     const result = llmExecutor
@@ -206,16 +198,13 @@ export class PromptManager {
   ): Result<RenderedPrompt, CoreError> {
     const template = this.getTemplate(templateId, version)
     if (!template) {
-      return err({ code: "validation_error", message: `Template not found: ${templateId}` })
+      return err(new CoreError("validation_error", `Template not found: ${templateId}`))
     }
 
     // Validate variables
     const varValidation = this.validator.validateVariables(template, variables)
     if (!varValidation.valid) {
-      return err({
-        code: "validation_error",
-        message: `Missing variables: ${varValidation.errors.map((e) => e.message).join(", ")}`,
-      })
+      return err(new CoreError("validation_error", `Missing variables: ${varValidation.errors.map((e) => e.message).join(", ")}`))
     }
 
     // Check cache first
@@ -243,12 +232,12 @@ export class PromptManager {
   ): Result<RenderedPrompt, CoreError> {
     const profile = this.getActiveProfile()
     if (!profile) {
-      return err({ code: "validation_error", message: "No active prompt profile" })
+      return err(new CoreError("validation_error", "No active prompt profile"))
     }
 
     const templateId = profile.rolePrompts[role]
     if (!templateId) {
-      return err({ code: "validation_error", message: `No prompt for role: ${role}` })
+      return err(new CoreError("validation_error", `No prompt for role: ${role}`))
     }
 
     return this.render(templateId, variables)
@@ -277,7 +266,8 @@ export class PromptManager {
     if (!this.eventListeners.has(eventType)) {
       this.eventListeners.set(eventType, new Set())
     }
-    this.eventListeners.get(eventType)!.add(listener)
+    const listeners = this.eventListeners.get(eventType)
+    if (listeners) listeners.add(listener)
   }
 
   off(eventType: PromptEventType, listener: (event: PromptEvent) => void): void {

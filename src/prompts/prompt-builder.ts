@@ -12,8 +12,6 @@ import type { PromptTemplate, RenderedPrompt } from "./prompt-types"
 // ---------------------------------------------------------------------------
 
 export class PromptBuilder {
-  private readonly templateCache = new Map<string, RegExp>()
-
   /** Render a template with variables */
   render(
     template: PromptTemplate,
@@ -67,7 +65,7 @@ export class PromptBuilder {
 
     for (const [key, value] of Object.entries(variables)) {
       const pattern = this.getVariablePattern()
-      result = result.replaceAll(pattern(key), value)
+      result = result.split(pattern(key)).join(value)
     }
 
     return result

@@ -73,7 +73,6 @@ describe("PromptBuilder", () => {
     const valid = builder.validateSyntax("Hello {{name}}")
     expect(valid.valid).toBe(true)
 
-    const invalid = builder.validateSyntax("Hello {{name}}")
     expect(valid.errors).toHaveLength(0)
   })
 

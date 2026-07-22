@@ -12,7 +12,7 @@ import type {
 import { createLogger } from "@/core/logger"
 import type { Logger } from "@/core/logger"
 import type { Result } from "@/core/result"
-import { err, ok } from "@/core/result"
+import { ok } from "@/core/result"
 import type { CoreError } from "@/core/error"
 
 // ---------------------------------------------------------------------------

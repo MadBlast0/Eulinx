@@ -5,7 +5,7 @@
  * From PromptOptimization-Part01 through Part04.
  */
 
-import type { JsonObject, IsoTimestamp } from "@/core/types"
+import type { IsoTimestamp } from "@/core/types"
 
 // ---------------------------------------------------------------------------
 // Prompt Type
