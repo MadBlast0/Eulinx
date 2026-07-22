@@ -111,6 +111,7 @@ function WorkspaceShell() {
     leftSidebarOpen,
     rightSidebarOpen,
     bottomPanelOpen,
+    setBottomPanelOpen,
     setOverlay,
     selectedId,
     removeNode,
@@ -159,6 +160,7 @@ function WorkspaceShell() {
   useCommand("app.openSettings", () => setOverlay("settings"))
   useCommand("view.toggleLeftSidebar", () => toggleLeftSidebar())
   useCommand("view.toggleRightSidebar", () => toggleRightSidebar())
+  useCommand("view.toggleBottomPanel", () => setBottomPanelOpen(!bottomPanelOpen))
   useCommand("node.delete", () => {
     if (selectedId) removeNode(selectedId)
   })
