@@ -1,6 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core"
 import type { ProviderId } from "@/core/types"
-import type { ProviderAdapter, CompletionRequest, CompletionResponse } from "./provider-types"
+import type { CompletionRequest, CompletionResponse } from "./provider-types"
 import { ProviderRegistry } from "./provider-registry"
 import { createLogger } from "@/core/logger"
 import type { Logger } from "@/core/logger"
@@ -254,7 +254,8 @@ export class ProviderInvoker {
     if (!this.eventListeners.has(eventType)) {
       this.eventListeners.set(eventType, new Set())
     }
-    this.eventListeners.get(eventType)!.add(listener)
+    const listeners = this.eventListeners.get(eventType)
+    if (listeners) listeners.add(listener)
   }
 
   off(eventType: InvokerEventType, listener: (event: InvokerEvent) => void): void {

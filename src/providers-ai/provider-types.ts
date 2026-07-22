@@ -5,8 +5,7 @@
  * From ModelProfiles-Part01 through Part04.
  */
 
-import type { ProviderId, JsonObject, JsonValue } from "@/core/types"
-import type { ProviderStatus } from "@/core/enums"
+import type { ProviderId, JsonObject } from "@/core/types"
 import type { IsoTimestamp } from "@/core/types"
 
 // ---------------------------------------------------------------------------

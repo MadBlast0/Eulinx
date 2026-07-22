@@ -2,10 +2,11 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { getBus } from "@/ui/workspace/runtime-store"
 
 /** Maps a NotificationProvider severity to the EventBus payload severity. */
-function toBusSeverity(type: "info" | "success" | "warning" | "error"): "info" | "warning" | "error" {
+function _toBusSeverity(type: "info" | "success" | "warning" | "error"): "info" | "warning" | "error" {
   if (type === "success" || type === "info") return "info"
   return type
 }
+void _toBusSeverity
 
 export interface Notification {
   id?: string
@@ -127,7 +128,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           const p = event.payload as { executionId: string; outcome: string }
           title = "Task completed"
           message = `Execution ${p.executionId} finished (${p.outcome}).`
-          severity = "success"
+          severity = "info"
           subjectId = p.executionId
         } else if (event.type === "execution.failed") {
           const p = event.payload as { executionId: string; failure?: { message: string } }

@@ -13,11 +13,10 @@ import type {
   CompletionRequest,
   CompletionResponse,
   StreamEvent,
-  ResolutionRequest,
-  ResolutionResult,
   ProviderEvent,
   ProviderEventType,
 } from "./provider-types"
+import type { ResolutionRequest, ResolutionResult } from "./provider-resolver"
 import { ProviderRegistry } from "./provider-registry"
 import { CapabilityResolver } from "./provider-resolver"
 import { FallbackChain } from "./provider-fallback"
@@ -238,7 +237,8 @@ export class ProviderManager {
     if (!this.eventListeners.has(eventType)) {
       this.eventListeners.set(eventType, new Set())
     }
-    this.eventListeners.get(eventType)!.add(listener)
+    const listeners = this.eventListeners.get(eventType)
+    if (listeners) listeners.add(listener)
   }
 
   /** Unsubscribe from provider events */

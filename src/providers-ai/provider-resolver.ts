@@ -7,7 +7,7 @@
  */
 
 import type { ProviderId } from "@/core/types"
-import type { ModelProfile, CapabilityTag, Pricing } from "./provider-types"
+import type { ModelProfile, CapabilityTag } from "./provider-types"
 import { createLogger } from "@/core/logger"
 import type { Logger } from "@/core/logger"
 
@@ -113,7 +113,9 @@ export class CapabilityResolver {
       return scoreB - scoreA
     })
 
-    const best = sorted[0]
+    if (sorted.length === 0) return undefined
+
+    const best = sorted[0]!
     const alternatives = sorted.slice(1)
 
     return {
