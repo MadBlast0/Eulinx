@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import {
   BarChart3,
   Boxes,
@@ -357,6 +357,10 @@ function ProjectItem({
   onSelectView: (viewId: string) => void
 }) {
   const [open, setOpen] = useState(isActive)
+
+  useEffect(() => {
+    if (isActive) setOpen(true)
+  }, [isActive])
 
   return (
     <SidebarProject

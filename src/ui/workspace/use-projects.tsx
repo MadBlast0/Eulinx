@@ -122,7 +122,6 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     if (!activeProject) return null
     return (
       activeProject.views.find((v) => v.id === activeProject.activeViewId) ??
-      activeProject.views[0] ??
       null
     )
   }, [activeProject])
