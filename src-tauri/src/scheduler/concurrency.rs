@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::scheduler::types::{ConcurrencyConfig, SchedulingUnitKind};
+use crate::scheduler::types::{ConcurrencyConfig, ConcurrencyPolicy, SchedulingUnitKind};
 
 pub struct ConcurrencyLimiter {
     config: ConcurrencyConfig,
@@ -85,6 +85,30 @@ impl ConcurrencyLimiter {
     pub fn reset(&mut self) {
         self.running.clear();
         self.kind_counts.clear();
+    }
+
+    /// Determine if acquisition should be allowed based on the given policy.
+    /// For FIFO: always allow if within limits.
+    /// For Priority: allow if within limits (priority is handled by queue ordering).
+    /// For Fair: allow if within limits and group fairness is maintained.
+    pub fn can_acquire_with_policy(&self, kind: &SchedulingUnitKind, policy: &ConcurrencyPolicy) -> bool {
+        match policy {
+            ConcurrencyPolicy::Fifo | ConcurrencyPolicy::Priority => self.can_acquire(kind),
+            ConcurrencyPolicy::Fair => {
+                // For fair scheduling, check both global and per-kind limits
+                if self.running.len() as u32 >= self.config.max_concurrent {
+                    return false;
+                }
+                // Check if we've hit 50% of capacity for any single kind
+                if let Some(&count) = self.kind_counts.get(kind.as_str()) {
+                    let max_for_kind = self.config.max_concurrent / 2;
+                    if max_for_kind > 0 && count >= max_for_kind {
+                        return false;
+                    }
+                }
+                true
+            }
+        }
     }
 }
 

@@ -122,6 +122,23 @@ impl SchedulerManager {
             self.emit_scheduler_event(event, None);
         }
 
+        // Drain the DetailedEvent channel and emit rich events to the frontend
+        if let Ok(guard) = self.scheduler.lock() {
+            if let Some(ref scheduler) = *guard {
+                let rx = scheduler.event_receiver();
+                while let Ok(detailed_event) = rx.try_recv() {
+                    if let Ok(payload) = serde_json::to_value(&detailed_event) {
+                        let event_type = payload
+                            .get("type")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown");
+                        let event_name = format!("scheduler://detailed/{}", event_type);
+                        let _ = self.app.emit(&event_name, &payload);
+                    }
+                }
+            }
+        }
+
         let _ = self.app.emit("scheduler://tick-result", &result);
 
         Ok(result)
@@ -227,6 +244,207 @@ impl SchedulerManager {
                 .into_iter()
                 .cloned()
                 .collect())
+        }))
+    }
+
+    // --- Fairness subsystem ---
+
+    pub fn fairness_group_count(&self, group: String) -> ApiResult<u32> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.fairness_group_count(&group))))
+    }
+
+    pub fn fairness_workspace_count(&self, workspace_id: String) -> ApiResult<u32> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.fairness_workspace_count(&workspace_id))))
+    }
+
+    pub fn fairness_reset(&self) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| {
+            s.fairness_reset();
+            Ok(())
+        }))
+    }
+
+    // --- Budget subsystem ---
+
+    pub fn budget_reset(&self) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| {
+            s.budget_reset();
+            Ok(())
+        }))
+    }
+
+    pub fn budget_clear_breach(&self) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| {
+            s.budget_clear_breach();
+            Ok(())
+        }))
+    }
+
+    // --- Concurrency subsystem ---
+
+    pub fn concurrency_is_running(&self, unit_id: String) -> ApiResult<bool> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.concurrency_is_running(&unit_id))))
+    }
+
+    pub fn concurrency_get_kind(&self, unit_id: String) -> ApiResult<Option<String>> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.concurrency_get_kind(&unit_id))))
+    }
+
+    pub fn concurrency_reset(&self) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| {
+            s.concurrency_reset();
+            Ok(())
+        }))
+    }
+
+    // --- Metrics subsystem ---
+
+    pub fn metrics_reset(&self) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| {
+            s.metrics_reset();
+            Ok(())
+        }))
+    }
+
+    // --- Rate limiter subsystem ---
+
+    pub fn rate_limiter_reset(&self) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| {
+            s.rate_limiter_reset();
+            Ok(())
+        }))
+    }
+
+    // --- Retry queue subsystem ---
+
+    pub fn retry_len(&self) -> ApiResult<usize> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.retry_len())))
+    }
+
+    pub fn retry_clear(&self) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| {
+            s.retry_clear();
+            Ok(())
+        }))
+    }
+
+    pub fn dead_queue_contains(&self, unit_id: String) -> ApiResult<bool> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.dead_queue_contains(&unit_id))))
+    }
+
+    // --- Budget subsystem (additional) ---
+
+    // --- Concurrency subsystem (additional) ---
+
+    pub fn concurrency_running_count_direct(&self) -> ApiResult<usize> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.concurrency_running_count_direct())))
+    }
+
+    pub fn concurrency_get_kind_count(
+        &self,
+        kind: crate::scheduler::types::SchedulingUnitKind,
+    ) -> ApiResult<usize> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.concurrency_get_kind_count(&kind))))
+    }
+
+    // --- Retry queue subsystem (additional) ---
+
+    pub fn retry_is_eligible(&self, unit_id: String, now: u64) -> ApiResult<bool> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.retry_is_eligible(&unit_id, now))))
+    }
+
+    pub fn retry_get_all(&self) -> ApiResult<Vec<crate::scheduler::retries::RetryEntry>> {
+        Self::map_err(self.with_scheduler(|s| {
+            Ok(s.retry_get_all().into_iter().cloned().collect())
+        }))
+    }
+
+    pub fn budget_get_reservation_json(
+        &self,
+        unit_id: String,
+    ) -> ApiResult<Option<serde_json::Value>> {
+        Self::map_err(self.with_scheduler(|s| {
+            Ok(s.budget_get_reservation(&unit_id)
+                .map(|r| serde_json::to_value(r).unwrap_or_default()))
+        }))
+    }
+
+    // --- Queue subsystem ---
+
+    pub fn queue_peek(
+        &self,
+        kind: crate::scheduler::types::QueueKind,
+    ) -> ApiResult<Option<SchedulingUnitJson>> {
+        Self::map_err(self.with_scheduler(|s| {
+            Ok(s.queue_peek(&kind).map(|u| SchedulingUnitJson::from(u.clone())))
+        }))
+    }
+
+    pub fn queue_is_empty(
+        &self,
+        kind: crate::scheduler::types::QueueKind,
+    ) -> ApiResult<bool> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.queue_is_empty(&kind))))
+    }
+
+    pub fn queue_contains(
+        &self,
+        kind: crate::scheduler::types::QueueKind,
+        unit_id: String,
+    ) -> ApiResult<bool> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.queue_contains(&kind, &unit_id))))
+    }
+
+    pub fn queue_size(
+        &self,
+        kind: crate::scheduler::types::QueueKind,
+    ) -> ApiResult<usize> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.queue_size(&kind))))
+    }
+
+    pub fn queue_clear(
+        &self,
+        kind: crate::scheduler::types::QueueKind,
+    ) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| {
+            s.queue_clear(&kind);
+            Ok(())
+        }))
+    }
+
+    pub fn queue_find_by_kind(
+        &self,
+        kind: crate::scheduler::types::QueueKind,
+        unit_kind: crate::scheduler::types::SchedulingUnitKind,
+    ) -> ApiResult<Vec<SchedulingUnitJson>> {
+        Self::map_err(self.with_scheduler(|s| {
+            Ok(s.queue_find_by_kind(&kind, &unit_kind)
+                .into_iter()
+                .map(|u| SchedulingUnitJson::from(u.clone()))
+                .collect())
+        }))
+    }
+
+    pub fn queue_find_by_priority(
+        &self,
+        kind: crate::scheduler::types::QueueKind,
+        priority: crate::scheduler::types::SchedulingPriority,
+    ) -> ApiResult<Vec<SchedulingUnitJson>> {
+        Self::map_err(self.with_scheduler(|s| {
+            Ok(s.queue_find_by_priority(&kind, &priority)
+                .into_iter()
+                .map(|u| SchedulingUnitJson::from(u.clone()))
+                .collect())
+        }))
+    }
+
+    pub fn queue_find_highest_priority(
+        &self,
+        kind: crate::scheduler::types::QueueKind,
+    ) -> ApiResult<Option<SchedulingUnitJson>> {
+        Self::map_err(self.with_scheduler(|s| {
+            Ok(s.queue_find_highest_priority(&kind)
+                .map(|u| SchedulingUnitJson::from(u.clone())))
         }))
     }
 

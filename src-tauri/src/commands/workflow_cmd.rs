@@ -110,6 +110,39 @@ pub fn workflow_validate_snapshot(
     manager.validate_snapshot(snapshot).map_err(map_api_error)
 }
 
+#[tauri::command]
+pub fn workflow_recover_run(
+    manager: State<'_, WorkflowManager>,
+    run_id: String,
+) -> Result<WorkflowRun, String> {
+    manager.recover_run(run_id).map_err(map_api_error)
+}
+
+#[tauri::command]
+pub fn workflow_check_execution_status(
+    manager: State<'_, WorkflowManager>,
+    execution_id: String,
+) -> Result<String, String> {
+    manager.check_execution_status(execution_id).map_err(map_api_error)
+}
+
+#[tauri::command]
+pub fn workflow_get_node_incoming_edges(
+    manager: State<'_, WorkflowManager>,
+    run_id: String,
+    node_id: String,
+) -> Result<Vec<String>, String> {
+    manager.get_node_incoming_edges(run_id, node_id).map_err(map_api_error)
+}
+
+#[tauri::command]
+pub fn workflow_get_snapshot_id(
+    manager: State<'_, WorkflowManager>,
+    run_id: String,
+) -> Result<String, String> {
+    manager.get_snapshot_id(run_id).map_err(map_api_error)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

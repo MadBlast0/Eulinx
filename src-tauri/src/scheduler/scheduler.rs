@@ -10,18 +10,18 @@ use crate::scheduler::events::{
     SchedulerUnitCancelledPayload, SchedulerUnitCompletedPayload, SchedulerUnitEventPayload,
     SchedulerUnitFailedPayload, SchedulerUnitRetryScheduledPayload,
 };
-use crate::scheduler::fairness::ConcurrencyTracker;
+use crate::scheduler::fairness::{compute_aged_priority, ConcurrencyTracker, RoundRobinDistributor};
 use crate::scheduler::metrics::{build_queue_snapshot, MetricsCollector};
 use crate::scheduler::queue::JobQueue;
 use crate::scheduler::rate_limiter::RateLimiter;
 use crate::scheduler::readiness::partition_by_readiness;
 use crate::scheduler::retries::RetryQueue;
-use crate::scheduler::time_utils::now_iso;
+use crate::scheduler::time_utils::{now_iso, rfc3339_to_millis};
 use crate::scheduler::types::{
-    BlockerKind, BudgetPoolConfig, ConcurrencyConfig, DeadEntry, FailureCategory, QueueKind,
+    BlockerKind, BudgetPoolConfig, ConcurrencyConfig, ConcurrencyPolicy, DeadEntry, FailureCategory, QueueKind,
     QueueSnapshotEntry, RateLimitConfig, ReadinessContext, RetryPolicy, SchedulerConfig,
     SchedulerLifecycleState, SchedulerMetrics, SchedulerQueueSnapshot, SchedulingState,
-    SchedulingUnit, SchedulingUnitKind, TickResultJson, TokenBucketConfig, TokenBucketState,
+    SchedulingUnit, TickResultJson, TokenBucketConfig, TokenBucketState,
 };
 use crate::scheduler::types::SchedulerEvent as SimpleEvent;
 use crate::scheduler::events::SchedulerEvent as DetailedEvent;
@@ -75,6 +75,7 @@ pub struct Scheduler {
     event_emitter: SchedulerEventEmitter,
     event_receiver: crossbeam_channel::Receiver<DetailedEvent>,
     fairness: ConcurrencyTracker,
+    group_distributor: RoundRobinDistributor<SchedulingUnit>,
     readiness_provider: Option<Box<dyn Fn() -> ReadinessContext + Send>>,
 }
 
@@ -113,6 +114,7 @@ impl Scheduler {
             event_emitter: emitter,
             event_receiver: rx,
             fairness: ConcurrencyTracker::new(),
+            group_distributor: RoundRobinDistributor::new(),
             readiness_provider: None,
             config,
         }
@@ -199,6 +201,12 @@ impl Scheduler {
     pub fn enqueue(&mut self, mut unit: SchedulingUnit) -> Result<(), AppError> {
         unit.state = SchedulingState::Queued;
         unit.updated_at = now_iso();
+
+        // Register the unit's group in the round-robin distributor
+        let group = unit.kind.as_str().to_string();
+        self.group_distributor
+            .increment(&group);
+
         self.queues
             .get_mut(&QueueKind::Incoming)
             .unwrap()
@@ -230,6 +238,11 @@ impl Scheduler {
 
         let ctx = self.get_readiness_context();
 
+        // Apply priority aging to units in wait queues (if enabled)
+        if self.config.enable_aging {
+            self.apply_aging();
+        }
+
         let blocked_ids = self.process_incoming(&ctx, &mut events);
         self.reevaluate_blocked(&ctx, &mut events);
         let dispatched_ids = self.dispatch_ready(&mut events);
@@ -257,6 +270,12 @@ impl Scheduler {
         self.rate_limiter
             .return_tokens(Some(&unit.workspace_id), 1.0);
         self.metrics.increment_cancellation();
+
+        // Release fairness slot
+        let group = unit.kind.as_str();
+        self.fairness
+            .release(Some(group), Some(&unit.workspace_id));
+        self.group_distributor.decrement(group);
 
         let mut unit = unit;
         unit.state = SchedulingState::Cancelled;
@@ -291,6 +310,22 @@ impl Scheduler {
         self.rate_limiter
             .return_tokens(Some(&unit.workspace_id), 1.0);
         self.metrics.record_completed();
+
+        // Record run time (time from creation to completion)
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+        if let Some(created_ms) = rfc3339_to_millis(&unit.created_at) {
+            let run_ms = (now_ms as i64 - created_ms).max(0) as f64;
+            self.metrics.record_run_time(run_ms);
+        }
+
+        // Release fairness slot
+        let group = unit.kind.as_str();
+        self.fairness
+            .release(Some(group), Some(&unit.workspace_id));
+        self.group_distributor.decrement(group);
 
         let mut unit = unit;
         unit.state = SchedulingState::Completed;
@@ -331,6 +366,12 @@ impl Scheduler {
         self.rate_limiter
             .return_tokens(Some(&unit.workspace_id), 1.0);
         self.metrics.increment_retry();
+
+        // Release fairness slot
+        let group = unit.kind.as_str();
+        self.fairness
+            .release(Some(group), Some(&unit.workspace_id));
+        self.group_distributor.decrement(group);
 
         let attempt = self
             .retry_queue
@@ -539,7 +580,19 @@ impl Scheduler {
 
         let (ready, blocked) = partition_by_readiness(&incoming, ctx);
 
-        for mut unit in ready {
+        // Sort ready units by fairness score (lower score = higher priority) for optimal dispatch
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+        let mut sorted_ready: Vec<SchedulingUnit> = ready;
+        sorted_ready.sort_by(|a, b| {
+            let score_a = crate::scheduler::fairness::compute_fairness_score(a, now_ms, &self.config.fairness);
+            let score_b = crate::scheduler::fairness::compute_fairness_score(b, now_ms, &self.config.fairness);
+            score_a.partial_cmp(&score_b).unwrap_or(std::cmp::Ordering::Equal)
+        });
+
+        for mut unit in sorted_ready {
             unit.state = SchedulingState::Ready;
             unit.updated_at = now_iso();
             self.queues
@@ -565,6 +618,7 @@ impl Scheduler {
 
             blocked_ids.push(result.unit_id.clone());
             events.push(SimpleEvent::UnitBlocked);
+            self.metrics.increment_blocked();
 
             self.event_emitter
                 .emit(DetailedEvent::UnitBlocked(SchedulerUnitBlockedPayload {
@@ -610,6 +664,7 @@ impl Scheduler {
                 .unwrap()
                 .enqueue(unit);
             events.push(SimpleEvent::UnitUnblocked);
+            self.metrics.decrement_blocked();
         }
 
         for (mut unit, result) in blocked {
@@ -627,9 +682,32 @@ impl Scheduler {
 
     fn dispatch_ready(&mut self, events: &mut Vec<SimpleEvent>) -> Vec<String> {
         let mut dispatched = Vec::new();
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
 
         loop {
-            let has_capacity = self.concurrency.can_acquire(&SchedulingUnitKind::Task);
+            // Peek at the next runnable unit to check capacity with the correct kind
+            let next_kind = self
+                .queues
+                .get(&QueueKind::Runnable)
+                .and_then(|q| q.peek())
+                .map(|u| u.kind.clone());
+
+            let kind = match next_kind {
+                Some(k) => k,
+                None => break,
+            };
+
+            let has_capacity = if self.config.fairness.max_per_group < u32::MAX
+                || self.config.fairness.max_per_workspace < u32::MAX
+            {
+                self.concurrency
+                    .can_acquire_with_policy(&kind, &ConcurrencyPolicy::Fair)
+            } else {
+                self.concurrency.can_acquire(&kind)
+            };
             if !has_capacity {
                 break;
             }
@@ -644,9 +722,22 @@ impl Scheduler {
                 None => break,
             };
 
-            let kind = unit.kind.clone();
             let unit_id = unit.id.clone();
             let workspace_id = unit.workspace_id.clone();
+
+            // Fairness check: per-group and per-workspace limits
+            let group = unit.kind.as_str();
+            if !self.fairness.can_schedule(
+                Some(group),
+                Some(&workspace_id),
+                &self.config.fairness,
+            ) {
+                self.queues
+                    .get_mut(&QueueKind::Runnable)
+                    .unwrap()
+                    .enqueue(unit);
+                break;
+            }
 
             // Rate limit check
             if !self.rate_limiter.is_allowed(Some(&workspace_id), 1.0) {
@@ -669,12 +760,13 @@ impl Scheduler {
                         .unwrap()
                         .enqueue(unit);
                     events.push(SimpleEvent::UnitBlocked);
+                    self.metrics.increment_blocked();
                     continue;
                 }
                 self.budget.reserve(&unit_id, estimate);
             }
 
-            let acquired = self.concurrency.acquire(unit_id.clone(), kind);
+            let acquired = self.concurrency.acquire(unit_id.clone(), kind.clone());
             if !acquired {
                 self.rate_limiter.return_tokens(Some(&workspace_id), 1.0);
                 if unit.budget_estimate.is_some() {
@@ -687,8 +779,14 @@ impl Scheduler {
                 break;
             }
 
-            self.fairness
-                .acquire(Some(&workspace_id), Some(&workspace_id));
+            // Record wait time (time from creation to dispatch)
+            if let Some(created_ms) = rfc3339_to_millis(&unit.created_at) {
+                let wait_ms = (now_ms as i64 - created_ms).max(0) as f64;
+                self.metrics.record_wait_time(wait_ms);
+            }
+
+            // Acquire fairness slot with proper group (unit kind) and workspace
+            self.fairness.acquire(Some(group), Some(&workspace_id));
 
             let mut unit = unit;
             unit.state = SchedulingState::Running;
@@ -761,6 +859,48 @@ impl Scheduler {
         self.metrics.set_running_count(running_count);
     }
 
+    /// Apply priority aging to units in wait queues.
+    /// Units that have waited long enough get their priority promoted by one level.
+    fn apply_aging(&mut self) {
+        let now_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_millis() as u64;
+
+        let wait_queues = [
+            QueueKind::DependencyWait,
+            QueueKind::PermissionWait,
+            QueueKind::ApprovalWait,
+            QueueKind::LockWait,
+            QueueKind::BudgetWait,
+        ];
+
+        for qk in &wait_queues {
+            if let Some(queue) = self.queues.get_mut(qk) {
+                // Collect all units, apply aging, re-enqueue
+                let mut units: Vec<SchedulingUnit> = Vec::new();
+                while let Some(unit) = queue.dequeue() {
+                    units.push(unit);
+                }
+                for mut unit in units {
+                    if let Some(created_ms) = rfc3339_to_millis(&unit.created_at) {
+                        let wait_ms = (now_ms as i64 - created_ms).max(0) as u64;
+                        let aged_priority = compute_aged_priority(
+                            &unit.priority,
+                            wait_ms,
+                            &self.config.fairness,
+                        );
+                        if aged_priority != unit.priority {
+                            unit.priority = aged_priority;
+                            unit.updated_at = now_iso();
+                        }
+                    }
+                    queue.enqueue(unit);
+                }
+            }
+        }
+    }
+
     pub fn rate_limit_state(&self) -> (TokenBucketState, Option<TokenBucketState>) {
         let global = self.rate_limiter.get_global_state();
         let per_group = self
@@ -810,6 +950,148 @@ impl Scheduler {
 
     pub fn dead_queue_get_by_category(&self, category: &FailureCategory) -> Vec<&DeadEntry> {
         self.dead_queue.get_by_category(category)
+    }
+
+    // --- Fairness subsystem accessors ---
+
+    pub fn fairness_group_count(&self, group: &str) -> u32 {
+        self.fairness.get_group_count(group)
+    }
+
+    pub fn fairness_workspace_count(&self, workspace_id: &str) -> u32 {
+        self.fairness.get_workspace_count(workspace_id)
+    }
+
+    pub fn fairness_reset(&mut self) {
+        self.fairness.reset();
+    }
+
+    // --- Budget subsystem accessors ---
+
+    pub fn budget_get_reservation(&self, unit_id: &str) -> Option<&crate::scheduler::types::BudgetReservation> {
+        self.budget.get_reservation(unit_id)
+    }
+
+    pub fn budget_clear_breach(&mut self) {
+        self.budget.clear_breach();
+    }
+
+    pub fn budget_reset(&mut self) {
+        self.budget.reset();
+    }
+
+    // --- Concurrency subsystem accessors ---
+
+    pub fn concurrency_is_running(&self, unit_id: &str) -> bool {
+        self.concurrency.is_running(unit_id)
+    }
+
+    pub fn concurrency_get_kind(&self, unit_id: &str) -> Option<String> {
+        self.concurrency.get_kind(unit_id)
+    }
+
+    pub fn concurrency_running_count_direct(&self) -> usize {
+        self.concurrency.running_count()
+    }
+
+    pub fn concurrency_get_kind_count(&self, kind: &crate::scheduler::types::SchedulingUnitKind) -> usize {
+        self.concurrency.get_kind_count(kind)
+    }
+
+    pub fn concurrency_reset(&mut self) {
+        self.concurrency.reset();
+    }
+
+    // --- Metrics subsystem accessors ---
+
+    pub fn metrics_reset(&mut self) {
+        self.metrics.reset();
+    }
+
+    // --- Rate limiter subsystem accessors ---
+
+    pub fn rate_limiter_reset(&mut self) {
+        self.rate_limiter.reset();
+    }
+
+    // --- Retry queue subsystem accessors ---
+
+    pub fn retry_is_eligible(&self, unit_id: &str, now: u64) -> bool {
+        self.retry_queue.is_eligible(unit_id, now)
+    }
+
+    pub fn retry_len(&self) -> usize {
+        self.retry_queue.len()
+    }
+
+    pub fn retry_get_all(&self) -> Vec<&crate::scheduler::retries::RetryEntry> {
+        self.retry_queue.get_all()
+    }
+
+    pub fn retry_clear(&mut self) {
+        self.retry_queue.clear();
+    }
+
+    // --- Dead queue subsystem accessors ---
+
+    pub fn dead_queue_contains(&self, unit_id: &str) -> bool {
+        self.dead_queue.contains(unit_id)
+    }
+
+    // --- Queue subsystem accessors ---
+
+    pub fn queue_peek(&self, kind: &QueueKind) -> Option<&SchedulingUnit> {
+        self.queues.get(kind).and_then(|q| q.peek())
+    }
+
+    pub fn queue_is_empty(&self, kind: &QueueKind) -> bool {
+        self.queues.get(kind).map_or(true, |q| q.is_empty())
+    }
+
+    pub fn queue_contains(&self, kind: &QueueKind, unit_id: &str) -> bool {
+        self.queues.get(kind).map_or(false, |q| q.contains(unit_id))
+    }
+
+    pub fn queue_size(&self, kind: &QueueKind) -> usize {
+        self.queues.get(kind).map_or(0, |q| q.size())
+    }
+
+    pub fn queue_clear(&mut self, kind: &QueueKind) {
+        if let Some(q) = self.queues.get_mut(kind) {
+            q.clear();
+        }
+    }
+
+    pub fn queue_find_by_kind(&self, kind: &QueueKind, unit_kind: &crate::scheduler::types::SchedulingUnitKind) -> Vec<&SchedulingUnit> {
+        self.queues.get(kind).map_or_else(Vec::new, |q| q.find_by_kind(unit_kind))
+    }
+
+    pub fn queue_find_by_priority(&self, kind: &QueueKind, priority: &crate::scheduler::types::SchedulingPriority) -> Vec<&SchedulingUnit> {
+        self.queues.get(kind).map_or_else(Vec::new, |q| q.find_by_priority(priority))
+    }
+
+    pub fn queue_find_highest_priority(&self, kind: &QueueKind) -> Option<&SchedulingUnit> {
+        self.queues.get(kind).and_then(|q| q.find_highest_priority())
+    }
+
+    // --- Group distributor accessors ---
+
+    pub fn group_distributor_active_groups(&self) -> Vec<String> {
+        self.group_distributor
+            .get_active_groups()
+            .into_iter()
+            .cloned()
+            .collect()
+    }
+
+    pub fn group_distributor_count(&self, group: &str) -> usize {
+        self.group_distributor.get_count(group)
+    }
+
+    pub fn group_distributor_next(&mut self) -> Option<String> {
+        self.group_distributor
+            .next()
+            .map(|u| u.id.clone())
     }
 }
 

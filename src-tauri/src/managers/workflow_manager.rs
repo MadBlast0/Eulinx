@@ -146,6 +146,26 @@ impl WorkflowManager {
     pub fn validate_snapshot(&self, snapshot: GraphSnapshot) -> ApiResult<()> {
         Self::map_err(self.with_engine(|engine| engine.validate_snapshot(snapshot)))
     }
+
+    pub fn recover_run(&self, run_id: String) -> ApiResult<WorkflowRun> {
+        Self::map_err(self.with_engine(|engine| engine.recover_run(&run_id)))
+    }
+
+    pub fn check_execution_status(&self, execution_id: String) -> ApiResult<String> {
+        Self::map_err(self.with_engine(|engine| engine.check_execution_status(&execution_id)))
+    }
+
+    pub fn get_node_incoming_edges(
+        &self,
+        run_id: String,
+        node_id: String,
+    ) -> ApiResult<Vec<String>> {
+        Self::map_err(self.with_engine(|engine| engine.get_node_incoming_edges(&run_id, &node_id)))
+    }
+
+    pub fn get_snapshot_id(&self, run_id: String) -> ApiResult<String> {
+        Self::map_err(self.with_engine(|engine| engine.get_snapshot_id(&run_id)))
+    }
 }
 
 // ---------------------------------------------------------------------------

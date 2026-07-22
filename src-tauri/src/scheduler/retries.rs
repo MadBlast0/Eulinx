@@ -25,7 +25,7 @@ fn now_millis() -> u64 {
         .as_millis() as u64
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RetryEntry {
     pub unit_id: String,
     pub attempt: u32,

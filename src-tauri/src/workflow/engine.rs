@@ -1061,16 +1061,202 @@ impl WorkflowEngine {
         Ok(self.runs.values().cloned().collect())
     }
 
-    pub fn get_run_metrics(&self, _run_id: &str) -> Result<serde_json::Value, WorkflowError> {
-        Ok(serde_json::json!({}))
+    pub fn get_run_metrics(&self, run_id: &str) -> Result<serde_json::Value, WorkflowError> {
+        let run = self
+            .runs
+            .get(run_id)
+            .ok_or(WorkflowError::RunNotFound { run_id: run_id.to_string() })?;
+
+        let mirror = self
+            .mirrors
+            .get(run_id)
+            .ok_or(WorkflowError::RunNotFound { run_id: run_id.to_string() })?;
+
+        let total_nodes = mirror.states.len() as u32;
+        let succeeded = mirror.states.values().filter(|s| s.state == NodeState::Succeeded).count() as u32;
+        let failed = mirror.states.values().filter(|s| s.state == NodeState::Failed).count() as u32;
+        let running = mirror.states.values().filter(|s| s.state == NodeState::Running).count() as u32;
+        let pending = mirror.states.values().filter(|s| s.state == NodeState::Pending || s.state == NodeState::Ready).count() as u32;
+        let skipped = mirror.states.values().filter(|s| s.state == NodeState::Skipped).count() as u32;
+        let cancelled = mirror.states.values().filter(|s| s.state == NodeState::Cancelled).count() as u32;
+
+        // Compute elapsed time using scheduler time_utils
+        let elapsed_ms = {
+            let now_str = crate::scheduler::time_utils::now_iso();
+            let now_ms = crate::scheduler::time_utils::rfc3339_to_millis(&now_str).unwrap_or(0);
+            let started_ms = crate::scheduler::time_utils::rfc3339_to_millis(&run.started_at).unwrap_or(0);
+            if let Some(ended) = &run.ended_at {
+                let ended_ms = crate::scheduler::time_utils::rfc3339_to_millis(ended).unwrap_or(0);
+                (ended_ms - started_ms).max(0) as u64
+            } else {
+                (now_ms - started_ms).max(0) as u64
+            }
+        };
+
+        // Compute budget spent from run's budget_spent field
+        let budget_spent = &run.budget_spent;
+
+        Ok(serde_json::json!({
+            "run_id": run_id,
+            "state": format!("{:?}", run.state),
+            "total_nodes": total_nodes,
+            "completed_nodes": run.completed_node_count,
+            "failed_nodes": run.failed_node_count,
+            "skipped_nodes": run.skipped_node_count,
+            "succeeded": succeeded,
+            "failed": failed,
+            "running": running,
+            "pending": pending,
+            "skipped": skipped,
+            "cancelled": cancelled,
+            "elapsed_ms": elapsed_ms,
+            "run_seq": run.run_seq,
+            "budget_spent": budget_spent,
+            "config": {
+                "tick_timer_interval_ms": self.config.tick_timer_interval_ms,
+                "scheduler_admit_timeout_ms": self.config.scheduler_admit_timeout_ms,
+                "max_scheduler_failures": self.config.max_scheduler_failures,
+            },
+        }))
     }
 
-    pub fn validate_snapshot(&self, _snapshot: GraphSnapshot) -> Result<(), WorkflowError> {
+    pub fn validate_snapshot(&self, snapshot: GraphSnapshot) -> Result<(), WorkflowError> {
+        // Check for empty graph
+        if snapshot.nodes.is_empty() {
+            return Err(WorkflowError::GraphInvalid {
+                node_ids: vec![],
+                message: "workflow graph has no nodes".to_string(),
+            });
+        }
+
+        // Check for cycles
+        let nodes_map: HashMap<NodeId, NodeDefinition> = snapshot
+            .nodes
+            .iter()
+            .map(|n| (n.node_id.clone(), n.clone()))
+            .collect();
+        let edges_map: HashMap<EdgeId, EdgeDefinition> = snapshot
+            .edges
+            .iter()
+            .map(|e| (e.edge_id.clone(), e.clone()))
+            .collect();
+
+        if let Some(cycle) = detect_cycle(&nodes_map, &edges_map) {
+            return Err(WorkflowError::GraphInvalid {
+                node_ids: cycle,
+                message: "cycle detected in workflow graph".to_string(),
+            });
+        }
+
+        // Validate edge references point to existing nodes
+        for edge in &snapshot.edges {
+            if !nodes_map.contains_key(&edge.from_node_id) {
+                return Err(WorkflowError::GraphInvalid {
+                    node_ids: vec![edge.from_node_id.clone()],
+                    message: format!(
+                        "edge {} references non-existent source node {}",
+                        edge.edge_id, edge.from_node_id
+                    ),
+                });
+            }
+            if !nodes_map.contains_key(&edge.to_node_id) {
+                return Err(WorkflowError::GraphInvalid {
+                    node_ids: vec![edge.to_node_id.clone()],
+                    message: format!(
+                        "edge {} references non-existent target node {}",
+                        edge.edge_id, edge.to_node_id
+                    ),
+                });
+            }
+        }
+
+        // Validate node IDs are unique
+        let mut seen_ids = std::collections::HashSet::new();
+        for node in &snapshot.nodes {
+            if !seen_ids.insert(&node.node_id) {
+                return Err(WorkflowError::GraphInvalid {
+                    node_ids: vec![node.node_id.clone()],
+                    message: format!("duplicate node ID: {}", node.node_id),
+                });
+            }
+        }
+
+        // Validate edge IDs are unique
+        let mut seen_edge_ids = std::collections::HashSet::new();
+        for edge in &snapshot.edges {
+            if !seen_edge_ids.insert(&edge.edge_id) {
+                return Err(WorkflowError::GraphInvalid {
+                    node_ids: vec![],
+                    message: format!("duplicate edge ID: {}", edge.edge_id),
+                });
+            }
+        }
+
         Ok(())
     }
 
     fn emit(&self, event: &str, data: &serde_json::Value) {
         (self.emitter)(event, data);
+    }
+
+    /// Recover a previously saved run from persistence, rebuilding the in-memory state.
+    /// This uses load_run, load_snapshot, and load_node_states from the PersistenceAdapter.
+    pub fn recover_run(&mut self, run_id: &str) -> Result<WorkflowRun, WorkflowError> {
+        let run = self
+            .persistence
+            .load_run(run_id)
+            .map_err(|e| WorkflowError::PersistenceFailed { message: e })?
+            .ok_or(WorkflowError::RunNotFound { run_id: run_id.to_string() })?;
+
+        let snapshot = self
+            .persistence
+            .load_snapshot(&run.graph_snapshot_id)
+            .map_err(|e| WorkflowError::PersistenceFailed { message: e })?
+            .ok_or(WorkflowError::SnapshotMissing {
+                snapshot_id: run.graph_snapshot_id.clone(),
+            })?;
+
+        let node_states = self
+            .persistence
+            .load_node_states(run_id)
+            .map_err(|e| WorkflowError::PersistenceFailed { message: e })?;
+
+        let mirror = build_mirror(&snapshot, &node_states);
+
+        self.mirrors.insert(run_id.to_string(), mirror);
+        self.runs.insert(run_id.to_string(), run.clone());
+
+        self.emit(
+            "run.recovered",
+            &serde_json::json!({ "run_id": run_id }),
+        );
+
+        Ok(run)
+    }
+
+    /// Check execution status via the ExecutionEngineAdapter.
+    pub fn check_execution_status(&self, execution_id: &str) -> Result<String, WorkflowError> {
+        self.executor
+            .status(execution_id)
+            .map_err(|e| WorkflowError::InternalError { message: e })
+    }
+
+    /// Get the incoming edges for a specific node in a run's graph mirror.
+    pub fn get_node_incoming_edges(&self, run_id: &str, node_id: &str) -> Result<Vec<String>, WorkflowError> {
+        let mirror = self
+            .mirrors
+            .get(run_id)
+            .ok_or(WorkflowError::RunNotFound { run_id: run_id.to_string() })?;
+        Ok(mirror.incoming.get(node_id).cloned().unwrap_or_default())
+    }
+
+    /// Get the snapshot ID for a run's graph mirror.
+    pub fn get_snapshot_id(&self, run_id: &str) -> Result<String, WorkflowError> {
+        let mirror = self
+            .mirrors
+            .get(run_id)
+            .ok_or(WorkflowError::RunNotFound { run_id: run_id.to_string() })?;
+        Ok(mirror.snapshot_id.clone())
     }
 
     fn generate_determinism_seed(length: u32) -> String {

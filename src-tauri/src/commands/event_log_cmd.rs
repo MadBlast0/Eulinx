@@ -47,6 +47,24 @@ pub fn log_get_stats(
     db.get_event_log_stats(&workspace_id).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+pub fn log_get_range(
+    db: State<'_, DbManager>,
+    workspace_id: String,
+) -> Result<(u64, u64), String> {
+    db.get_event_log_range(&workspace_id)
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn log_get_by_id(
+    db: State<'_, DbManager>,
+    event_id: String,
+) -> Result<Option<PersistedEventEnvelope>, String> {
+    db.get_event_by_id(&event_id)
+        .map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,146 +1,19 @@
 use crate::scheduler::time_utils::now_iso;
 
 use crate::scheduler::types::{
-    BlockerKind, ReadinessBlocker, ReadinessContext, ReadinessResult, SchedulingUnit,
+    BlockerKind, DependencyType, ReadinessBlocker, ReadinessContext, ReadinessResult,
+    SafetyGateKind, SafetyGateResult, SchedulingDependency, SchedulingUnit,
 };
 
-fn check_runtime_gate(unit: &SchedulingUnit, ctx: &ReadinessContext) -> Option<ReadinessBlocker> {
-    if !ctx.runtime_ready {
-        Some(ReadinessBlocker {
-            kind: BlockerKind::RuntimeState,
-            message: "Runtime is not in a state that accepts work".to_string(),
-            blocking_object_id: Some(unit.id.clone()),
-            recoverable: true,
-        })
-    } else {
-        None
-    }
-}
-
-fn check_dependency_gate(
-    unit: &SchedulingUnit,
-    ctx: &ReadinessContext,
-) -> Option<ReadinessBlocker> {
-    for dep_id in &unit.dependencies {
-        if !ctx.completed_unit_ids.contains(dep_id) {
-            return Some(ReadinessBlocker {
-                kind: BlockerKind::Dependency,
-                message: format!("Dependency {} has not completed", dep_id),
-                blocking_object_id: Some(dep_id.clone()),
-                recoverable: true,
-            });
-        }
-    }
-    None
-}
-
-fn check_permission_gate(
-    unit: &SchedulingUnit,
-    ctx: &ReadinessContext,
-) -> Option<ReadinessBlocker> {
-    for perm in &unit.required_permissions {
-        if !ctx.approved_permissions.contains(perm) {
-            return Some(ReadinessBlocker {
-                kind: BlockerKind::Permission,
-                message: format!("Permission \"{}\" not approved", perm),
-                blocking_object_id: Some(perm.clone()),
-                recoverable: true,
-            });
-        }
-    }
-    None
-}
-
-fn check_approval_gate(unit: &SchedulingUnit, ctx: &ReadinessContext) -> Option<ReadinessBlocker> {
-    if !unit.required_permissions.is_empty() {
-        let has_unapproved = unit
-            .required_permissions
-            .iter()
-            .any(|p| !ctx.approved_permissions.contains(p));
-        if has_unapproved && !ctx.approved_unit_ids.contains(&unit.id) {
-            return Some(ReadinessBlocker {
-                kind: BlockerKind::Approval,
-                message: format!("Unit {} waiting for human approval", unit.id),
-                blocking_object_id: Some(unit.id.clone()),
-                recoverable: true,
-            });
-        }
-    }
-    None
-}
-
-fn check_lock_gate(unit: &SchedulingUnit, ctx: &ReadinessContext) -> Option<ReadinessBlocker> {
-    for lock_id in &unit.required_locks {
-        if ctx.held_lock_ids.contains(lock_id) {
-            return Some(ReadinessBlocker {
-                kind: BlockerKind::Lock,
-                message: format!("Lock \"{}\" is held by another unit", lock_id),
-                blocking_object_id: Some(lock_id.clone()),
-                recoverable: true,
-            });
-        }
-    }
-    None
-}
-
-fn check_budget_gate(unit: &SchedulingUnit, ctx: &ReadinessContext) -> Option<ReadinessBlocker> {
-    if let Some(ref estimate) = unit.budget_estimate {
-        if let Some(cost) = estimate.estimated_cost_micro_usd {
-            if ctx.max_budget_cost_micro_usd < f64::MAX {
-                let projected = ctx.total_budget_cost_micro_usd + cost;
-                if projected > ctx.max_budget_cost_micro_usd {
-                    return Some(ReadinessBlocker {
-                        kind: BlockerKind::Budget,
-                        message: format!(
-                            "Budget would be exceeded: projected {} > max {}",
-                            projected, ctx.max_budget_cost_micro_usd
-                        ),
-                        blocking_object_id: Some(unit.id.clone()),
-                        recoverable: true,
-                    });
-                }
-            }
-        }
-    }
-    None
-}
-
-fn check_resource_gate(unit: &SchedulingUnit, ctx: &ReadinessContext) -> Option<ReadinessBlocker> {
-    if ctx.max_concurrency < u32::MAX && ctx.running_count >= ctx.max_concurrency {
-        Some(ReadinessBlocker {
-            kind: BlockerKind::Resource,
-            message: format!(
-                "Concurrency limit reached: {}/{}",
-                ctx.running_count, ctx.max_concurrency
-            ),
-            blocking_object_id: Some(unit.id.clone()),
-            recoverable: true,
-        })
-    } else {
-        None
-    }
-}
-
 pub fn evaluate_readiness(unit: &SchedulingUnit, ctx: &ReadinessContext) -> ReadinessResult {
-    let gates: [fn(&SchedulingUnit, &ReadinessContext) -> Option<ReadinessBlocker>; 7] = [
-        check_runtime_gate,
-        check_dependency_gate,
-        check_permission_gate,
-        check_approval_gate,
-        check_lock_gate,
-        check_budget_gate,
-        check_resource_gate,
-    ];
-
-    for gate in &gates {
-        if let Some(blocker) = gate(unit, ctx) {
-            return ReadinessResult {
-                unit_id: unit.id.clone(),
-                ready: false,
-                blockers: vec![blocker],
-                checked_at: now_iso(),
-            };
-        }
+    // Use the safety gate system for evaluation
+    if let Some(blocker) = evaluate_all_safety_gates(unit, ctx) {
+        return ReadinessResult {
+            unit_id: unit.id.clone(),
+            ready: false,
+            blockers: vec![blocker],
+            checked_at: now_iso(),
+        };
     }
 
     ReadinessResult {
@@ -196,6 +69,190 @@ pub fn blocker_to_wait_state(kind: &BlockerKind) -> &'static str {
         BlockerKind::ToolUnavailable => "waiting_for_dependencies",
         BlockerKind::WorkspaceUnavailable => "queued",
     }
+}
+
+/// Map a SafetyGateKind to the corresponding BlockerKind.
+pub fn safety_gate_to_blocker_kind(gate: &SafetyGateKind) -> BlockerKind {
+    match gate {
+        SafetyGateKind::RuntimeState => BlockerKind::RuntimeState,
+        SafetyGateKind::Dependency => BlockerKind::Dependency,
+        SafetyGateKind::Permission => BlockerKind::Permission,
+        SafetyGateKind::Approval => BlockerKind::Approval,
+        SafetyGateKind::Lock => BlockerKind::Lock,
+        SafetyGateKind::Budget => BlockerKind::Budget,
+        SafetyGateKind::Resource => BlockerKind::Resource,
+    }
+}
+
+/// Evaluate a single safety gate and return a blocker if the gate fails.
+pub fn evaluate_safety_gate(
+    gate: &SafetyGateKind,
+    unit: &SchedulingUnit,
+    ctx: &ReadinessContext,
+) -> Option<ReadinessBlocker> {
+    let blocker_kind = safety_gate_to_blocker_kind(gate);
+    match gate {
+        SafetyGateKind::RuntimeState => {
+            if !ctx.runtime_ready {
+                Some(ReadinessBlocker {
+                    kind: blocker_kind,
+                    message: "Runtime is not in a state that accepts work".to_string(),
+                    blocking_object_id: Some(unit.id.clone()),
+                    recoverable: true,
+                })
+            } else {
+                None
+            }
+        }
+        SafetyGateKind::Dependency => {
+            for dep_id in &unit.dependencies {
+                if !ctx.completed_unit_ids.contains(dep_id) {
+                    return Some(ReadinessBlocker {
+                        kind: blocker_kind,
+                        message: format!("Dependency {} has not completed", dep_id),
+                        blocking_object_id: Some(dep_id.clone()),
+                        recoverable: true,
+                    });
+                }
+            }
+            None
+        }
+        SafetyGateKind::Permission => {
+            for perm in &unit.required_permissions {
+                if !ctx.approved_permissions.contains(perm) {
+                    return Some(ReadinessBlocker {
+                        kind: blocker_kind,
+                        message: format!("Permission \"{}\" not approved", perm),
+                        blocking_object_id: Some(perm.clone()),
+                        recoverable: true,
+                    });
+                }
+            }
+            None
+        }
+        SafetyGateKind::Approval => {
+            if !unit.required_permissions.is_empty()
+                && !ctx.approved_unit_ids.contains(&unit.id)
+            {
+                Some(ReadinessBlocker {
+                    kind: blocker_kind,
+                    message: "Unit requires approval but has not been approved".to_string(),
+                    blocking_object_id: Some(unit.id.clone()),
+                    recoverable: true,
+                })
+            } else {
+                None
+            }
+        }
+        SafetyGateKind::Lock => {
+            for lock in &unit.required_locks {
+                if ctx.held_lock_ids.contains(lock) {
+                    return Some(ReadinessBlocker {
+                        kind: blocker_kind,
+                        message: format!("Lock \"{}\" is currently held", lock),
+                        blocking_object_id: Some(lock.clone()),
+                        recoverable: true,
+                    });
+                }
+            }
+            None
+        }
+        SafetyGateKind::Budget => {
+            if let Some(ref estimate) = unit.budget_estimate {
+                if let Some(cost) = estimate.estimated_cost_micro_usd {
+                    if ctx.total_budget_cost_micro_usd + cost > ctx.max_budget_cost_micro_usd {
+                        return Some(ReadinessBlocker {
+                            kind: blocker_kind,
+                            message: "Budget would be exceeded".to_string(),
+                            blocking_object_id: None,
+                            recoverable: true,
+                        });
+                    }
+                }
+            }
+            None
+        }
+        SafetyGateKind::Resource => {
+            if ctx.running_count >= ctx.max_concurrency {
+                Some(ReadinessBlocker {
+                    kind: blocker_kind,
+                    message: "Maximum concurrency reached".to_string(),
+                    blocking_object_id: None,
+                    recoverable: true,
+                })
+            } else {
+                None
+            }
+        }
+    }
+}
+
+/// Get all safety gates in evaluation order.
+pub fn all_safety_gates() -> Vec<SafetyGateKind> {
+    vec![
+        SafetyGateKind::RuntimeState,
+        SafetyGateKind::Dependency,
+        SafetyGateKind::Permission,
+        SafetyGateKind::Approval,
+        SafetyGateKind::Lock,
+        SafetyGateKind::Budget,
+        SafetyGateKind::Resource,
+    ]
+}
+
+/// Evaluate all safety gates for a unit and return the first blocker found.
+pub fn evaluate_all_safety_gates(
+    unit: &SchedulingUnit,
+    ctx: &ReadinessContext,
+) -> Option<ReadinessBlocker> {
+    for gate in all_safety_gates() {
+        if let Some(blocker) = evaluate_safety_gate(&gate, unit, ctx) {
+            return Some(blocker);
+        }
+    }
+    None
+}
+
+/// Evaluate a safety gate and return a SafetyGateResult.
+pub fn evaluate_safety_gate_result(
+    gate: &SafetyGateKind,
+    unit: &SchedulingUnit,
+    ctx: &ReadinessContext,
+) -> SafetyGateResult {
+    let blocker = evaluate_safety_gate(gate, unit, ctx);
+    SafetyGateResult {
+        unit_id: unit.id.clone(),
+        gate: gate.clone(),
+        passed: blocker.is_none(),
+        blocker: blocker.map(|b| b.message),
+        checked_at: now_iso(),
+    }
+}
+
+/// Evaluate all safety gates and return results for each gate.
+pub fn evaluate_all_safety_gate_results(
+    unit: &SchedulingUnit,
+    ctx: &ReadinessContext,
+) -> Vec<SafetyGateResult> {
+    all_safety_gates()
+        .iter()
+        .map(|gate| evaluate_safety_gate_result(gate, unit, ctx))
+        .collect()
+}
+
+/// Build SchedulingDependency entries from a unit's dependency list.
+pub fn build_unit_dependencies(unit: &SchedulingUnit) -> Vec<SchedulingDependency> {
+    unit.dependencies
+        .iter()
+        .enumerate()
+        .map(|(i, target_id)| SchedulingDependency {
+            id: format!("dep-{}-{}", unit.id, i),
+            unit_id: unit.id.clone(),
+            dependency_type: DependencyType::UnitCompleted,
+            target_id: target_id.clone(),
+            required: true,
+        })
+        .collect()
 }
 
 #[cfg(test)]
