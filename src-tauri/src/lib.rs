@@ -1,8 +1,11 @@
 mod commands;
 mod error;
+mod event_log;
 mod ipc;
 mod managers;
+mod scheduler;
 mod state;
+mod workflow;
 
 use std::path::PathBuf;
 
@@ -59,7 +62,23 @@ pub fn run() {
             app.manage(PtyManagerImpl::new(handle.clone()));
             app.manage(WindowManagerImpl::new(handle.clone()));
             app.manage(SecureStoreManagerImpl::new(handle.clone()));
-            app.manage(DialogManagerImpl::new(handle));
+            app.manage(DialogManagerImpl::new(handle.clone()));
+
+            // Scheduler Manager
+            let scheduler_config = crate::scheduler::types::SchedulerConfig {
+                max_concurrency: 16,
+                budget: crate::scheduler::types::UNLIMITED_BUDGET_POOL,
+                enable_aging: true,
+                aging_interval_ms: 30_000,
+            };
+            app.manage(crate::managers::scheduler_manager::SchedulerManager::new(
+                handle.clone(),
+                scheduler_config,
+            ));
+
+            // Workflow Manager
+            app.manage(crate::managers::workflow_manager::WorkflowManager::new(handle.clone()));
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -116,6 +135,41 @@ pub fn run() {
             commands::dialog::dialog_open_file_via_manager,
             commands::dialog::dialog_save_file_via_manager,
             commands::dialog::dialog_confirm,
+            // Scheduler
+            commands::scheduler_cmd::scheduler_init,
+            commands::scheduler_cmd::scheduler_start,
+            commands::scheduler_cmd::scheduler_stop,
+            commands::scheduler_cmd::scheduler_pause,
+            commands::scheduler_cmd::scheduler_resume,
+            commands::scheduler_cmd::scheduler_state,
+            commands::scheduler_cmd::scheduler_enqueue,
+            commands::scheduler_cmd::scheduler_tick,
+            commands::scheduler_cmd::scheduler_cancel,
+            commands::scheduler_cmd::scheduler_complete,
+            commands::scheduler_cmd::scheduler_fail,
+            commands::scheduler_cmd::scheduler_get_unit,
+            commands::scheduler_cmd::scheduler_get_running_units,
+            commands::scheduler_cmd::scheduler_get_queue_snapshot,
+            commands::scheduler_cmd::scheduler_get_metrics,
+            commands::scheduler_cmd::scheduler_get_dead_queue,
+            // Workflow
+            commands::workflow_cmd::workflow_init,
+            commands::workflow_cmd::workflow_create_run,
+            commands::workflow_cmd::workflow_tick,
+            commands::workflow_cmd::workflow_handle_node_result,
+            commands::workflow_cmd::workflow_pause_run,
+            commands::workflow_cmd::workflow_resume_run,
+            commands::workflow_cmd::workflow_cancel_run,
+            commands::workflow_cmd::workflow_get_run,
+            commands::workflow_cmd::workflow_list_runs,
+            commands::workflow_cmd::workflow_get_run_metrics,
+            commands::workflow_cmd::workflow_validate_snapshot,
+            // Event Log
+            commands::event_log_cmd::log_write_batch,
+            commands::event_log_cmd::log_query,
+            commands::event_log_cmd::log_prune,
+            commands::event_log_cmd::log_detect_gaps,
+            commands::event_log_cmd::log_get_stats,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -753,9 +753,12 @@ dependencies = [
 name = "eulinx"
 version = "0.0.1"
 dependencies = [
+ "crossbeam-channel",
+ "indexmap 2.14.0",
  "libc",
  "log",
  "notify",
+ "priority-queue",
  "rusqlite",
  "serde",
  "serde_json",
@@ -2418,6 +2421,17 @@ name = "precomputed-hash"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "925383efa346730478fb4838dbe9137d2a47675ad789c546d150a6e1dd4ab31c"
+
+[[package]]
+name = "priority-queue"
+version = "2.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "93980406f12d9f8140ed5abe7155acb10bb1e69ea55c88960b9c2f117445ef96"
+dependencies = [
+ "equivalent",
+ "indexmap 2.14.0",
+ "serde",
+]
 
 [[package]]
 name = "proc-macro-crate"

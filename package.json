@@ -9,6 +9,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "icons": "node scripts/generate-icons.mjs",
+    "tauri:build": "node scripts/generate-icons.mjs && tauri build",
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit",
