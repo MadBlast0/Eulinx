@@ -6,7 +6,7 @@
  */
 
 import type { WorkerId, IsoTimestamp } from "@/core/types"
-import type { HierarchyNodeId, NodeResult } from "./worker-types"
+import type { NodeResult } from "./worker-types"
 
 // ---------------------------------------------------------------------------
 // Coordination Barrier

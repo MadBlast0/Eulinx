@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest"
-import type { WorkerId, IsoTimestamp } from "@/core/types"
+import type { WorkerId } from "@/core/types"
 import {
   HeartbeatTracker,
   StallDetector,

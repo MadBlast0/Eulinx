@@ -14,7 +14,6 @@ import type { WorkerState, WorkerHealth } from "@/spawner/worker-state"
 import type {
   WorkerBase,
   WorkerMetricsSummary,
-  WorkerMonitoringHealth,
   WorkerCapabilities,
 } from "./worker-types"
 import type { WorkerLifecycleRecord } from "@/spawner/worker-lifecycle"
@@ -101,7 +100,7 @@ export class WorkerManager {
       throw new Error(`Max active workers (${this.config.maxActiveWorkers}) reached`)
     }
 
-    const workspaceCount = this.countWorkersInWorkspace(record.workspaceId)
+    const workspaceCount = this.countWorkersInWorkspace(record.workspaceId as WorkspaceId)
     if (workspaceCount >= this.config.maxWorkersPerWorkspace) {
       throw new Error(`Max workers per workspace (${this.config.maxWorkersPerWorkspace}) reached`)
     }

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest"
-import type { SessionId, WorkspaceId, IsoTimestamp } from "@/core/types"
+import type { SessionId, WorkspaceId } from "@/core/types"
 import type { HierarchyNodeId } from "./worker-types"
 import { WorkerMessageRouter } from "./worker-messaging"
 

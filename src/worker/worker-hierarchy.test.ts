@@ -3,13 +3,12 @@
  */
 
 import { describe, it, expect } from "vitest"
-import type { SessionId, WorkspaceId, WorkerId, IsoTimestamp } from "@/core/types"
+import type { SessionId, WorkspaceId, IsoTimestamp } from "@/core/types"
 import { WorkerHierarchyManager, DEFAULT_NODE_LIMITS } from "./worker-hierarchy"
 import type { PermissionSet, BudgetAllocation } from "./worker-types"
 
 function sid(id: string): SessionId { return id as unknown as SessionId }
 function ws(id: string): WorkspaceId { return id as unknown as WorkspaceId }
-function wid(id: string): WorkerId { return id as unknown as WorkerId }
 
 const FULL_PERMS: PermissionSet = { grants: [] }
 const FULL_BUDGET: BudgetAllocation = { allocated: 1000, spent: 0, currency: "usd" }
@@ -278,7 +277,7 @@ describe("WorkerHierarchyManager", () => {
         totalBudget: FULL_BUDGET,
       })
 
-      const worker = mgr.insertNode({
+      mgr.insertNode({
         parentId: root.id,
         kind: "worker",
         sessionId: sid("ses_1"),

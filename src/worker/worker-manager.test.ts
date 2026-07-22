@@ -3,12 +3,11 @@
  */
 
 import { describe, it, expect } from "vitest"
-import type { WorkerId, WorkspaceId, SessionId, IsoTimestamp } from "@/core/types"
+import type { WorkerId, SessionId, IsoTimestamp } from "@/core/types"
 import type { WorkerLifecycleRecord } from "@/spawner/worker-lifecycle"
-import { WorkerManager, DEFAULT_WORKER_MANAGER_CONFIG } from "./worker-manager"
+import { WorkerManager } from "./worker-manager"
 
 function wid(id: string): WorkerId { return id as unknown as WorkerId }
-function ws(id: string): WorkspaceId { return id as unknown as WorkspaceId }
 function sid(id: string): SessionId { return id as unknown as SessionId }
 
 function mockRecord(overrides?: Partial<WorkerLifecycleRecord>): WorkerLifecycleRecord {

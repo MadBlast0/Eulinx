@@ -76,7 +76,8 @@ export class WorkerPoolManager {
     if (!pool) throw new Error(`Pool ${poolId} not found`)
 
     const poolActiveCount = pool.workerIds.filter(id => activeWorkerIds.includes(id)).length
-    const now = new Date().toISOString() as IsoTimestamp
+    const _now = new Date().toISOString() as IsoTimestamp
+    void _now
 
     // Check cooldown
     if (pool.lastScaledAt) {
