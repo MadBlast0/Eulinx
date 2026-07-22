@@ -241,7 +241,8 @@ export class ToolManager {
     if (!this.eventListeners.has(eventType)) {
       this.eventListeners.set(eventType, new Set())
     }
-    this.eventListeners.get(eventType)!.add(listener)
+    const listeners = this.eventListeners.get(eventType)
+    if (listeners) listeners.add(listener)
   }
 
   off(eventType: ToolEventType, listener: (event: ToolEvent) => void): void {

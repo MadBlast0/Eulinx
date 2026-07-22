@@ -167,8 +167,8 @@ export function createGitPushTool(context: ToolContext = DEFAULT_TOOL_CONTEXT): 
       enforcePermission(GIT_PUSH.id, { action: "network", resourceType: "git", riskLevel: "high" }, context)
       const result = await push(repoOf(context))
       void raiseNotification(getBus(), {
-        message: `Git push complete: ${result.result}`,
-        severity: "success",
+        message: `Git push complete: ${result}`,
+        severity: "info",
         subjectId: "git.push",
         workspaceId: context.workspaceId as never,
       })

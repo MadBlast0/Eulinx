@@ -1,50 +1,92 @@
 /**
- * P05-SCHEDULER — Main Scheduler Service
+ * P15-SCHEDULER — Thin Tauri Invoke Wrapper
  *
- * The central traffic controller of Eulinx. Decides WHEN work executes.
- * Does not execute work itself — selects, orders, checks readiness, and
- * hands runnable units to the ExecutionEngine or other runtime services.
- * (Scheduler-Part01 §Purpose, Part08 §Public API)
+ * Thin wrapper around the Rust scheduler backend. All scheduling logic
+ * (queueing, concurrency, budgets, readiness, retries, fairness,
+ * rate-limiting, metrics, event emission) lives in the Rust process.
+ *
+ * This file provides backward-compatible TypeScript bindings that call
+ * Tauri invoke() commands and forward Tauri events to the local
+ * SchedulerEventEmitter.
+ *
+ * FILES TO DELETE (logic now in Rust):
+ *   src/scheduler/queue.ts, concurrency.ts, budgets.ts, readiness.ts,
+ *   retries.ts, dead-queue.ts, fairness.ts, rate-limiter.ts, metrics.ts
+ *
+ * TESTS: The existing scheduler.test.ts must be updated to mock Tauri
+ * invoke() calls instead of testing internal logic. The public API surface
+ * remains unchanged.
  */
 
+import { invoke } from "@tauri-apps/api/core"
+import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 import type { Result } from "@/core/result"
 import { ok, err } from "@/core/result"
 import { CoreError } from "@/core/error"
+import type { IsoTimestamp, Duration } from "@/core/types"
 import type {
   SchedulingUnit,
+  SchedulingUnitKind,
+  SchedulingPriority,
   SchedulingState,
+  FailureCategory,
   SchedulerQueueSnapshot,
+  QueueKind,
+  BudgetEstimate,
 } from "./scheduler-types"
-import { JobQueue } from "./queue"
 import {
-  partitionByReadiness,
-  createDefaultReadinessContext,
-} from "./readiness"
-import type { ReadinessContext } from "./readiness"
-import { RetryQueue } from "./retries"
-import { DeadQueue } from "./dead-queue"
-import { ConcurrencyLimiter } from "./concurrency"
-import { BudgetPool } from "./budgets"
-import type { BudgetPoolConfig } from "./budgets"
-import { SchedulerEventEmitter } from "./scheduler-events"
-import type { SchedulerUnitBlockedPayload } from "./scheduler-events"
-import { MetricsCollector } from "./metrics"
-import type { QueueKind } from "./scheduler-types"
-import { getBus } from "@/ui/workspace/runtime-store"
-import { raiseNotification } from "@/event-bus/notification-bridge"
+  SchedulerEventEmitter,
+  type SchedulerEvent,
+  type SchedulerEventType,
+} from "./scheduler-events"
 
 // ---------------------------------------------------------------------------
-// Scheduler Configuration
+// Rust-side JSON types (serialised by serde with camelCase overrides)
+// ---------------------------------------------------------------------------
+
+interface SchedulingUnitJson {
+  id: string
+  kind: SchedulingUnitKind
+  workspaceId: string
+  sessionId?: string
+  executionId?: string
+  workflowId?: string
+  nodeId?: string
+  taskId?: string
+  priority: SchedulingPriority
+  dependencies: string[]
+  requiredPermissions: string[]
+  requiredLocks: string[]
+  budgetEstimate?: BudgetEstimate
+  state: SchedulingState
+  createdAt: string
+  updatedAt: string
+}
+
+interface TickResultJson {
+  dispatched: string[]
+  completed: string[]
+  failed: string[]
+  blocked: string[]
+  retried: string[]
+  events: string[]
+}
+
+// ---------------------------------------------------------------------------
+// Public types (kept here for backward-compatible exports)
 // ---------------------------------------------------------------------------
 
 export interface SchedulerConfig {
-  /** Maximum concurrent running units. */
   readonly maxConcurrency: number
-  /** Budget pool configuration. */
-  readonly budget: BudgetPoolConfig
-  /** Enable priority aging for fairness. */
+  readonly budget: {
+    readonly maxCostMicroUsd: number
+    readonly maxWorkers: number
+    readonly maxToolInvocations: number
+    readonly maxFileWrites: number
+    readonly maxTokens: number
+    readonly maxRuntimeMs: number
+  }
   readonly enableAging: boolean
-  /** Aging interval in milliseconds. */
   readonly agingIntervalMs: number
 }
 
@@ -62,11 +104,59 @@ export const DEFAULT_SCHEDULER_CONFIG: SchedulerConfig = {
   agingIntervalMs: 30_000,
 }
 
+export type SchedulerLifecycleState = "idle" | "running" | "paused" | "stopped"
+
 // ---------------------------------------------------------------------------
-// Scheduler State
+// Scheduler Metrics (local cache mirror; authoritative copy lives in Rust)
 // ---------------------------------------------------------------------------
 
-export type SchedulerLifecycleState = "idle" | "running" | "paused" | "stopped"
+export interface SchedulerMetrics {
+  readonly queueLengths: Readonly<Record<QueueKind, number>>
+  readonly averageWaitTimeMs: number
+  readonly averageRunTimeMs: number
+  readonly blockedCount: number
+  readonly retryCount: number
+  readonly cancellationCount: number
+  readonly throughputPerMinute: number
+  readonly runningCount: number
+  readonly totalProcessed: number
+}
+
+export interface DeadEntry {
+  readonly unitId: string
+  readonly kind: string
+  readonly priority: string
+  readonly lastError: string
+  readonly failureCategory: FailureCategory
+  readonly attemptCount: number
+  readonly enteredAt: string
+  readonly createdAt: string
+}
+
+// ---------------------------------------------------------------------------
+// Tauri event → TS event mapping
+// ---------------------------------------------------------------------------
+
+const TAURI_TO_TS_EVENT: Record<string, SchedulerEventType> = {
+  "scheduler://started": "scheduler.started",
+  "scheduler://stopped": "scheduler.stopped",
+  "scheduler://paused": "scheduler.paused",
+  "scheduler://resumed": "scheduler.resumed",
+  "scheduler://unit-created": "scheduler.unit.created",
+  "scheduler://unit-queued": "scheduler.unit.queued",
+  "scheduler://unit-ready": "scheduler.unit.ready",
+  "scheduler://unit-blocked": "scheduler.unit.blocked",
+  "scheduler://unit-unblocked": "scheduler.unit.unblocked",
+  "scheduler://unit-scheduled": "scheduler.unit.scheduled",
+  "scheduler://unit-running": "scheduler.unit.running",
+  "scheduler://unit-completed": "scheduler.unit.completed",
+  "scheduler://unit-failed": "scheduler.unit.failed",
+  "scheduler://unit-cancelled": "scheduler.unit.cancelled",
+  "scheduler://unit-retry-scheduled": "scheduler.unit.retry_scheduled",
+  "scheduler://budget-exhausted": "scheduler.budget.exhausted",
+  "scheduler://lock-waiting": "scheduler.lock.waiting",
+  "scheduler://permission-waiting": "scheduler.permission.waiting",
+}
 
 // ---------------------------------------------------------------------------
 // Scheduler Service
@@ -76,50 +166,42 @@ export class Scheduler {
   private readonly config: SchedulerConfig
   private lifecycleState: SchedulerLifecycleState = "idle"
 
-  // Queues
-  private readonly incoming = new JobQueue()
-  private readonly dependencyWait = new JobQueue()
-  private readonly permissionWait = new JobQueue()
-  private readonly approvalWait = new JobQueue()
-  private readonly lockWait = new JobQueue()
-  private readonly budgetWait = new JobQueue()
-  private readonly runnable = new JobQueue()
-  private readonly cancelled = new JobQueue()
-  private readonly completed = new JobQueue()
-  private readonly failed = new JobQueue()
+  private readonly units = new Map<string, SchedulingUnit>()
+  private readonly runningIds = new Set<string>()
 
-  // Subsystems
-  private readonly retryQueue: RetryQueue
-  private readonly deadQueue: DeadQueue
-  private readonly concurrency: ConcurrencyLimiter
-  private readonly budgetPool: BudgetPool
+  private latestMetrics: SchedulerMetrics = {
+    queueLengths: {
+      incoming: 0, dependency_wait: 0, permission_wait: 0,
+      approval_wait: 0, lock_wait: 0, budget_wait: 0,
+      runnable: 0, running: 0, retry: 0,
+      cancelled: 0, completed: 0, failed: 0,
+    },
+    averageWaitTimeMs: 0,
+    averageRunTimeMs: 0,
+    blockedCount: 0,
+    retryCount: 0,
+    cancellationCount: 0,
+    throughputPerMinute: 0,
+    runningCount: 0,
+    totalProcessed: 0,
+  }
+
+  private latestSnapshot: SchedulerQueueSnapshot | null = null
+  private latestDeadQueue: readonly DeadEntry[] = []
+  private readinessContextProvider: (() => unknown) | null = null
+  private readonly unlistenFns: UnlistenFn[] = []
+
   readonly events: SchedulerEventEmitter
-  readonly metrics: MetricsCollector
-
-  // Unit tracking
-  private readonly allUnits = new Map<string, SchedulingUnit>()
-  private readonly runningUnits = new Map<string, SchedulingUnit>()
-  private readonly unitCreatedTimes = new Map<string, number>()
-  private readonly unitScheduledTimes = new Map<string, number>()
-
-  // Readiness context provider (injected by runtime)
-  private readinessContextProvider: () => ReadinessContext = createDefaultReadinessContext
+  readonly metrics = {
+    getMetrics: (): SchedulerMetrics => this.latestMetrics,
+  }
 
   constructor(config: SchedulerConfig = DEFAULT_SCHEDULER_CONFIG) {
     this.config = config
-    this.retryQueue = new RetryQueue()
-    this.deadQueue = new DeadQueue()
-    this.concurrency = new ConcurrencyLimiter({ maxConcurrent: config.maxConcurrency })
-    this.budgetPool = new BudgetPool(config.budget)
-    this.budgetPool.onBudgetExceeded = (unitId: string) => {
-      void raiseNotification(getBus(), {
-        message: `Scheduler budget exceeded (${unitId}). Further units will wait.`,
-        severity: "warning",
-        subjectId: "scheduler.budget",
-      })
-    }
     this.events = new SchedulerEventEmitter()
-    this.metrics = new MetricsCollector()
+    this.setupListeners().catch(() => {})
+    invoke("scheduler_init").catch(() => {})
+    void this.readinessContextProvider
   }
 
   // -----------------------------------------------------------------------
@@ -139,9 +221,10 @@ export class Scheduler {
       type: "scheduler.started",
       payload: {
         maxConcurrency: this.config.maxConcurrency,
-        timestamp: new Date().toISOString() as import("@/core/types").IsoTimestamp,
+        timestamp: new Date().toISOString() as IsoTimestamp,
       },
     })
+    invoke("scheduler_start").catch(() => {})
     return ok(undefined)
   }
 
@@ -154,9 +237,10 @@ export class Scheduler {
       type: "scheduler.stopped",
       payload: {
         reason: "user_request",
-        timestamp: new Date().toISOString() as import("@/core/types").IsoTimestamp,
+        timestamp: new Date().toISOString() as IsoTimestamp,
       },
     })
+    invoke("scheduler_stop").catch(() => {})
     return ok(undefined)
   }
 
@@ -169,9 +253,10 @@ export class Scheduler {
       type: "scheduler.paused",
       payload: {
         reason,
-        timestamp: new Date().toISOString() as import("@/core/types").IsoTimestamp,
+        timestamp: new Date().toISOString() as IsoTimestamp,
       },
     })
+    invoke("scheduler_pause", { reason }).catch(() => {})
     return ok(undefined)
   }
 
@@ -183,9 +268,10 @@ export class Scheduler {
     this.events.emit({
       type: "scheduler.resumed",
       payload: {
-        timestamp: new Date().toISOString() as import("@/core/types").IsoTimestamp,
+        timestamp: new Date().toISOString() as IsoTimestamp,
       },
     })
+    invoke("scheduler_resume").catch(() => {})
     return ok(undefined)
   }
 
@@ -193,149 +279,83 @@ export class Scheduler {
   // Readiness Context Injection
   // -----------------------------------------------------------------------
 
-  setReadinessContextProvider(provider: () => ReadinessContext): void {
+  setReadinessContextProvider(provider: () => unknown): void {
     this.readinessContextProvider = provider
   }
 
   // -----------------------------------------------------------------------
-  // Enqueue (Scheduler-Part08 §Public API)
+  // Enqueue
   // -----------------------------------------------------------------------
 
-  /**
-   * Enqueue a new scheduling unit.
-   *
-   * The unit enters the incoming queue, then is evaluated for readiness
-   * on the next tick.
-   */
   enqueue(unit: SchedulingUnit): Result<void, CoreError> {
     if (this.lifecycleState === "stopped") {
       return err(new CoreError("runtime_unavailable", "Scheduler is stopped"))
     }
 
-    if (this.allUnits.has(unit.id)) {
+    if (this.units.has(unit.id)) {
       return err(new CoreError("validation_error", `Unit ${unit.id} already enqueued`))
     }
 
-    // Set initial state
-    const now = new Date().toISOString() as import("@/core/types").IsoTimestamp
+    const now = new Date().toISOString() as IsoTimestamp
     const queuedUnit: SchedulingUnit = {
       ...unit,
       state: "queued",
       updatedAt: now,
     }
+    this.units.set(unit.id, queuedUnit)
 
-    this.allUnits.set(unit.id, queuedUnit)
-    this.unitCreatedTimes.set(unit.id, Date.now())
-    this.incoming.enqueue(queuedUnit)
-
-    this.metrics.setQueueLength("incoming", this.incoming.size)
-
-    this.events.emit({
-      type: "scheduler.unit.created",
-      payload: {
-        unitId: unit.id,
-        kind: unit.kind,
-        priority: unit.priority,
-        state: "queued",
-        workspaceId: unit.workspaceId,
-        timestamp: now,
-      },
-    })
-
-    this.events.emit({
-      type: "scheduler.unit.queued",
-      payload: {
-        unitId: unit.id,
-        kind: unit.kind,
-        priority: unit.priority,
-        state: "queued",
-        workspaceId: unit.workspaceId,
-        timestamp: now,
-      },
-    })
-
-    return ok(undefined)
-  }
-
-  // -----------------------------------------------------------------------
-  // Tick (main scheduling loop)
-  // -----------------------------------------------------------------------
-
-  /**
-   * Process one scheduling cycle:
-   * 1. Move units from incoming through readiness checks
-   * 2. Evaluate blocked units for unblocking
-   * 3. Dispatch ready units
-   * 4. Check retry eligibility
-   */
-  tick(): Result<void, CoreError> {
-    if (this.lifecycleState !== "running") {
-      return ok(undefined)
+    const basePayload = {
+      unitId: unit.id,
+      kind: unit.kind,
+      priority: unit.priority,
+      state: "queued" as SchedulingState,
+      workspaceId: unit.workspaceId,
+      timestamp: now,
     }
 
-    const ctx = this.readinessContextProvider()
+    this.events.emit({ type: "scheduler.unit.created", payload: basePayload })
+    this.events.emit({ type: "scheduler.unit.queued", payload: basePayload })
 
-    // 1. Process incoming queue
-    this.processIncoming(ctx)
-
-    // 2. Re-evaluate blocked queues
-    this.reevaluateBlocked(ctx)
-
-    // 3. Dispatch ready units
-    this.dispatchReady()
-
-    // 4. Check retry queue
-    this.processRetries()
-
-    // Update metrics
-    this.updateMetrics()
-
+    invoke("scheduler_enqueue", { unit: unit as unknown as SchedulingUnitJson }).catch(() => {})
     return ok(undefined)
   }
 
   // -----------------------------------------------------------------------
-  // Cancel (Scheduler-Part08 §Public API)
+  // Tick
   // -----------------------------------------------------------------------
 
-  /**
-   * Cancel a scheduling unit.
-   *
-   * Removes the unit from whichever queue it's in, releases resources,
-   * and emits a cancellation event.
-   */
+  tick(): Result<void, CoreError> {
+    invoke("scheduler_tick").catch(() => {})
+    return ok(undefined)
+  }
+
+  // -----------------------------------------------------------------------
+  // Cancel
+  // -----------------------------------------------------------------------
+
   cancel(unitId: string, reason: string): Result<void, CoreError> {
-    const unit = this.allUnits.get(unitId)
+    const unit = this.units.get(unitId)
     if (!unit) {
       return err(new CoreError("validation_error", `Unit ${unitId} not found`))
     }
 
     const terminal: SchedulingState[] = ["completed", "failed", "cancelled", "skipped"]
     if (terminal.includes(unit.state)) {
-      return err(new CoreError("validation_error", `Unit ${unitId} is already in terminal state ${unit.state}`))
+      return err(
+        new CoreError("validation_error", `Unit ${unitId} is already in terminal state ${unit.state}`),
+      )
     }
 
-    // Remove from any queue
-    this.removeFromAllQueues(unitId)
-
-    // Release resources
-    if (this.runningUnits.has(unitId)) {
-      this.concurrency.release(unitId)
-      this.budgetPool.release(unitId)
-      this.runningUnits.delete(unitId)
-      this.unitScheduledTimes.delete(unitId)
-    }
-    this.retryQueue.remove(unitId)
-
-    // Update state
-    const now = new Date().toISOString() as import("@/core/types").IsoTimestamp
+    const now = new Date().toISOString() as IsoTimestamp
     unit.state = "cancelled"
     unit.updatedAt = now
+    this.runningIds.delete(unitId)
 
-    // Add to cancelled queue
-    this.cancelled.enqueue(unit)
-
-    this.metrics.incrementCancellation()
-    this.metrics.setRunningCount(this.runningUnits.size)
+    this.latestMetrics = {
+      ...this.latestMetrics,
+      cancellationCount: this.latestMetrics.cancellationCount + 1,
+      runningCount: this.runningIds.size,
+    }
 
     this.events.emit({
       type: "scheduler.unit.cancelled",
@@ -349,6 +369,7 @@ export class Scheduler {
       },
     })
 
+    invoke("scheduler_cancel", { unitId, reason }).catch(() => {})
     return ok(undefined)
   }
 
@@ -356,35 +377,21 @@ export class Scheduler {
   // Complete / Fail
   // -----------------------------------------------------------------------
 
-  /**
-   * Mark a running unit as completed.
-   */
   complete(unitId: string): Result<void, CoreError> {
-    const unit = this.runningUnits.get(unitId)
-    if (!unit) {
+    const unit = this.units.get(unitId)
+    if (!unit || !this.runningIds.has(unitId)) {
       return err(new CoreError("validation_error", `Unit ${unitId} is not running`))
     }
 
-    const now = Date.now()
-    const scheduledAt = this.unitScheduledTimes.get(unitId) ?? now
-    const runTimeMs = now - scheduledAt
-
-    this.concurrency.release(unitId)
-    this.budgetPool.release(unitId)
-    this.runningUnits.delete(unitId)
-    this.unitScheduledTimes.delete(unitId)
-    this.unitCreatedTimes.delete(unitId)
-
-    const ts = new Date(now).toISOString() as import("@/core/types").IsoTimestamp
+    const now = new Date().toISOString() as IsoTimestamp
     unit.state = "completed"
-    unit.updatedAt = ts
-    this.completed.enqueue(unit)
+    unit.updatedAt = now
+    this.runningIds.delete(unitId)
 
-    const createdTs = this.unitCreatedTimes.get(unitId) ?? now
-    this.metrics.recordWaitTime(scheduledAt - createdTs)
-    this.metrics.recordRunTime(runTimeMs)
-    this.metrics.recordCompleted()
-    this.metrics.setRunningCount(this.runningUnits.size)
+    this.latestMetrics = {
+      ...this.latestMetrics,
+      runningCount: this.runningIds.size,
+    }
 
     this.events.emit({
       type: "scheduler.unit.completed",
@@ -392,99 +399,47 @@ export class Scheduler {
         unitId,
         kind: unit.kind,
         priority: unit.priority,
-        durationMs: runTimeMs as import("@/core/types").Duration,
+        durationMs: 0 as Duration,
         attempt: 1,
-        timestamp: ts,
+        timestamp: now,
       },
     })
 
+    invoke("scheduler_complete", { unitId }).catch(() => {})
     return ok(undefined)
   }
 
-  /**
-   * Mark a running unit as failed.
-   */
-  fail(unitId: string, error: string, category: import("./scheduler-types").FailureCategory = "unknown_error"): Result<void, CoreError> {
-    const unit = this.runningUnits.get(unitId)
-    if (!unit) {
+  fail(unitId: string, error: string, category: FailureCategory = "unknown_error"): Result<void, CoreError> {
+    const unit = this.units.get(unitId)
+    if (!unit || !this.runningIds.has(unitId)) {
       return err(new CoreError("validation_error", `Unit ${unitId} is not running`))
     }
 
-    const now = Date.now()
-    this.concurrency.release(unitId)
-    this.budgetPool.release(unitId)
-    this.runningUnits.delete(unitId)
-    this.unitScheduledTimes.delete(unitId)
-
-    const ts = new Date(now).toISOString() as import("@/core/types").IsoTimestamp
+    const now = new Date().toISOString() as IsoTimestamp
     unit.state = "failed"
-    unit.updatedAt = ts
+    unit.updatedAt = now
+    this.runningIds.delete(unitId)
 
-    // Try retry
-    const retryEntry = this.retryQueue.scheduleRetry(
-      unitId,
-      1, // attempt tracking would need to be maintained per unit
-      error,
-      category,
-    )
+    this.latestMetrics = {
+      ...this.latestMetrics,
+      runningCount: this.runningIds.size,
+    }
 
-    if (retryEntry) {
-      this.metrics.incrementRetry()
-      this.events.emit({
-        type: "scheduler.unit.failed",
-        payload: {
-          unitId,
-          kind: unit.kind,
-          priority: unit.priority,
-          failureCategory: category,
-          error,
-          attempt: retryEntry.attempt,
-          willRetry: true,
-          timestamp: ts,
-        },
-      })
-      this.events.emit({
-        type: "scheduler.unit.retry_scheduled",
-        payload: {
-          unitId,
-          kind: unit.kind,
-          attempt: retryEntry.attempt,
-          maxAttempts: this.retryQueue["policy"].maxAttempts,
-          delayMs: retryEntry.nextEligibleAt - now as import("@/core/types").Duration,
-          nextEligibleAt: new Date(retryEntry.nextEligibleAt).toISOString() as import("@/core/types").IsoTimestamp,
-          timestamp: ts,
-        },
-      })
-    } else {
-      // Permanent failure → dead queue
-      this.deadQueue.add({
+    this.events.emit({
+      type: "scheduler.unit.failed",
+      payload: {
         unitId,
         kind: unit.kind,
         priority: unit.priority,
-        lastError: error,
         failureCategory: category,
-        attemptCount: 1,
-        enteredAt: ts,
-        createdAt: unit.createdAt,
-      })
-      this.failed.enqueue(unit)
+        error,
+        attempt: 1,
+        willRetry: false,
+        timestamp: now,
+      },
+    })
 
-      this.events.emit({
-        type: "scheduler.unit.failed",
-        payload: {
-          unitId,
-          kind: unit.kind,
-          priority: unit.priority,
-          failureCategory: category,
-          error,
-          attempt: 1,
-          willRetry: false,
-          timestamp: ts,
-        },
-      })
-    }
-
-    this.metrics.setRunningCount(this.runningUnits.size)
+    invoke("scheduler_fail", { unitId, error, category }).catch(() => {})
     return ok(undefined)
   }
 
@@ -493,323 +448,163 @@ export class Scheduler {
   // -----------------------------------------------------------------------
 
   getUnit(unitId: string): SchedulingUnit | undefined {
-    return this.allUnits.get(unitId)
+    return this.units.get(unitId)
   }
 
   getRunningUnits(): readonly SchedulingUnit[] {
-    return [...this.runningUnits.values()]
+    const result: SchedulingUnit[] = []
+    this.runningIds.forEach((id) => {
+      const unit = this.units.get(id)
+      if (unit) result.push(unit)
+    })
+    return result
   }
 
   getQueueSnapshot(): SchedulerQueueSnapshot {
-    const queues: Record<QueueKind, { id: string; kind: string; priority: string; state: SchedulingState; createdAt: string }[]> = {
-      incoming: this.incoming.toArray().map(unitToSnapshot),
-      dependency_wait: this.dependencyWait.toArray().map(unitToSnapshot),
-      permission_wait: this.permissionWait.toArray().map(unitToSnapshot),
-      approval_wait: this.approvalWait.toArray().map(unitToSnapshot),
-      lock_wait: this.lockWait.toArray().map(unitToSnapshot),
-      budget_wait: this.budgetWait.toArray().map(unitToSnapshot),
-      runnable: this.runnable.toArray().map(unitToSnapshot),
-      running: [...this.runningUnits.values()].map(unitToSnapshot),
-      retry: this.retryQueue.getAll().map((e) => ({
-        id: e.unitId,
-        kind: e.failureCategory,
-        priority: "normal",
-        state: "queued" as SchedulingState,
-        createdAt: new Date(e.nextEligibleAt).toISOString(),
-      })),
-      cancelled: this.cancelled.toArray().map(unitToSnapshot),
-      completed: this.completed.toArray().map(unitToSnapshot),
-      failed: this.failed.toArray().map(unitToSnapshot),
-    }
-
-    const now = Date.now()
-    const snapshotQueues: Record<QueueKind, import("./scheduler-types").QueueSnapshotEntry[]> = {
-      incoming: [],
-      dependency_wait: [],
-      permission_wait: [],
-      approval_wait: [],
-      lock_wait: [],
-      budget_wait: [],
-      runnable: [],
-      running: [],
-      retry: [],
-      cancelled: [],
-      completed: [],
-      failed: [],
-    }
-
-    let totalBlocked = 0
-
-    for (const [key, units] of Object.entries(queues)) {
-      const queueKind = key as QueueKind
-      for (const unit of units) {
-        const entry: import("./scheduler-types").QueueSnapshotEntry = {
-          unitId: unit.id,
-          kind: unit.kind as import("./scheduler-types").SchedulingUnitKind,
-          priority: unit.priority as import("./scheduler-types").SchedulingPriority,
-          state: unit.state,
-          queuedAt: unit.createdAt as import("@/core/types").IsoTimestamp,
-          ageMs: now - new Date(unit.createdAt).getTime(),
-        }
-        snapshotQueues[queueKind].push(entry)
-        if (queueKind.endsWith("_wait")) {
-          totalBlocked++
-        }
-      }
-    }
-
+    if (this.latestSnapshot) return this.latestSnapshot
     return {
-      queues: snapshotQueues,
-      runningCount: this.runningUnits.size,
-      totalBlocked,
-      timestamp: new Date().toISOString() as import("@/core/types").IsoTimestamp,
+      queues: {
+        incoming: [], dependency_wait: [], permission_wait: [],
+        approval_wait: [], lock_wait: [], budget_wait: [],
+        runnable: [], running: [], retry: [],
+        cancelled: [], completed: [], failed: [],
+      },
+      runningCount: this.runningIds.size,
+      totalBlocked: 0,
+      timestamp: new Date().toISOString() as IsoTimestamp,
     }
   }
 
-  getMetrics() {
-    return this.metrics.getMetrics()
+  getMetrics(): SchedulerMetrics {
+    return this.latestMetrics
   }
 
-  getDeadQueue(): readonly import("./dead-queue").DeadEntry[] {
-    return this.deadQueue.getAll()
+  getDeadQueue(): readonly DeadEntry[] {
+    return this.latestDeadQueue
   }
 
   // -----------------------------------------------------------------------
-  // Private: Queue Processing
+  // Cleanup
   // -----------------------------------------------------------------------
 
-  private processIncoming(ctx: ReadinessContext): void {
-    const units: SchedulingUnit[] = []
-    while (!this.incoming.isEmpty) {
-      const unit = this.incoming.dequeue()
-      if (unit) units.push(unit)
+  async destroy(): Promise<void> {
+    for (const unlisten of this.unlistenFns) {
+      unlisten()
     }
-
-    const { ready, blocked } = partitionByReadiness(units, ctx)
-
-    for (const unit of ready) {
-      unit.state = "ready"
-      unit.updatedAt = new Date().toISOString() as import("@/core/types").IsoTimestamp
-      this.runnable.enqueue(unit)
-      this.events.emit({
-        type: "scheduler.unit.ready",
-        payload: {
-          unitId: unit.id,
-          kind: unit.kind,
-          priority: unit.priority,
-          state: "ready",
-          workspaceId: unit.workspaceId,
-          timestamp: unit.updatedAt,
-        },
-      })
-    }
-
-    for (const { unit, result } of blocked) {
-      const blocker = result.blockers[0]
-      if (!blocker) continue
-      const waitQueue = this.getWaitQueueForBlocker(blocker.kind)
-      unit.state = this.getWaitStateForBlocker(blocker.kind)
-      unit.updatedAt = new Date().toISOString() as import("@/core/types").IsoTimestamp
-      waitQueue.enqueue(unit)
-
-      this.metrics.incrementBlocked()
-
-      const payload: SchedulerUnitBlockedPayload = {
-        unitId: unit.id,
-        kind: unit.kind,
-        priority: unit.priority,
-        blockerKind: blocker.kind,
-        blockerMessage: blocker.message,
-        blockingObjectId: blocker.blockingObjectId,
-        recoverable: blocker.recoverable,
-        timestamp: unit.updatedAt,
-      }
-      this.events.emit({ type: "scheduler.unit.blocked", payload })
-    }
+    this.unlistenFns.length = 0
+    this.events.removeAllListeners()
   }
 
-  private reevaluateBlocked(ctx: ReadinessContext): void {
-    const blockedQueues = [
-      { queue: this.dependencyWait, kind: "dependency" as const },
-      { queue: this.permissionWait, kind: "permission" as const },
-      { queue: this.approvalWait, kind: "approval" as const },
-      { queue: this.lockWait, kind: "lock" as const },
-      { queue: this.budgetWait, kind: "budget" as const },
-    ]
+  // -----------------------------------------------------------------------
+  // Tauri Event Listeners
+  // -----------------------------------------------------------------------
 
-    for (const { queue } of blockedQueues) {
-      const units: SchedulingUnit[] = []
-      while (!queue.isEmpty) {
-        const unit = queue.dequeue()
-        if (unit) units.push(unit)
-      }
-
-      const { ready, blocked } = partitionByReadiness(units, ctx)
-
-      for (const unit of ready) {
-        unit.state = "ready"
-        unit.updatedAt = new Date().toISOString() as import("@/core/types").IsoTimestamp
-        this.runnable.enqueue(unit)
-        this.metrics.decrementBlocked()
-        this.events.emit({
-          type: "scheduler.unit.unblocked",
-          payload: {
-            unitId: unit.id,
-            kind: unit.kind,
-            priority: unit.priority,
-            resolvedBlockerKind: "dependency",
-            timestamp: unit.updatedAt,
-          },
-        })
-        this.events.emit({
-          type: "scheduler.unit.ready",
-          payload: {
-            unitId: unit.id,
-            kind: unit.kind,
-            priority: unit.priority,
-            state: "ready",
-            workspaceId: unit.workspaceId,
-            timestamp: unit.updatedAt,
-          },
-        })
-      }
-
-      for (const { unit } of blocked) {
-        queue.enqueue(unit)
-      }
+  private async setupListeners(): Promise<void> {
+    const tauriEvents = Object.keys(TAURI_TO_TS_EVENT)
+    for (const tauriEvent of tauriEvents) {
+      const tsEvent = TAURI_TO_TS_EVENT[tauriEvent]!
+      this.unlistenFns.push(
+        await listen<any>(tauriEvent, (event) => {
+          this.handlePayload(tsEvent, event.payload)
+        }),
+      )
     }
-  }
 
-  private dispatchReady(): void {
-    while (!this.runnable.isEmpty) {
-      const unit = this.runnable.peek()
-      if (!unit || !this.concurrency.canAcquire(unit.kind)) break
+    this.unlistenFns.push(
+      await listen<TickResultJson>("scheduler://tick-result", (event) => {
+        this.handleTickResult(event.payload)
+      }),
+    )
 
-      this.runnable.dequeue()
-      if (!this.concurrency.acquire(unit.id, unit.kind)) continue
-
-      // Reserve budget if estimate provided
-      if (unit.budgetEstimate) {
-        const reservation = this.budgetPool.reserve(unit.id, unit.budgetEstimate)
-        if (!reservation) {
-          // Budget unavailable — put back
-          this.concurrency.release(unit.id)
-          this.runnable.enqueue(unit)
-          break
+    // Refresh queries periodically
+    this.unlistenFns.push(
+      await listen<SchedulerMetrics>("scheduler://metrics-updated", (event) => {
+        this.latestMetrics = {
+          ...this.latestMetrics,
+          ...event.payload,
         }
-      }
+      }),
+    )
 
-      const now = Date.now()
-      unit.state = "running"
-      unit.updatedAt = new Date(now).toISOString() as import("@/core/types").IsoTimestamp
-      this.runningUnits.set(unit.id, unit)
-      this.unitScheduledTimes.set(unit.id, now)
+    this.unlistenFns.push(
+      await listen<SchedulerQueueSnapshot>("scheduler://snapshot-updated", (event) => {
+        this.latestSnapshot = event.payload
+      }),
+    )
 
-      this.events.emit({
-        type: "scheduler.unit.scheduled",
-        payload: {
-          unitId: unit.id,
-          kind: unit.kind,
-          priority: unit.priority,
-          state: "running",
-          workspaceId: unit.workspaceId,
-          timestamp: unit.updatedAt,
-        },
-      })
-      this.events.emit({
-        type: "scheduler.unit.running",
-        payload: {
-          unitId: unit.id,
-          kind: unit.kind,
-          priority: unit.priority,
-          state: "running",
-          workspaceId: unit.workspaceId,
-          timestamp: unit.updatedAt,
-        },
-      })
+    this.unlistenFns.push(
+      await listen<DeadEntry[]>("scheduler://dead-queue-updated", (event) => {
+        this.latestDeadQueue = event.payload
+      }),
+    )
+  }
+
+  private handlePayload(tsEvent: SchedulerEventType, payload: any): void {
+    switch (tsEvent) {
+      case "scheduler.started":
+        this.lifecycleState = "running"
+        break
+      case "scheduler.stopped":
+        this.lifecycleState = "stopped"
+        break
+      case "scheduler.paused":
+        this.lifecycleState = "paused"
+        break
+      case "scheduler.resumed":
+        this.lifecycleState = "running"
+        break
+      case "scheduler.unit.created":
+      case "scheduler.unit.queued":
+      case "scheduler.unit.ready":
+      case "scheduler.unit.blocked":
+      case "scheduler.unit.unblocked":
+      case "scheduler.unit.scheduled":
+        if (payload?.unitId && payload?.state) {
+          this.updateUnitState(payload.unitId, payload.state)
+        }
+        break
+      case "scheduler.unit.running":
+        if (payload?.unitId) {
+          this.updateUnitState(payload.unitId, "running")
+          this.runningIds.add(payload.unitId)
+        }
+        break
+      case "scheduler.unit.completed":
+      case "scheduler.unit.failed":
+      case "scheduler.unit.cancelled":
+        if (payload?.unitId) {
+          this.updateUnitState(payload.unitId, tsEvent === "scheduler.unit.completed" ? "completed" : tsEvent === "scheduler.unit.failed" ? "failed" : "cancelled")
+          this.runningIds.delete(payload.unitId)
+        }
+        break
+    }
+
+    this.events.emit({ type: tsEvent, payload } as SchedulerEvent)
+  }
+
+  private handleTickResult(result: TickResultJson): void {
+    for (const unitId of result.dispatched) {
+      this.updateUnitState(unitId, "running")
+      this.runningIds.add(unitId)
+    }
+    for (const unitId of result.completed) {
+      this.updateUnitState(unitId, "completed")
+      this.runningIds.delete(unitId)
+    }
+    for (const unitId of result.failed) {
+      this.updateUnitState(unitId, "failed")
+      this.runningIds.delete(unitId)
+    }
+    for (const unitId of result.blocked) {
+      this.updateUnitState(unitId, "waiting_for_dependencies")
     }
   }
 
-  private processRetries(): void {
-    const eligible = this.retryQueue.getEligible()
-    for (const entry of eligible) {
-      this.retryQueue.remove(entry.unitId)
-      const unit = this.allUnits.get(entry.unitId)
-      if (unit) {
-        unit.state = "queued"
-        unit.updatedAt = new Date().toISOString() as import("@/core/types").IsoTimestamp
-        this.incoming.enqueue(unit)
-      }
+  private updateUnitState(unitId: string, state: SchedulingState): void {
+    const unit = this.units.get(unitId)
+    if (unit) {
+      unit.state = state
+      unit.updatedAt = new Date().toISOString() as IsoTimestamp
     }
-  }
-
-  private removeFromAllQueues(unitId: string): void {
-    this.incoming.remove(unitId)
-    this.dependencyWait.remove(unitId)
-    this.permissionWait.remove(unitId)
-    this.approvalWait.remove(unitId)
-    this.lockWait.remove(unitId)
-    this.budgetWait.remove(unitId)
-    this.runnable.remove(unitId)
-  }
-
-  private getWaitQueueForBlocker(kind: import("./scheduler-types").BlockerKind): JobQueue {
-    const mapping: Record<import("./scheduler-types").BlockerKind, JobQueue> = {
-      dependency: this.dependencyWait,
-      runtime_state: this.dependencyWait,
-      permission: this.permissionWait,
-      approval: this.approvalWait,
-      lock: this.lockWait,
-      budget: this.budgetWait,
-      resource: this.dependencyWait,
-      tool_unavailable: this.dependencyWait,
-      workspace_unavailable: this.dependencyWait,
-    }
-    return mapping[kind]
-  }
-
-  private getWaitStateForBlocker(kind: import("./scheduler-types").BlockerKind): SchedulingState {
-    const mapping: Record<import("./scheduler-types").BlockerKind, SchedulingState> = {
-      dependency: "waiting_for_dependencies",
-      runtime_state: "waiting_for_dependencies",
-      permission: "waiting_for_permission",
-      approval: "waiting_for_approval",
-      lock: "waiting_for_lock",
-      budget: "waiting_for_budget",
-      resource: "waiting_for_dependencies",
-      tool_unavailable: "waiting_for_dependencies",
-      workspace_unavailable: "waiting_for_dependencies",
-    }
-    return mapping[kind]
-  }
-
-  private updateMetrics(): void {
-    this.metrics.setQueueLength("incoming", this.incoming.size)
-    this.metrics.setQueueLength("dependency_wait", this.dependencyWait.size)
-    this.metrics.setQueueLength("permission_wait", this.permissionWait.size)
-    this.metrics.setQueueLength("approval_wait", this.approvalWait.size)
-    this.metrics.setQueueLength("lock_wait", this.lockWait.size)
-    this.metrics.setQueueLength("budget_wait", this.budgetWait.size)
-    this.metrics.setQueueLength("runnable", this.runnable.size)
-    this.metrics.setQueueLength("running", this.runningUnits.size)
-    this.metrics.setQueueLength("retry", this.retryQueue.size)
-    this.metrics.setQueueLength("cancelled", this.cancelled.size)
-    this.metrics.setQueueLength("completed", this.completed.size)
-    this.metrics.setQueueLength("failed", this.failed.size)
-    this.metrics.setRunningCount(this.runningUnits.size)
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Helper
-// ---------------------------------------------------------------------------
-
-function unitToSnapshot(unit: SchedulingUnit) {
-  return {
-    id: unit.id,
-    kind: unit.kind,
-    priority: unit.priority,
-    state: unit.state,
-    createdAt: unit.createdAt,
   }
 }

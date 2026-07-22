@@ -1,12 +1,12 @@
 import "@testing-library/jest-dom/vitest";
 
 // Mock Tauri internals for jsdom (theme-provider calls listen())
-if (!(window as Record<string, unknown>).__TAURI_INTERNALS__) {
-  (window as Record<string, unknown>).__TAURI_INTERNALS__ = {
+if (!window.__TAURI_INTERNALS__) {
+  window.__TAURI_INTERNALS__ = {
     transformCallback: (cb?: (response: unknown) => void) => {
       const id = Math.floor(Math.random() * 100000);
       if (cb) {
-        (window as Record<string, unknown>)[`_tauri_cb_${id}`] = cb;
+        (window as unknown as Record<string, unknown>)[`_tauri_cb_${id}`] = cb;
       }
       return id;
     },
@@ -15,12 +15,6 @@ if (!(window as Record<string, unknown>).__TAURI_INTERNALS__) {
       listen: () => Promise.resolve(() => {}),
       emit: () => Promise.resolve(),
     },
-  };
-}
-if (!(window as Record<string, unknown>).__TAURI_EVENT_PLUGIN_INTERNALS__) {
-  (window as Record<string, unknown>).__TAURI_EVENT_PLUGIN_INTERNALS__ = {
-    registerListener: () => {},
-    unregisterListener: () => {},
   };
 }
 
@@ -39,8 +33,8 @@ Object.defineProperty(window, "matchMedia", {
 });
 
 // xterm.js needs canvas context in jsdom — stub it out
-if (!HTMLCanvasElement.prototype.getContext.__original) {
-  const originalGetContext = HTMLCanvasElement.prototype.getContext.bind(HTMLCanvasElement.prototype);
+const originalGetContext = HTMLCanvasElement.prototype.getContext.bind(HTMLCanvasElement.prototype);
+if (!(HTMLCanvasElement.prototype.getContext as unknown as Record<string, unknown>).__original) {
   HTMLCanvasElement.prototype.getContext = function (
     type: string,
     attrs?: Record<string, unknown>,
@@ -134,5 +128,5 @@ if (!HTMLCanvasElement.prototype.getContext.__original) {
     }
     return originalGetContext(type, attrs);
   } as typeof HTMLCanvasElement.prototype.getContext;
-  (HTMLCanvasElement.prototype.getContext as Record<string, unknown>).__original = true;
+  (HTMLCanvasElement.prototype.getContext as unknown as Record<string, unknown>).__original = true;
 }
