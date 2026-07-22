@@ -63,7 +63,7 @@ export function RightSidebar() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden border-l border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-sidebar)]">
-      <div className="flex h-[40px] shrink-0 items-center justify-center gap-1 border-b border-[color:var(--Eulinx-color-border)] px-2">
+      <div className="flex h-[40px] shrink-0 items-center justify-start gap-1 border-b border-[color:var(--Eulinx-color-border)] px-2">
         {TABS.map((tab) => (
           <SidebarTab
             key={tab.id}

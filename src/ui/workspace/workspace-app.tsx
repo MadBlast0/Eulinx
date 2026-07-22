@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react"
 import "./workspace.css"
 import { cn } from "@/utils/cn"
 import { WorkspaceProvider, useWorkspace } from "./use-workspace"
-import { ProjectsProvider } from "./use-projects"
+import { ProjectsProvider, useProjects } from "./use-projects"
 import { MemoryProvider } from "./memory-store"
 import { RuntimeProvider } from "./runtime-store"
 import { SessionsProvider } from "./sessions-store"
@@ -415,38 +415,51 @@ function WorkspaceShell() {
   )
 }
 
+/**
+ * Wraps project-scoped providers with a key={activeProjectId} so they
+ * fully remount (and reset their state) when the user switches projects.
+ */
+function ProjectScope({ children }: { children: React.ReactNode }) {
+  const { activeProjectId } = useProjects()
+  return <div key={activeProjectId}>{children}</div>
+}
+
 export function WorkspaceApp() {
   return (
     <ProjectsProvider>
-      <MemoryProvider>
-        <RuntimeProvider>
-          <SessionsProvider>
-            <PromptsProvider>
-              <WorkspaceProvider>
-                <SettingsProvider>
-                  <WorkersProvider>
-                    <TasksProvider>
-                      <TemplatesProvider>
-                        <CostProvider>
-                          <PluginsProvider>
-                          <KeymapProvider>
-                            <ArtifactsProvider>
-                            <LayoutProvider>
-                              <WorkspaceShell />
-                            </LayoutProvider>
-                            </ArtifactsProvider>
-                          </KeymapProvider>
-                          </PluginsProvider>
-                        </CostProvider>
-                      </TemplatesProvider>
-                    </TasksProvider>
-                  </WorkersProvider>
-                </SettingsProvider>
-              </WorkspaceProvider>
-            </PromptsProvider>
-          </SessionsProvider>
-        </RuntimeProvider>
-      </MemoryProvider>
+      {/* Global providers — survive project switches */}
+      <SettingsProvider>
+        <PluginsProvider>
+          <KeymapProvider>
+            <TemplatesProvider>
+              {/* Project-scoped providers — remount on project switch */}
+              <ProjectScope>
+                <MemoryProvider>
+                  <RuntimeProvider>
+                    <SessionsProvider>
+                      <PromptsProvider>
+                        <WorkspaceProvider>
+                          <WorkersProvider>
+                            <TasksProvider>
+                              <CostProvider>
+                                <ArtifactsProvider>
+                                  <LayoutProvider>
+                                    <WorkspaceShell />
+                                  </LayoutProvider>
+                                </ArtifactsProvider>
+                              </CostProvider>
+                            </TasksProvider>
+                          </WorkersProvider>
+                        </WorkspaceProvider>
+                      </PromptsProvider>
+                    </SessionsProvider>
+                  </RuntimeProvider>
+                </MemoryProvider>
+              </ProjectScope>
+            </TemplatesProvider>
+          </KeymapProvider>
+        </PluginsProvider>
+      </SettingsProvider>
     </ProjectsProvider>
   )
 }

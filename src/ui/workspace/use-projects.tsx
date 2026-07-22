@@ -169,12 +169,19 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
 
   const selectView = useCallback(
     (viewId: string): void => {
-      commit((prev) => ({
-        ...prev,
-        projects: prev.projects.map((p) =>
-          p.id === prev.activeProjectId ? { ...p, activeViewId: viewId } : p,
-        ),
-      }))
+      commit((prev) => {
+        const owner = prev.projects.find((p) => p.views.some((v) => v.id === viewId))
+        if (!owner) return prev
+        return {
+          ...prev,
+          activeProjectId: owner.id,
+          projects: prev.projects.map((p) => {
+            if (p.id === owner.id) return { ...p, activeViewId: viewId }
+            if (p.id === prev.activeProjectId) return { ...p, activeViewId: undefined }
+            return p
+          }),
+        }
+      })
     },
     [commit],
   )
