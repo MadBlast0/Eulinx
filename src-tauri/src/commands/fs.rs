@@ -27,7 +27,8 @@ pub fn fs_read_text(app: AppHandle, path: String) -> Result<String, String> {
 #[tauri::command]
 pub fn fs_write_text(app: AppHandle, path: String, contents: String) -> Result<(), String> {
     let mgr = app.state::<FsManagerImpl>();
-    mgr.write_text_file(&path, &contents).map_err(|e| e.to_string())
+    mgr.write_text_file(&path, &contents)
+        .map_err(|e| e.to_string())
 }
 
 /// True if a file or directory exists at `path`.
@@ -103,7 +104,11 @@ pub fn fs_remove_file(app: AppHandle, path: String) -> Result<(), String> {
 
 /// Start watching a filesystem path for changes.
 #[tauri::command]
-pub async fn fs_watch_path(app: AppHandle, state: State<'_, AppState>, path: String) -> Result<String, String> {
+pub async fn fs_watch_path(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    path: String,
+) -> Result<String, String> {
     state.watch_path(path, app).await
 }
 
@@ -149,7 +154,10 @@ mod tests {
         let path = file.to_string_lossy().to_string();
 
         mgr.write_text_file(&path, "hello world").expect("write");
-        assert!(Path::new(&path).exists(), "parent dirs created and file written");
+        assert!(
+            Path::new(&path).exists(),
+            "parent dirs created and file written"
+        );
 
         let read = mgr.read_text_file(&path).expect("read");
         assert_eq!(read, "hello world");
@@ -205,7 +213,12 @@ mod tests {
     fn create_dir_nested_directories() {
         let mgr = test_fs_manager();
         let dir = temp_dir("create_nested");
-        let path = dir.join("a").join("b").join("c").to_string_lossy().to_string();
+        let path = dir
+            .join("a")
+            .join("b")
+            .join("c")
+            .to_string_lossy()
+            .to_string();
         mgr.create_dir(&path).expect("create nested dirs");
         assert!(Path::new(&path).is_dir());
         std::fs::remove_dir_all(&dir).ok();
@@ -217,7 +230,8 @@ mod tests {
         let dir = temp_dir("create_existing");
         let path = dir.join("exists").to_string_lossy().to_string();
         mgr.create_dir(&path).expect("create first time");
-        mgr.create_dir(&path).expect("create second time (should succeed)");
+        mgr.create_dir(&path)
+            .expect("create second time (should succeed)");
         assert!(Path::new(&path).is_dir());
         std::fs::remove_dir_all(&dir).ok();
     }

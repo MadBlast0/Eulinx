@@ -22,7 +22,12 @@ pub struct PtyState {
 
 /// Spawn a real shell. Delegates to PtyManagerImpl.
 #[tauri::command]
-pub fn pty_spawn(app: AppHandle, _state: tauri::State<'_, AppState>, id: String, shell: Option<String>) -> Result<String, String> {
+pub fn pty_spawn(
+    app: AppHandle,
+    _state: tauri::State<'_, AppState>,
+    id: String,
+    shell: Option<String>,
+) -> Result<String, String> {
     let mgr = app.state::<PtyManagerImpl>();
     mgr.spawn(&id, shell.as_deref().unwrap_or(""))
         .map_err(|e| e.to_string())?;
@@ -71,7 +76,11 @@ pub fn pty_resize(app: AppHandle, id: String, cols: u32, rows: u32) -> Result<()
 
 /// Kill the shell process. Delegates to PtyManagerImpl.
 #[tauri::command]
-pub fn pty_kill(app: AppHandle, state: tauri::State<'_, AppState>, id: String) -> Result<(), String> {
+pub fn pty_kill(
+    app: AppHandle,
+    state: tauri::State<'_, AppState>,
+    id: String,
+) -> Result<(), String> {
     let pty_state = app.state::<PtyState>();
     if let Some(handle) = pty_state.children.lock().unwrap().remove(&id) {
         if let Some(mut child) = handle.child.lock().unwrap().take() {
@@ -106,6 +115,7 @@ pub fn pty_kill_by_pid(app: AppHandle, pid: u32) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::managers::pty_manager::resolve_shell;
     use std::process::Command;
 
     #[test]

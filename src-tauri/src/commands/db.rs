@@ -13,7 +13,11 @@ pub struct TransactionStatement {
 }
 
 #[tauri::command]
-pub fn db_query(db: State<DbManager>, table: String, filter: Option<Value>) -> Result<Vec<Value>, String> {
+pub fn db_query(
+    db: State<DbManager>,
+    table: String,
+    filter: Option<Value>,
+) -> Result<Vec<Value>, String> {
     db.query(&table, filter.as_ref()).map_err(|e| e.to_string())
 }
 
@@ -27,7 +31,11 @@ fn coerce_id(id: &Value) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn db_find_by_id(db: State<DbManager>, table: String, id: Value) -> Result<Option<Value>, String> {
+pub fn db_find_by_id(
+    db: State<DbManager>,
+    table: String,
+    id: Value,
+) -> Result<Option<Value>, String> {
     let id_str = coerce_id(&id)?;
     db.find_by_id(&table, &id_str).map_err(|e| e.to_string())
 }
@@ -38,7 +46,12 @@ pub fn db_insert(db: State<DbManager>, table: String, data: Value) -> Result<Val
 }
 
 #[tauri::command]
-pub fn db_update(db: State<DbManager>, table: String, id: Value, data: Value) -> Result<Value, String> {
+pub fn db_update(
+    db: State<DbManager>,
+    table: String,
+    id: Value,
+    data: Value,
+) -> Result<Value, String> {
     let id_str = coerce_id(&id)?;
     db.update(&table, &id_str, &data).map_err(|e| e.to_string())
 }
@@ -69,7 +82,10 @@ pub async fn db_write_event_log(
 }
 
 #[tauri::command]
-pub fn db_transaction(db: State<DbManager>, statements: Vec<TransactionStatement>) -> Result<Vec<Value>, String> {
+pub fn db_transaction(
+    db: State<DbManager>,
+    statements: Vec<TransactionStatement>,
+) -> Result<Vec<Value>, String> {
     let stmts: Vec<DbStatement> = statements
         .into_iter()
         .map(|s| DbStatement {

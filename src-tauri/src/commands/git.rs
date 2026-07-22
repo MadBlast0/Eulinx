@@ -18,7 +18,7 @@ fn git(repo: &str, args: &[&str]) -> Result<String, String> {
             "git {} failed: {}",
             args.join(" "),
             String::from_utf8_lossy(&output.stderr)
-        ))
+        ));
     }
 
     String::from_utf8(output.stdout).map_err(|e| format!("git output not utf8: {e}"))
@@ -88,10 +88,10 @@ pub fn git_status(repo: String) -> Result<GitStatus, String> {
             branch = parsed.0;
             ahead = parsed.1;
             behind = parsed.2;
-            continue
+            continue;
         }
         if line.len() < 4 {
-            continue
+            continue;
         }
         let status = line[0..2].to_string();
         let path = line[3..].to_string();
@@ -121,14 +121,11 @@ pub fn git_status(repo: String) -> Result<GitStatus, String> {
         }
     }
 
-    let untracked_raw = git(
-        &repo,
-        &["ls-files", "--others", "--exclude-standard"],
-    )
-    .unwrap_or_default();
+    let untracked_raw =
+        git(&repo, &["ls-files", "--others", "--exclude-standard"]).unwrap_or_default();
     for path in untracked_raw.lines() {
         if path.is_empty() {
-            continue
+            continue;
         }
         untracked.push(GitChange {
             path: path.to_string(),
@@ -138,8 +135,7 @@ pub fn git_status(repo: String) -> Result<GitStatus, String> {
         });
     }
 
-    let log = git(&repo, &["log", "-n", "20", "--pretty=format:%h|%s|%an|%ar"])
-        .unwrap_or_default();
+    let log = git(&repo, &["log", "-n", "20", "--pretty=format:%h|%s|%an|%ar"]).unwrap_or_default();
     let commits: Vec<GitCommit> = log
         .lines()
         .filter_map(|line| {
@@ -178,7 +174,7 @@ pub fn git_stage_all(repo: String) -> Result<(), String> {
 pub fn git_commit(repo: String, message: String) -> Result<String, String> {
     let trimmed = message.trim();
     if trimmed.is_empty() {
-        return Err("commit message is empty".to_string())
+        return Err("commit message is empty".to_string());
     }
     let out = git(&repo, &["commit", "-m", trimmed])?;
     Ok(out.trim().to_string())
