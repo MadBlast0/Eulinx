@@ -110,6 +110,7 @@ function WorkspaceShell() {
   const {
     leftSidebarOpen,
     rightSidebarOpen,
+    bottomPanelOpen,
     setOverlay,
     selectedId,
     removeNode,
@@ -216,7 +217,7 @@ function WorkspaceShell() {
 
   const sidebarVisible = leftSidebarOpen && !sidebarRegion.collapsed
   const inspectorVisible = rightSidebarOpen && !inspectorRegion.collapsed
-  const panelVisible = !panelRegion.collapsed
+  const panelVisible = bottomPanelOpen && !panelRegion.collapsed
 
   const sidebarSize = sidebarVisible ? sidebarRegion.size : 0
   const inspectorSize = inspectorVisible ? inspectorRegion.size : 0
