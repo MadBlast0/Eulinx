@@ -41,14 +41,6 @@
       "webviewInstallMode": {
         "type": "embedBootstrapper"
       }
-    },
-    "appx": {
-      "logoImage": "icons/Square44x44Logo.png",
-      "logoWideImage": "icons/Square150x150Logo.png",
-      "logoSquareImage": "icons/Square150x150Logo.png",
-      "certificateThumbprint": null,
-      "digestAlgorithm": "SHA256",
-      "timestampUrl": ""
     }
   },
   "plugins": {
