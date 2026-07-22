@@ -6,7 +6,7 @@
  */
 
 import type { Result } from "@/core/result"
-import { ok } from "@/core/result"
+import { ok, err } from "@/core/result"
 import { CoreError } from "@/core/error"
 import type { IsoTimestamp } from "@/core/types"
 
@@ -23,26 +23,17 @@ import type {
 // ---------------------------------------------------------------------------
 
 export class ArchitectOrchestrator extends BaseOrchestrator {
-  private readonly architectConfig: ArchitectConfig
   private readonly taskNode: PlanNode
-  private readonly plan: Plan
   private architectureDecisions: ArchitectureDecision[] = []
 
   constructor(
     config: OrchestratorConfig,
     taskNode: PlanNode,
-    plan: Plan,
-    architectConfig?: Partial<ArchitectConfig>,
+    _plan: Plan,
+    _architectConfig?: Partial<ArchitectConfig>,
   ) {
     super(config)
     this.taskNode = taskNode
-    this.plan = plan
-    this.architectConfig = {
-      enforceStyleGuide: true,
-      requireADRs: true,
-      architecturalDecisionLog: true,
-      ...architectConfig,
-    }
   }
 
   // -----------------------------------------------------------------------

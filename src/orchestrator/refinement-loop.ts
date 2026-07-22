@@ -29,6 +29,10 @@ import type {
   RefinementPassRecord,
   OrchestratorEvent,
   OrchestratorEventType,
+  BuilderOutput,
+  VerifierOutput,
+  CriticOutput,
+  JudgeOutput,
 } from "./orchestrator-types"
 import { REFINEMENT_MODE_CAPS } from "./orchestrator-types"
 
@@ -208,7 +212,7 @@ export class RefinementLoopEngine {
       // If objective checks fail hard, route back to Builder (RefinementLoop-Part06 §Failure Routing)
       if (!verifierOutput.passed) {
         this.logger.info(`Verification failed at pass ${pass}, routing back to Builder`)
-        priorDraft = `Previous draft failed verification:\n${verifierOutput.checks.filter(c => !c.passed).map(c => `- ${c.name}: ${c.details}`).join("\n")}`
+        priorDraft = `Previous draft failed verification:\n${verifierOutput.checks.filter((c: { passed: boolean }) => !c.passed).map((c: { name: string; details: string }) => `- ${c.name}: ${c.details}`).join("\n")}`
         // Skip Critic on objective failure to save tokens (RefinementLoop-Part06)
         const judgeInput: JudgeInput = {
           orchestratorId: input.orchestratorId,

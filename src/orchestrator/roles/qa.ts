@@ -26,18 +26,16 @@ import type {
 export class QAOrchestrator extends BaseOrchestrator {
   private readonly qaConfig: QAConfig
   private readonly taskNode: PlanNode
-  private readonly plan: Plan
   private testResults: TestResult[] = []
 
   constructor(
     config: OrchestratorConfig,
     taskNode: PlanNode,
-    plan: Plan,
+    _plan: Plan,
     qaConfig?: Partial<QAConfig>,
   ) {
     super(config)
     this.taskNode = taskNode
-    this.plan = plan
     this.qaConfig = {
       requireTestCoverage: 80,
       runIntegrationTests: true,

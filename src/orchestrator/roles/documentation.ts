@@ -6,9 +6,9 @@
  */
 
 import type { Result } from "@/core/result"
-import { ok } from "@/core/result"
+import { ok, err } from "@/core/result"
 import { CoreError } from "@/core/error"
-import type { ArtifactId, IsoTimestamp } from "@/core/types"
+import { brand, type ArtifactId, type IsoTimestamp } from "@/core/types"
 
 import { BaseOrchestrator } from "../orchestrator-base"
 import type {
@@ -23,17 +23,15 @@ import type {
 
 export class DocumentationOrchestrator extends BaseOrchestrator {
   private readonly taskNode: PlanNode
-  private readonly plan: Plan
   private docArtifacts: DocArtifact[] = []
 
   constructor(
     config: OrchestratorConfig,
     taskNode: PlanNode,
-    plan: Plan,
+    _plan: Plan,
   ) {
     super(config)
     this.taskNode = taskNode
-    this.plan = plan
   }
 
   // -----------------------------------------------------------------------

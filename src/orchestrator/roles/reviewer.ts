@@ -7,7 +7,7 @@
  */
 
 import type { Result } from "@/core/result"
-import { ok } from "@/core/result"
+import { ok, err } from "@/core/result"
 import { CoreError } from "@/core/error"
 import type { ArtifactId, IsoTimestamp } from "@/core/types"
 
@@ -26,8 +26,6 @@ import type {
 
 export class ReviewerOrchestrator extends BaseOrchestrator {
   private readonly reviewerConfig: ReviewerConfig
-  private lastCriticOutput: CriticOutput | null = null
-  private lastJudgeOutput: JudgeOutput | null = null
 
   constructor(
     config: OrchestratorConfig,
@@ -92,7 +90,6 @@ export class ReviewerOrchestrator extends BaseOrchestrator {
     }
 
     const criticOutput = this.parseCriticOutput(result.value)
-    this.lastCriticOutput = criticOutput
     this.spendBudget(0) // Cost tracked externally
     return ok(criticOutput)
   }
@@ -130,7 +127,6 @@ export class ReviewerOrchestrator extends BaseOrchestrator {
     }
 
     const judgeOutput = this.parseJudgeOutput(result.value)
-    this.lastJudgeOutput = judgeOutput
     this.spendBudget(0)
     return ok(judgeOutput)
   }
@@ -232,7 +228,7 @@ export class ReviewerOrchestrator extends BaseOrchestrator {
       return {
         issues: (parsed.issues ?? []).map((i: Record<string, string>) => ({
           description: i.description ?? "Unknown issue",
-          severity: (["critical", "major", "minor"].includes(i.severity) ? i.severity : "minor") as "critical" | "major" | "minor",
+          severity: (["critical", "major", "minor"].includes(i.severity ?? "") ? i.severity : "minor") as "critical" | "major" | "minor",
           location: i.location as string | undefined,
           suggestion: i.suggestion as string | undefined,
         })),

@@ -24,6 +24,7 @@ import type {
   RefinementLoopResult,
   RoleExecutors,
   BuildInput,
+  BuilderOutput,
 } from "../refinement-loop"
 
 // ---------------------------------------------------------------------------
@@ -33,19 +34,17 @@ import type {
 export class ProgrammerOrchestrator extends BaseOrchestrator {
   private readonly programmerConfig: ProgrammerConfig
   private readonly taskNode: PlanNode
-  private readonly plan: Plan
   private readonly refinementLoop: RefinementLoopEngine
   private loopResult: RefinementLoopResult | null = null
 
   constructor(
     config: OrchestratorConfig,
     taskNode: PlanNode,
-    plan: Plan,
+    _plan: Plan,
     programmerConfig?: Partial<ProgrammerConfig>,
   ) {
     super(config)
     this.taskNode = taskNode
-    this.plan = plan
     this.programmerConfig = {
       allowedFileExtensions: [".ts", ".tsx", ".js", ".jsx", ".json", ".md"],
       enforceTests: true,

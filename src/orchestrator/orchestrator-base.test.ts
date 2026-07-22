@@ -5,7 +5,7 @@
 import { describe, it, expect } from "vitest"
 import { brand } from "@/core/types"
 import { CoreError } from "@/core/error"
-import type { OrchestratorId, OrchestratorConfig, PlanNode } from "./orchestrator-types"
+import type { OrchestratorConfig } from "./orchestrator-types"
 import { BaseOrchestrator } from "./orchestrator-base"
 
 // ---------------------------------------------------------------------------
@@ -157,7 +157,7 @@ describe("BaseOrchestrator", () => {
     await orch.start()
     const events = orch.getEvents()
     expect(events.length).toBeGreaterThan(0)
-    expect(events[0].type).toBe("orchestrator.started")
+    expect(events[0]!.type).toBe("orchestrator.started")
   })
 
   it("returns correct snapshot", async () => {

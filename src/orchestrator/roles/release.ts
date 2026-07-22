@@ -6,7 +6,7 @@
  */
 
 import type { Result } from "@/core/result"
-import { ok } from "@/core/result"
+import { ok, err } from "@/core/result"
 import { CoreError } from "@/core/error"
 import type { IsoTimestamp } from "@/core/types"
 
@@ -25,18 +25,16 @@ import type {
 export class ReleaseOrchestrator extends BaseOrchestrator {
   private readonly releaseConfig: ReleaseConfig
   private readonly taskNode: PlanNode
-  private readonly plan: Plan
   private releaseSteps: ReleaseStep[] = []
 
   constructor(
     config: OrchestratorConfig,
     taskNode: PlanNode,
-    plan: Plan,
+    _plan: Plan,
     releaseConfig?: Partial<ReleaseConfig>,
   ) {
     super(config)
     this.taskNode = taskNode
-    this.plan = plan
     this.releaseConfig = {
       requireAllTestsPass: true,
       requireSecurityAudit: true,

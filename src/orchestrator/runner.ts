@@ -4,7 +4,7 @@ import { CoreError } from "@/core/error"
 import { createLogger } from "@/core/logger"
 import type { Logger } from "@/core/logger"
 import { brand, type IsoTimestamp } from "@/core/types"
-import type { Duration } from "@/core/types"
+import type { ArtifactId, Duration } from "@/core/types"
 import { generateId } from "@/core/uuid"
 import type { RefinementMode } from "@/core/enums"
 import { ProviderInvoker } from "@/providers-ai/provider-invoker"
@@ -18,8 +18,7 @@ import { DocumentationOrchestrator } from "@/orchestrator/roles/documentation"
 import { QAOrchestrator } from "@/orchestrator/roles/qa"
 import { ReleaseOrchestrator } from "@/orchestrator/roles/release"
 import type { PlannerGraphNode } from "@/orchestrator/roles/planner"
-import { RefinementLoopEngine } from "@/orchestrator/refinement-loop"
-import type { RefinementLoopInput, RoleExecutors } from "@/orchestrator/refinement-loop"
+import type { RoleExecutors } from "@/orchestrator/refinement-loop"
 import { RefinementVerifier } from "@/orchestrator/refinement-verify"
 import type {
   OrchestratorConfig,
@@ -42,8 +41,6 @@ export class OrchestratorRunner {
   private cancelRequested = false
   private readonly logger: Logger
   private readonly invoker: ProviderInvoker
-  private readonly loopEngine: RefinementLoopEngine
-  private _currentTaskId: string | null = null
   private _artifacts: ArtifactEntry[] = []
   private _totalTokens = 0
   private _totalCost = 0
@@ -51,7 +48,6 @@ export class OrchestratorRunner {
   constructor(invoker: ProviderInvoker) {
     this.logger = createLogger("OrchestratorRunner")
     this.invoker = invoker
-    this.loopEngine = new RefinementLoopEngine()
   }
 
   getStatus(): RunStatus {
@@ -72,7 +68,6 @@ export class OrchestratorRunner {
     this._totalCost = 0
 
     const taskId = generateId()
-    this._currentTaskId = taskId
     const startedAt = new Date().toISOString() as IsoTimestamp
 
     this.logger.info(`Starting task: "${task.slice(0, 80)}"`)
@@ -274,7 +269,7 @@ export class OrchestratorRunner {
           messages: [],
         }).cost
 
-        const artifactId = brand<string, "ArtifactId">(`art-prog-${Date.now()}`)
+        const artifactId = brand<ArtifactId>(`art-prog-${Date.now()}`)
         const content = result.content
         artifactContents.set(artifactId, content)
         verifier.recordArtifact(artifactId, content)

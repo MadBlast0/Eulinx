@@ -47,7 +47,7 @@ export class RefinementVerifier {
   private readonly maxSizeBytes: number
 
   constructor(options: RefinementVerifierOptions) {
-    this.workerId = brand<string, "WorkerId">(options.workerId)
+    this.workerId = brand<WorkerId>(options.workerId)
     this.aiVerify = options.aiVerify
     this.gateMode = options.gateMode ?? "hard"
     this.maxSizeBytes = options.maxSizeBytes ?? 1024 * 1024

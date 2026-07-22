@@ -1,5 +1,5 @@
 import type { RefinementMode } from "@/core/enums"
-import type { IsoTimestamp, Duration } from "@/core/types"
+import type { IsoTimestamp } from "@/core/types"
 import type { Plan, OrchestratorRole } from "./orchestrator-types"
 
 export interface TaskContext {
