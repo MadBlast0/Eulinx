@@ -69,7 +69,7 @@ type DockView = { readonly kind: "tab"; readonly tab: BottomTab } | { readonly k
 
 export function BottomPanel() {
   const { bottomTab, setBottomTab, bottomPanelOpen, setBottomPanelOpen } = useWorkspace()
-  const { logLines, eventEntries } = useRuntime()
+  const { logLines, eventEntries, clearLogs, clearEvents } = useRuntime()
   const { entries: memoryEntries } = useMemory()
   const { layout, setRegionSize } = useLayout()
 
@@ -158,7 +158,10 @@ export function BottomPanel() {
             tip="Clear"
             size={26}
             aria-label="Clear"
-            onClick={() => setBottomTab(bottomTab)}
+            onClick={() => {
+              if (bottomTab === "logs") clearLogs()
+              else if (bottomTab === "events") clearEvents()
+            }}
           >
             <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
           </ToolbarButton>
