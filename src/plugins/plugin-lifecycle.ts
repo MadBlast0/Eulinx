@@ -115,7 +115,7 @@ export class PluginLifecycleManager {
     }))
 
     if (options?.permissionManager && manifest.capabilities.length > 0) {
-      const workspaceId = options.workspaceId ?? brand<string, "WorkspaceId">("default")
+      const workspaceId = options.workspaceId ?? brand<WorkspaceId>("default")
       for (const cap of manifest.capabilities) {
         const request = {
           requestId: `cap-${manifest.id}-${cap.capability}-${Date.now()}`,

@@ -215,7 +215,7 @@ export class McpClient {
   // -------------------------------------------------------------------------
 
   private pluginId(): PluginId {
-    return brand<string, "PluginId">(`mcp/${this.config.id}`)
+    return brand<PluginId>(`mcp/${this.config.id}`)
   }
 
   private qualifiedName(toolName: string): string {

@@ -7,6 +7,7 @@ import type {
   PluginCapability,
 } from "./plugin-types"
 import { brand } from "@/core/types"
+import type { PluginId } from "@/core/types"
 import type { ToolRegistry } from "@/tools/tool-registry"
 import type { PluginTool, ToolState } from "@/tools/tool-types"
 
@@ -45,7 +46,7 @@ export class PluginHost {
 
   /** Build a registry-compatible PluginTool from a descriptor. */
   toPluginTool(descriptor: ToolDescriptor, toolId: string, state: ToolState): PluginTool {
-    const id = brand<string, "PluginId">(this.pluginId)
+    const id = brand<PluginId>(this.pluginId)
     return {
       toolId,
       pluginId: id,
