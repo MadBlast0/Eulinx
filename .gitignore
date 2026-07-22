@@ -48,6 +48,10 @@ coverage/
 # Temp
 tmp/
 temp/
+tmp*
+_*.py
+*.pyc
+__pycache__/
 
 # Generated icons (source of truth: src/icon.svg)
 public/favicon.svg
