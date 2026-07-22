@@ -390,6 +390,30 @@ pub fn scheduler_queue_find_highest_priority(
     manager.queue_find_highest_priority(kind).map_err(|e| e.to_string())
 }
 
+// --- Round-robin distributor commands ---
+
+#[tauri::command]
+pub fn scheduler_group_distributor_active_groups(
+    manager: State<'_, SchedulerManager>,
+) -> Result<Vec<String>, String> {
+    manager.group_distributor_active_groups().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn scheduler_group_distributor_count(
+    manager: State<'_, SchedulerManager>,
+    group: String,
+) -> Result<usize, String> {
+    manager.group_distributor_count(group).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn scheduler_group_distributor_next(
+    manager: State<'_, SchedulerManager>,
+) -> Result<Option<String>, String> {
+    manager.group_distributor_next().map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

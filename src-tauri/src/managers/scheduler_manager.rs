@@ -471,6 +471,20 @@ impl SchedulerManager {
         };
         let _ = self.app.emit(event_name, event);
     }
+
+    // --- Round-robin distributor accessors ---
+
+    pub fn group_distributor_active_groups(&self) -> ApiResult<Vec<String>> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.group_distributor_active_groups())))
+    }
+
+    pub fn group_distributor_count(&self, group: String) -> ApiResult<usize> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.group_distributor_count(&group))))
+    }
+
+    pub fn group_distributor_next(&self) -> ApiResult<Option<String>> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.group_distributor_next())))
+    }
 }
 
 #[cfg(test)]

@@ -148,18 +148,30 @@ impl<T: Clone> RoundRobinDistributor<T> {
         *self.counts.get(group).unwrap_or(&0) as usize
     }
 
-    /// Increment the active count for a group (only if it exists).
-    pub fn increment(&mut self, group: &str) {
-        if let Some(c) = self.counts.get_mut(group) {
-            *c += 1;
-        }
+    /// Add a single item to a group, creating the group if it doesn't exist.
+    pub fn add_item(&mut self, group: String, item: T) {
+        self.groups.entry(group.clone()).or_default().push(item);
+        *self.counts.entry(group).or_insert(0) += 1;
     }
 
-    /// Decrement the active count for a group, never below zero.
-    pub fn decrement(&mut self, group: &str) {
-        if let Some(c) = self.counts.get_mut(group) {
-            *c = c.saturating_sub(1);
+    /// Remove a specific item from a group by predicate. Returns true if removed.
+    pub fn remove_item<F>(&mut self, group: &str, predicate: F) -> bool
+    where
+        F: Fn(&T) -> bool,
+    {
+        if let Some(items) = self.groups.get_mut(group) {
+            if let Some(pos) = items.iter().position(predicate) {
+                items.remove(pos);
+                if let Some(c) = self.counts.get_mut(group) {
+                    *c = c.saturating_sub(1);
+                }
+                if items.is_empty() {
+                    self.unregister(group);
+                }
+                return true;
+            }
         }
+        false
     }
 }
 

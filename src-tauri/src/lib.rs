@@ -187,6 +187,12 @@ pub fn run() {
             commands::scheduler_cmd::scheduler_queue_find_by_kind,
             commands::scheduler_cmd::scheduler_queue_find_by_priority,
             commands::scheduler_cmd::scheduler_queue_find_highest_priority,
+            commands::scheduler_cmd::scheduler_group_distributor_active_groups,
+            commands::scheduler_cmd::scheduler_group_distributor_count,
+            commands::scheduler_cmd::scheduler_group_distributor_next,
+            commands::scheduler_cmd::scheduler_group_distributor_active_groups,
+            commands::scheduler_cmd::scheduler_group_distributor_count,
+            commands::scheduler_cmd::scheduler_group_distributor_next,
             // Workflow
             commands::workflow_cmd::workflow_init,
             commands::workflow_cmd::workflow_create_run,

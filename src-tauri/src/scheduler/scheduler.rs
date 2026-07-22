@@ -21,7 +21,7 @@ use crate::scheduler::types::{
     BlockerKind, BudgetPoolConfig, ConcurrencyConfig, ConcurrencyPolicy, DeadEntry, FailureCategory, QueueKind,
     QueueSnapshotEntry, RateLimitConfig, ReadinessContext, RetryPolicy, SchedulerConfig,
     SchedulerLifecycleState, SchedulerMetrics, SchedulerQueueSnapshot, SchedulingState,
-    SchedulingUnit, TickResultJson, TokenBucketConfig, TokenBucketState,
+    SchedulingUnit, SchedulingUnitKind, TickResultJson, TokenBucketConfig, TokenBucketState,
 };
 use crate::scheduler::types::SchedulerEvent as SimpleEvent;
 use crate::scheduler::events::SchedulerEvent as DetailedEvent;
@@ -101,6 +101,20 @@ impl Scheduler {
         };
 
         let (emitter, rx) = SchedulerEventEmitter::new();
+
+        // Initialize the round-robin distributor with all unit kind groups
+        let mut group_distributor: RoundRobinDistributor<SchedulingUnit> = RoundRobinDistributor::new();
+        for kind in [
+            SchedulingUnitKind::WorkflowNode,
+            SchedulingUnitKind::Task,
+            SchedulingUnitKind::WorkerSpawn,
+            SchedulingUnitKind::ToolInvocation,
+            SchedulingUnitKind::Verification,
+            SchedulingUnitKind::Merge,
+            SchedulingUnitKind::BackgroundJob,
+        ] {
+            group_distributor.register(kind.as_str().to_string(), Vec::new());
+        }
 
         Self {
             lifecycle_state: SchedulerLifecycleState::Idle,
@@ -202,10 +216,10 @@ impl Scheduler {
         unit.state = SchedulingState::Queued;
         unit.updated_at = now_iso();
 
-        // Register the unit's group in the round-robin distributor
+        // Add unit to the round-robin distributor for group-fair dispatch
         let group = unit.kind.as_str().to_string();
         self.group_distributor
-            .increment(&group);
+            .add_item(group, unit.clone());
 
         self.queues
             .get_mut(&QueueKind::Incoming)
@@ -271,11 +285,11 @@ impl Scheduler {
             .return_tokens(Some(&unit.workspace_id), 1.0);
         self.metrics.increment_cancellation();
 
-        // Release fairness slot
+        // Release fairness slot and remove from round-robin distributor
         let group = unit.kind.as_str();
         self.fairness
             .release(Some(group), Some(&unit.workspace_id));
-        self.group_distributor.decrement(group);
+        self.group_distributor.remove_item(group, |u| u.id == unit_id);
 
         let mut unit = unit;
         unit.state = SchedulingState::Cancelled;
@@ -299,7 +313,7 @@ impl Scheduler {
     }
 
     pub fn complete(&mut self, unit_id: &str) -> Result<(), AppError> {
-        let unit = self
+        let mut unit = self
             .queues
             .get_mut(&QueueKind::Running)
             .and_then(|q| q.remove(unit_id))
@@ -321,14 +335,11 @@ impl Scheduler {
             self.metrics.record_run_time(run_ms);
         }
 
-        // Release fairness slot
+        // Release fairness slot and remove from round-robin distributor
         let group = unit.kind.as_str();
         self.fairness
             .release(Some(group), Some(&unit.workspace_id));
-        self.group_distributor.decrement(group);
-
-        let mut unit = unit;
-        unit.state = SchedulingState::Completed;
+        self.group_distributor.remove_item(group, |u| u.id == unit_id);
         unit.updated_at = now_iso();
         self.queues
             .get_mut(&QueueKind::Completed)
@@ -371,7 +382,7 @@ impl Scheduler {
         let group = unit.kind.as_str();
         self.fairness
             .release(Some(group), Some(&unit.workspace_id));
-        self.group_distributor.decrement(group);
+        self.group_distributor.remove_item(group, |u| u.id == unit_id);
 
         let attempt = self
             .retry_queue
@@ -607,6 +618,11 @@ impl Scheduler {
             let unit_priority = unit.priority.clone();
             let _unit_workspace = unit.workspace_id.clone();
             let blocker = &result.blockers[0];
+
+            // Build structured dependency records and safety gate results
+            let _structured_deps = crate::scheduler::readiness::build_unit_dependencies(&unit);
+            let gate_results = crate::scheduler::readiness::evaluate_all_safety_gate_results(&unit, ctx);
+
             let target_queue = get_wait_queue_for_blocker(&blocker.kind);
             let target_state = get_wait_state_for_blocker(&blocker.kind);
             unit.state = target_state;
@@ -620,13 +636,20 @@ impl Scheduler {
             events.push(SimpleEvent::UnitBlocked);
             self.metrics.increment_blocked();
 
+            // Emit detailed safety gate analysis for this blocked unit
+            let gate_analysis = gate_results
+                .iter()
+                .map(|gr| format!("{:?}={}", gr.gate, if gr.passed { "pass" } else { gr.blocker.as_deref().unwrap_or("fail") }))
+                .collect::<Vec<_>>()
+                .join(", ");
+
             self.event_emitter
                 .emit(DetailedEvent::UnitBlocked(SchedulerUnitBlockedPayload {
                     unit_id: result.unit_id,
                     kind: unit_kind,
                     priority: unit_priority,
                     blocker_kind: blocker.kind.clone(),
-                    blocker_message: blocker.message.clone(),
+                    blocker_message: format!("{} [gates: {}]", blocker.message, gate_analysis),
                     blocking_object_id: blocker.blocking_object_id.clone(),
                     recoverable: blocker.recoverable,
                     timestamp: now_iso(),
@@ -801,6 +824,10 @@ impl Scheduler {
             events.push(SimpleEvent::UnitRunning);
 
             self.metrics.record_scheduled();
+
+            // Advance the round-robin distributor cursor after each dispatch
+            // to track which group was served for fairness reporting
+            let _ = self.group_distributor.next();
         }
 
         dispatched
