@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useState } from "react"
 import {
   BookOpen,
   Boxes,
@@ -16,7 +16,7 @@ import {
   DollarSign,
 } from "lucide-react"
 import { cn } from "@/utils/cn"
-import { Button, Input, Badge, ScrollArea, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui"
+import { Button, Input, Badge, ScrollArea } from "@/components/ui"
 import { PanelSurface } from "../primitives"
 import { useTemplates, type Template, type TemplateCategory } from "../templates-store"
 import { TONE_FG } from "../state"

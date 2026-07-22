@@ -1,6 +1,4 @@
-﻿import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
-import { isTauri } from "@tauri-apps/api/core"
-import { appConfigDir } from "@tauri-apps/api/path"
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react"
 import { settingService } from "@/api/services"
 
 // ---------------------------------------------------------------------------

@@ -397,7 +397,7 @@ function TimelineTrack({
 
   const timeMin = visible.length > 0 && visible[0] ? visible[0].emittedMs : 0
   const timeMax =
-    visible.length > 0 && visible[visible.length - 1] ? visible[visible.length - 1]!.emittedMs : 1
+    visible.length > 0 && visible[visible.length - 1] ? visible[visible.length - 1]!.emittedMs : 1 // Safe: guarded by length and truthiness check
   const timeSpan = Math.max(timeMax - timeMin, 1)
 
   const branchAtSequences = useMemo(() => {

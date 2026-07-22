@@ -37,8 +37,10 @@ const KNOWLEDGE_TABS: readonly KnowledgeTab[] = [
 ]
 
 export function KnowledgeWorkspace() {
-  const [activeTab, setActiveTab] = useState(KNOWLEDGE_TABS[0].id)
-  const ActiveComponent = KNOWLEDGE_TABS.find((t) => t.id === activeTab)!.component
+  const [activeTab, setActiveTab] = useState(KNOWLEDGE_TABS[0]?.id ?? "embeddings")
+  const ActiveComponent = KNOWLEDGE_TABS.find((t) => t.id === activeTab)?.component ?? KNOWLEDGE_TABS[0]?.component
+
+  if (!ActiveComponent) return null
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-[color:var(--Eulinx-color-background)]">

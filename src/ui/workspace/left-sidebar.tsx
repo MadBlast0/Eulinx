@@ -3,10 +3,11 @@ import {
   BarChart3,
   Boxes,
   Braces,
-  Briefcase,
+  Folder,
   ChevronLeft,
   ChevronRight,
   Database,
+  FolderPlus,
   GitBranch,
   HelpCircle,
   Layers,
@@ -15,6 +16,7 @@ import {
   Search,
   Settings,
   Share2,
+  SlidersHorizontal,
   TerminalSquare,
 } from "lucide-react"
 import { cn } from "@/utils/cn"
@@ -49,7 +51,7 @@ function folderName(path: string): string {
   return segment && segment.length > 0 ? segment : trimmed
 }
 
-function SidebarSection({
+function _SidebarSection({
   label,
   count,
   children,
@@ -74,6 +76,7 @@ function SidebarSection({
     </div>
   )
 }
+void _SidebarSection
 
 function SidebarItem({
   icon,
@@ -160,7 +163,7 @@ function SidebarProject({
           onClick={onSelect}
           className="flex h-7 flex-1 items-center gap-2.5 text-left text-[14px] font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
-          <Briefcase className={ICON_CLASS} strokeWidth={1.5} />
+          <Folder className={ICON_CLASS} strokeWidth={1.5} />
           <span
             className={cn(
               "flex-1 truncate",
@@ -250,10 +253,38 @@ export function LeftSidebar({
 
         {/* Projects section */}
         <div className="mt-4">
-          <div className="mb-1 px-3">
+          <div className="mb-1 flex items-center justify-between px-3">
             <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[color:var(--Eulinx-color-text-muted)]">
               Projects
             </span>
+            <div className="flex items-center gap-0.5">
+              <button
+                type="button"
+                aria-label="Filter projects"
+                title="Filter projects"
+                className="flex h-6 w-6 items-center justify-center rounded-[var(--Eulinx-radius-sm)] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" strokeWidth={1.5} />
+              </button>
+              <button
+                type="button"
+                aria-label="Add project from folder"
+                title="Add project from folder"
+                onClick={() => void handleAddProject()}
+                className="flex h-6 w-6 items-center justify-center rounded-[var(--Eulinx-radius-sm)] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <FolderPlus className="h-3.5 w-3.5" strokeWidth={1.5} />
+              </button>
+              <button
+                type="button"
+                aria-label="Add project"
+                title="Add project"
+                onClick={() => void handleAddProject()}
+                className="flex h-6 w-6 items-center justify-center rounded-[var(--Eulinx-radius-sm)] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                <Plus className="h-3.5 w-3.5" strokeWidth={1.5} />
+              </button>
+            </div>
           </div>
           {projects.length === 0 && (
             <div className="px-3 py-2 text-[14px] text-[color:var(--Eulinx-color-text-muted)]">

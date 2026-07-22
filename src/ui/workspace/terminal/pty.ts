@@ -127,16 +127,16 @@ export function createMockPty(): Pty {
     switch (cmd) {
       case "cd": {
         if (rest.length === 0) { cwd = PTY_ROOT; break }
-        const target = normPath(cwd, rest[0]!)
+        const target = normPath(cwd, rest[0]!) // Safe: rest.length > 0
         const vfs = stripRoot(target)
         if (vfs && !virtualFs.has(vfs) && !findChild("", vfs)) {
-          dispatchData(emit(`${SGR.red}cd: ${rest[0]!}: No such directory${SGR.reset}`))
+          dispatchData(emit(`${SGR.red}cd: ${rest[0]!}: No such directory${SGR.reset}`)) // Safe: rest.length > 0
           break
         }
         if (vfs) {
           const e = virtualFs.get(vfs)
           if (e && !e.isDir) {
-            dispatchData(emit(`${SGR.red}cd: ${rest[0]!}: Not a directory${SGR.reset}`))
+            dispatchData(emit(`${SGR.red}cd: ${rest[0]!}: Not a directory${SGR.reset}`)) // Safe: rest.length > 0
             break
           }
         }
@@ -144,7 +144,7 @@ export function createMockPty(): Pty {
         break
       }
       case "ls": {
-        const target = rest.length > 0 ? normPath(cwd, rest[0]!) : cwd
+        const target = rest.length > 0 ? normPath(cwd, rest[0]!) : cwd // Safe: rest.length > 0 guard
         const vfs = stripRoot(target)
         const items = lsEntries(vfs)
         dispatchData(emit(items.length > 0 ? items.join("  ") : ""))
@@ -152,11 +152,11 @@ export function createMockPty(): Pty {
       }
       case "cat": {
         if (rest.length === 0) { dispatchData(emit("cat: missing operand")); break }
-        const target = normPath(cwd, rest[0]!)
+        const target = normPath(cwd, rest[0]!) // Safe: rest.length > 0
         const vfs = stripRoot(target)
         const e = virtualFs.get(vfs)
-        if (!e) { dispatchData(emit(`${SGR.red}cat: ${rest[0]!}: No such file${SGR.reset}`)); break }
-        if (e.isDir) { dispatchData(emit(`${SGR.red}cat: ${rest[0]!}: Is a directory${SGR.reset}`)); break }
+        if (!e) { dispatchData(emit(`${SGR.red}cat: ${rest[0]!}: No such file${SGR.reset}`)); break } // Safe: rest.length > 0
+        if (e.isDir) { dispatchData(emit(`${SGR.red}cat: ${rest[0]!}: Is a directory${SGR.reset}`)); break } // Safe: rest.length > 0
         dispatchData(emit(e.content))
         break
       }
@@ -168,9 +168,9 @@ export function createMockPty(): Pty {
         break
       case "mkdir": {
         if (rest.length === 0) { dispatchData(emit("mkdir: missing operand")); break }
-        const target = normPath(cwd, rest[0]!)
+        const target = normPath(cwd, rest[0]!) // Safe: rest.length > 0
         const vfs = stripRoot(target)
-        if (virtualFs.has(vfs)) { dispatchData(emit(`${SGR.red}mkdir: ${rest[0]!}: File exists${SGR.reset}`)); break }
+        if (virtualFs.has(vfs)) { dispatchData(emit(`${SGR.red}mkdir: ${rest[0]!}: File exists${SGR.reset}`)); break } // Safe: rest.length > 0
         virtualFs.set(vfs, { content: "", isDir: true, modified: new Date() })
         const parts = vfs.split("/")
         for (let i = 1; i < parts.length; i++) {
@@ -181,11 +181,11 @@ export function createMockPty(): Pty {
       }
       case "touch": {
         if (rest.length === 0) { dispatchData(emit("touch: missing operand")); break }
-        const target = normPath(cwd, rest[0]!)
+        const target = normPath(cwd, rest[0]!) // Safe: rest.length > 0
         const vfs = stripRoot(target)
         const now = new Date()
         if (virtualFs.has(vfs)) {
-          const existing = virtualFs.get(vfs)!
+          const existing = virtualFs.get(vfs)! // Safe: checked by has() above
           virtualFs.set(vfs, { ...existing, modified: now })
         } else {
           virtualFs.set(vfs, { content: "", isDir: false, modified: now })
@@ -199,12 +199,12 @@ export function createMockPty(): Pty {
       }
       case "rm": {
         if (rest.length === 0) { dispatchData(emit("rm: missing operand")); break }
-        const target = normPath(cwd, rest[0]!)
+        const target = normPath(cwd, rest[0]!) // Safe: rest.length > 0
         const vfs = stripRoot(target)
-        if (!virtualFs.has(vfs)) { dispatchData(emit(`${SGR.red}rm: ${rest[0]!}: No such file or directory${SGR.reset}`)); break }
+        if (!virtualFs.has(vfs)) { dispatchData(emit(`${SGR.red}rm: ${rest[0]!}: No such file or directory${SGR.reset}`)); break } // Safe: rest.length > 0
         const recursive = rest.includes("-r") || rest.includes("-rf")
         if (virtualFs.get(vfs)?.isDir && !recursive) {
-          dispatchData(emit(`${SGR.red}rm: ${rest[0]!}: Is a directory (use -r)${SGR.reset}`))
+          dispatchData(emit(`${SGR.red}rm: ${rest[0]!}: Is a directory (use -r)${SGR.reset}`)) // Safe: rest.length > 0
           break
         }
         for (const key of [...virtualFs.keys()]) {
@@ -214,23 +214,23 @@ export function createMockPty(): Pty {
       }
       case "cp": {
         if (rest.length < 2) { dispatchData(emit("cp: missing file operand")); break }
-        const src = normPath(cwd, rest[0]!)
-        const dst = normPath(cwd, rest[1]!)
+        const src = normPath(cwd, rest[0]!) // Safe: rest.length >= 2
+        const dst = normPath(cwd, rest[1]!) // Safe: rest.length >= 2
         const srcVfs = stripRoot(src)
         const srcE = virtualFs.get(srcVfs)
-        if (!srcE) { dispatchData(emit(`${SGR.red}cp: ${rest[0]!}: No such file or directory${SGR.reset}`)); break }
-        if (srcE.isDir) { dispatchData(emit(`${SGR.red}cp: ${rest[0]!}: Is a directory${SGR.reset}`)); break }
+        if (!srcE) { dispatchData(emit(`${SGR.red}cp: ${rest[0]!}: No such file or directory${SGR.reset}`)); break } // Safe: rest.length >= 2
+        if (srcE.isDir) { dispatchData(emit(`${SGR.red}cp: ${rest[0]!}: Is a directory${SGR.reset}`)); break } // Safe: rest.length >= 2
         const dstVfs = stripRoot(dst)
         virtualFs.set(dstVfs, { ...srcE, modified: new Date() })
         break
       }
       case "mv": {
         if (rest.length < 2) { dispatchData(emit("mv: missing file operand")); break }
-        const src = normPath(cwd, rest[0]!)
-        const dst = normPath(cwd, rest[1]!)
+        const src = normPath(cwd, rest[0]!) // Safe: rest.length >= 2
+        const dst = normPath(cwd, rest[1]!) // Safe: rest.length >= 2
         const srcVfs = stripRoot(src)
         const srcE = virtualFs.get(srcVfs)
-        if (!srcE) { dispatchData(emit(`${SGR.red}mv: ${rest[0]!}: No such file or directory${SGR.reset}`)); break }
+        if (!srcE) { dispatchData(emit(`${SGR.red}mv: ${rest[0]!}: No such file or directory${SGR.reset}`)); break } // Safe: rest.length >= 2
         const dstVfs = stripRoot(dst)
         virtualFs.set(dstVfs, { ...srcE, modified: new Date() })
         virtualFs.delete(srcVfs)

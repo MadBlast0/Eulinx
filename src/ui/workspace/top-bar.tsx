@@ -6,18 +6,17 @@ import {
   PanelLeft,
   PanelRight,
   Search,
-  Squircle,
   X,
 } from "lucide-react"
-import { cn } from "@/utils/cn"
 import { ToolbarButton } from "./primitives"
+import { AppIcon } from "./app-icon"
 import { useWorkspace } from "./use-workspace"
 import { useProjects } from "./use-projects"
 import { windowService } from "@/api/services"
 
 export function TopBar() {
   const { toggleLeftSidebar, toggleRightSidebar, setOverlay } = useWorkspace()
-  const { activeProject } = useProjects()
+  const { activeProject, activeView } = useProjects()
 
   const handleWindowMinimize = useCallback(() => {
     windowService.minimize()
@@ -34,29 +33,29 @@ export function TopBar() {
       className="flex h-full items-center gap-2 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-toolbar)] px-3"
       style={{ WebkitAppRegion: "drag" }}
     >
-      {/* Left group: sidebar toggle, app icon, breadcrumb */}
+      {/* Left group: app icon, sidebar toggle, breadcrumb */}
       <div className="flex shrink-0 items-center gap-2" style={{ WebkitAppRegion: "no-drag" }}>
-        <ToolbarButton tip="Toggle left sidebar" onClick={toggleLeftSidebar}>
-          <PanelLeft className="h-4 w-4" strokeWidth={1.5} />
-        </ToolbarButton>
-
-        <div className="mx-1 h-5 w-px bg-[color:var(--Eulinx-color-border)]" />
-
         <button
           type="button"
           aria-label="Eulinx"
           className="flex items-center gap-2 rounded-[var(--Eulinx-radius-sm)] px-2 py-1.5 text-[13px] font-semibold tracking-[-0.01em] text-[color:var(--Eulinx-color-text)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
-          <Squircle className="h-[18px] w-[18px] text-[color:var(--Eulinx-color-accent)]" strokeWidth={2.4} />
+          <AppIcon className="h-[18px] w-[18px]" />
           Eulinx
         </button>
+
+        <div className="mx-1 h-5 w-px bg-[color:var(--Eulinx-color-border)]" />
+
+        <ToolbarButton tip="Toggle left sidebar" onClick={toggleLeftSidebar}>
+          <PanelLeft className="h-4 w-4" strokeWidth={1.5} />
+        </ToolbarButton>
 
         <button
           type="button"
           aria-label="Select workspace"
           className="flex items-center gap-1 rounded-[var(--Eulinx-radius-sm)] px-2 py-1.5 text-[12px] font-medium text-[color:var(--Eulinx-color-text)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
         >
-          <Squircle className="h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+          <AppIcon className="h-3.5 w-3.5" />
           Personal
           <ChevronDown className="h-3 w-3 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
         </button>
@@ -65,7 +64,7 @@ export function TopBar() {
           <span>Eulinx</span>
           <span className="text-[color:var(--Eulinx-color-border-strong)]">/</span>
           <span className="text-[color:var(--Eulinx-color-text)]">
-            {activeProject?.activeView?.name ?? activeProject?.name ?? "Graph"}
+            {activeView?.name ?? activeProject?.name ?? "Eulinx"}
           </span>
         </div>
       </div>

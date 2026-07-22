@@ -5,9 +5,10 @@ import { ListRow, PanelSurface, StateBadge, Dot } from "../primitives"
 import PanelScaffold from "../panels/panel-scaffold"
 import { MemoryManager } from "@/memory/memory-manager"
 import { brand } from "@/core/types"
+import type { WorkspaceId } from "@/core/types"
 import type { VectorSearchResult } from "@/memory/memory-vector"
 
-const WORKSPACE = brand<string, "WorkspaceId">("kb-ui")
+const WORKSPACE = brand<WorkspaceId>("kb-ui")
 
 export default function KnowledgeBasePanel() {
   // Self-contained in-memory manager for this panel surface.

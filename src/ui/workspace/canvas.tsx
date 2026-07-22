@@ -2,28 +2,30 @@ import { useProjects } from "./use-projects"
 import { useWorkspace } from "./use-workspace"
 import { ContextMenu } from "./context-menu"
 import { getCanvasViewMeta } from "./canvas-views/registry"
-
-function EmptyState() {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-      <p className="text-sm font-medium text-[color:var(--Eulinx-color-text)]">
-        No view selected
-      </p>
-      <p className="text-xs text-[color:var(--Eulinx-color-text-muted)]">
-        Add one from the sidebar to get started.
-      </p>
-    </div>
-  )
-}
+import { ProjectOverview } from "./canvas-views/project-overview"
 
 export function Canvas() {
-  const { activeView } = useProjects()
+  const { activeView, activeProject } = useProjects()
   const { openContextMenu } = useWorkspace()
 
   if (!activeView) {
+    if (!activeProject) {
+      return (
+        <div className="flex flex-1 flex-col bg-[color:var(--Eulinx-color-background)]">
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+            <p className="text-sm font-medium text-[color:var(--Eulinx-color-text)]">
+              No project selected
+            </p>
+            <p className="text-xs text-[color:var(--Eulinx-color-text-muted)]">
+              Select or create a project from the sidebar.
+            </p>
+          </div>
+        </div>
+      )
+    }
     return (
       <div className="flex flex-1 flex-col bg-[color:var(--Eulinx-color-background)]">
-        <EmptyState />
+        <ProjectOverview />
       </div>
     )
   }

@@ -129,7 +129,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const undo = useCallback(() => {
     const snapshot = undoStack[0]
     if (!snapshot || !projects.graph) return
-    setRedoStack((prev) => [{ nodes: [...projects.graph!.nodes], edges: [...projects.graph!.edges] }, ...prev])
+    setRedoStack((prev) => [{ nodes: [...projects.graph!.nodes], edges: [...projects.graph!.edges] }, ...prev]) // Safe: guarded by null check above
     setUndoStack((prev) => prev.slice(1))
     projects.setGraphNodes(snapshot.nodes)
     projects.setGraphEdges(snapshot.edges)
@@ -138,7 +138,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const redo = useCallback(() => {
     const snapshot = redoStack[0]
     if (!snapshot || !projects.graph) return
-    setUndoStack((prev) => [{ nodes: [...projects.graph!.nodes], edges: [...projects.graph!.edges] }, ...prev])
+    setUndoStack((prev) => [{ nodes: [...projects.graph!.nodes], edges: [...projects.graph!.edges] }, ...prev]) // Safe: guarded by null check above
     setRedoStack((prev) => prev.slice(1))
     projects.setGraphNodes(snapshot.nodes)
     projects.setGraphEdges(snapshot.edges)

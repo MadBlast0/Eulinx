@@ -31,19 +31,18 @@ export function createNodeGraphDoc(name: string): NodeGraphDoc {
   return { id, name, nodes: [], edges: [], updatedAt: Date.now() }
 }
 
-export function createDefaultViews(): { views: CanvasView[]; graphs: Record<string, NodeGraphDoc>; activeViewId: string } {
+export function createDefaultViews(): { views: CanvasView[]; graphs: Record<string, NodeGraphDoc> } {
   const graph = createNodeGraphDoc("Main Graph")
   const main: CanvasView = { id: uid("view"), kind: "node-graph", name: graph.name, graphId: graph.id }
   return {
     views: [main],
     graphs: { [graph.id]: graph },
-    activeViewId: main.id,
   }
 }
 
 export function createProjectDoc(name: string, path: string): ProjectDoc {
-  const { views, graphs, activeViewId } = createDefaultViews()
-  return { id: uid("project"), name, path, views, activeViewId, graphs }
+  const { views, graphs } = createDefaultViews()
+  return { id: uid("project"), name, path, views, graphs }
 }
 
 export function DEFAULT_SEEDED_WORKSPACE(): WorkspaceDoc {
@@ -137,7 +136,13 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
 
   const selectProject = useCallback(
     (id: string): void => {
-      commit((prev) => ({ ...prev, activeProjectId: id }))
+      commit((prev) => ({
+        ...prev,
+        activeProjectId: id,
+        projects: prev.projects.map((p) =>
+          p.id === id ? { ...p, activeViewId: undefined } : p,
+        ),
+      }))
     },
     [commit],
   )

@@ -1,10 +1,8 @@
 import { useCallback, useState, type DragEvent } from "react"
 import {
   Calendar,
-  Clock,
   Plus,
   User,
-  AlertCircle,
   ArrowLeftRight,
   ChevronDown,
   ChevronRight,
@@ -14,8 +12,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/utils/cn"
 import { Button, Textarea, Input, ScrollArea, Badge, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui"
-import { PanelSurface } from "../primitives"
-import { type Tone, TONE_FG, toneSurface } from "../state"
+import { type Tone, TONE_FG } from "../state"
 import { useTasks, type Task, type TaskPriority, type TaskStatus, STATUS_LABELS, STATUS_COLORS, PRIORITY_LABELS } from "../tasks-store"
 import { useWorkers } from "../workers-store"
 
@@ -189,7 +186,7 @@ function TaskCard({ task, onDragStart }: { task: Task; onDragStart: (id: string)
 function Column({
   status,
   tasks,
-  draggedId,
+  draggedId: _draggedId,
   onDrop,
   onDragStart,
 }: {

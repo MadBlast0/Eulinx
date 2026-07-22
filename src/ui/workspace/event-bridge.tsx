@@ -40,7 +40,7 @@ export function EventBridge() {
 
       switch (event.type) {
         case "runtime.started":
-        case "runtime.ready":
+        case "runtime.ready" as EulinxEventUnion["type"]:
           s.setConnected(true)
           healthCheckRef.current()
           break

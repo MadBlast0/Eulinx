@@ -9,7 +9,7 @@
 
 import { useCallback, useRef, useState } from "react"
 import { brand } from "@/core/types"
-import type { IsoTimestamp, JsonObject } from "@/core/types"
+import type { IsoTimestamp, JsonObject, WorkspaceId, SessionId } from "@/core/types"
 import { generateId } from "@/core/uuid"
 import type { RefinementMode } from "@/core/enums"
 import { CoordinatorOrchestrator } from "@/orchestrator/roles/coordinator"
@@ -79,8 +79,8 @@ function buildGoal(graph: NodeGraphDoc): UserGoal {
     description,
     constraints: [],
     priority: "medium",
-    workspaceId: brand<ReturnType<typeof String>, "WorkspaceId">("ws-local"),
-    sessionId: brand<ReturnType<typeof String>, "SessionId">(`session-${id}`),
+    workspaceId: brand<WorkspaceId>("ws-local"),
+    sessionId: brand<SessionId>(`session-${id}`),
     projectId: graph.id,
     metadata: { graphId: graph.id, nodeCount: graph.nodes.length } as JsonObject,
   }
@@ -190,6 +190,9 @@ export function useRunGraph(): UseRunGraph {
         progress: null,
         ranAt: new Date().toISOString() as IsoTimestamp,
         nodeCount: graph.nodes.length,
+        artifactCount: 0,
+        totalTokens: 0,
+        totalCost: 0,
       }
     }
     inFlight.current = true

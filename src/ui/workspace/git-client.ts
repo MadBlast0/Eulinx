@@ -1,29 +1,9 @@
-﻿import { isTauri } from "@tauri-apps/api/core"
+import { isTauri } from "@tauri-apps/api/core"
 import { virtualFs } from "./fs-client"
-import { gitService, type GitStatus } from "@/api/services"
+import { gitService } from "@/api/services"
+import type { GitStatus, ChangeEntry } from "@/api/services"
 
-export interface ChangeEntry {
-  readonly path: string
-  readonly status: string
-  readonly add: number
-  readonly del: number
-}
-
-export interface CommitEntry {
-  readonly hash: string
-  readonly message: string
-  readonly author: string
-  readonly when: string
-}
-
-export interface GitStatus {
-  readonly branch: string
-  readonly ahead: number
-  readonly behind: number
-  readonly changes: readonly ChangeEntry[]
-  readonly untracked: readonly ChangeEntry[]
-  readonly commits: readonly CommitEntry[]
-}
+export type { GitStatus, ChangeEntry, CommitEntry } from "@/api/services"
 
 interface GitCommit {
   hash: string
@@ -173,4 +153,3 @@ export async function push(_repo: string): Promise<string> {
   }
   return await gitService.push(_repo)
 }
-
