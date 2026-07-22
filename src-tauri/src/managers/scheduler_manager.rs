@@ -1,0 +1,288 @@
+use std::sync::Mutex;
+
+use serde_json::Value;
+use tauri::{AppHandle, Emitter, Manager};
+
+use crate::error::AppError;
+use crate::ipc::{ApiError, ApiResult};
+use crate::scheduler::scheduler::Scheduler;
+use crate::scheduler::types::{
+    DeadEntry, FailureCategory, SchedulerConfig, SchedulerEvent, SchedulerLifecycleState,
+    SchedulerMetrics, SchedulerQueueSnapshot, SchedulingUnitJson, TickResultJson,
+};
+
+pub struct SchedulerManager {
+    scheduler: Mutex<Option<Scheduler>>,
+    config: SchedulerConfig,
+    app: AppHandle,
+}
+
+impl SchedulerManager {
+    pub fn new(app: AppHandle, config: SchedulerConfig) -> Self {
+        Self {
+            scheduler: Mutex::new(None),
+            config,
+            app,
+        }
+    }
+
+    pub fn initialize(&self) -> Result<(), AppError> {
+        let mut guard = self.scheduler.lock().unwrap();
+        let mut scheduler = Scheduler::new(self.config.clone());
+
+        let app = self.app.clone();
+        scheduler.set_readiness_provider(move || {
+            let app_state = app.state::<crate::state::AppState>();
+            let sessions = app_state.pty_sessions.blocking_read();
+            let runtime_ready = !sessions.is_empty();
+            drop(sessions);
+
+            crate::scheduler::types::ReadinessContext {
+                runtime_ready,
+                completed_unit_ids: std::collections::HashSet::new(),
+                held_lock_ids: std::collections::HashSet::new(),
+                approved_permissions: std::collections::HashSet::new(),
+                approved_unit_ids: std::collections::HashSet::new(),
+                running_count: 0,
+                max_concurrency: 8,
+                total_budget_cost_micro_usd: 0.0,
+                max_budget_cost_micro_usd: f64::MAX,
+            }
+        });
+
+        *guard = Some(scheduler);
+        Ok(())
+    }
+
+    fn with_scheduler<F, T>(&self, f: F) -> Result<T, AppError>
+    where
+        F: FnOnce(&mut Scheduler) -> Result<T, AppError>,
+    {
+        let mut guard = self.scheduler.lock().unwrap();
+        let scheduler = guard
+            .as_mut()
+            .ok_or_else(|| AppError::NotFound("scheduler not initialized".into()))?;
+        f(scheduler)
+    }
+
+    fn map_err<T>(result: Result<T, AppError>) -> ApiResult<T> {
+        result.map_err(|e| ApiError {
+            code: match &e {
+                AppError::NotFound(_) => "SCHEDULER_NOT_FOUND".into(),
+                AppError::InvalidInput(_) => "SCHEDULER_INVALID_INPUT".into(),
+                AppError::Internal(_) => "SCHEDULER_INTERNAL".into(),
+            },
+            message: e.to_string(),
+            context: None,
+        })
+    }
+
+    pub fn start(&self) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| s.start()))
+    }
+
+    pub fn stop(&self) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| s.stop()))
+    }
+
+    pub fn pause(&self, reason: String) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| s.pause(&reason)))
+    }
+
+    pub fn resume(&self) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| s.resume()))
+    }
+
+    pub fn state(&self) -> ApiResult<SchedulerLifecycleState> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.state().clone())))
+    }
+
+    pub fn enqueue(&self, unit: SchedulingUnitJson) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| s.enqueue(unit.into())))
+    }
+
+    pub fn tick(&self) -> ApiResult<TickResultJson> {
+        let result = Self::map_err(self.with_scheduler(|s| s.tick()))?;
+
+        for event in &result.events {
+            self.emit_scheduler_event(event, None);
+        }
+
+        let _ = self.app.emit("scheduler://tick-result", &result);
+
+        Ok(result)
+    }
+
+    pub fn cancel(&self, unit_id: String, reason: String) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| s.cancel(&unit_id, &reason)))
+    }
+
+    pub fn complete(&self, unit_id: String) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| s.complete(&unit_id)))
+    }
+
+    pub fn fail(&self, unit_id: String, error: String, category: FailureCategory) -> ApiResult<()> {
+        Self::map_err(self.with_scheduler(|s| s.fail(&unit_id, &error, category)))
+    }
+
+    pub fn get_unit(&self, unit_id: String) -> ApiResult<Option<SchedulingUnitJson>> {
+        Self::map_err(
+            self.with_scheduler(|s| {
+                Ok(s.get_unit(&unit_id).map(|u| SchedulingUnitJson::from(u.clone())))
+            }),
+        )
+    }
+
+    pub fn get_running_units(&self) -> ApiResult<Vec<SchedulingUnitJson>> {
+        Self::map_err(self.with_scheduler(|s| {
+            Ok(s.get_running_units()
+                .into_iter()
+                .map(SchedulingUnitJson::from)
+                .collect())
+        }))
+    }
+
+    pub fn get_queue_snapshot(&self) -> ApiResult<SchedulerQueueSnapshot> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.get_queue_snapshot())))
+    }
+
+    pub fn get_metrics(&self) -> ApiResult<SchedulerMetrics> {
+        Self::map_err(self.with_scheduler(|s| Ok(s.get_metrics())))
+    }
+
+    pub fn get_dead_queue(&self) -> ApiResult<Vec<DeadEntry>> {
+        Self::map_err(
+            self.with_scheduler(|s| {
+                Ok(s.get_dead_queue().get_all().into_iter().cloned().collect())
+            }),
+        )
+    }
+
+    fn emit_scheduler_event(&self, event: &SchedulerEvent, _payload: Option<Value>) {
+        let event_name = match event {
+            SchedulerEvent::Started => "scheduler://started",
+            SchedulerEvent::Stopped => "scheduler://stopped",
+            SchedulerEvent::Paused => "scheduler://paused",
+            SchedulerEvent::Resumed => "scheduler://resumed",
+            SchedulerEvent::UnitCreated => "scheduler://unit-created",
+            SchedulerEvent::UnitQueued => "scheduler://unit-queued",
+            SchedulerEvent::UnitReady => "scheduler://unit-ready",
+            SchedulerEvent::UnitBlocked => "scheduler://unit-blocked",
+            SchedulerEvent::UnitUnblocked => "scheduler://unit-unblocked",
+            SchedulerEvent::UnitScheduled => "scheduler://unit-scheduled",
+            SchedulerEvent::UnitRunning => "scheduler://unit-running",
+            SchedulerEvent::UnitCompleted => "scheduler://unit-completed",
+            SchedulerEvent::UnitFailed => "scheduler://unit-failed",
+            SchedulerEvent::UnitCancelled => "scheduler://unit-cancelled",
+            SchedulerEvent::UnitRetryScheduled => "scheduler://unit-retry-scheduled",
+            SchedulerEvent::BudgetExhausted => "scheduler://budget-exhausted",
+            SchedulerEvent::LockWaiting => "scheduler://lock-waiting",
+            SchedulerEvent::PermissionWaiting => "scheduler://permission-waiting",
+        };
+        let _ = self.app.emit(event_name, event);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::scheduler::types::SchedulingUnitKind;
+
+    #[test]
+    fn test_initialize_and_state() {
+        let app = tauri::test::mock_app(tauri::test::MockAppBuilder::new().build()).handle();
+        let config = SchedulerConfig {
+            max_concurrency: 4,
+            budget: crate::scheduler::types::UNLIMITED_BUDGET_POOL,
+            enable_aging: true,
+            aging_interval_ms: 30_000,
+        };
+        let manager = SchedulerManager::new(app, config);
+        assert!(manager.scheduler.lock().unwrap().is_none());
+
+        manager.initialize().unwrap();
+        assert!(manager.scheduler.lock().unwrap().is_some());
+    }
+
+    #[test]
+    fn test_methods_return_error_when_uninitialized() {
+        let app = tauri::test::mock_app(tauri::test::MockAppBuilder::new().build()).handle();
+        let config = SchedulerConfig {
+            max_concurrency: 4,
+            budget: crate::scheduler::types::UNLIMITED_BUDGET_POOL,
+            enable_aging: false,
+            aging_interval_ms: 0,
+        };
+        let manager = SchedulerManager::new(app, config);
+
+        let result = manager.start();
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().code, "SCHEDULER_NOT_FOUND");
+    }
+
+    #[test]
+    fn test_with_scheduler_not_found() {
+        let app = tauri::test::mock_app(tauri::test::MockAppBuilder::new().build()).handle();
+        let config = SchedulerConfig {
+            max_concurrency: 4,
+            budget: crate::scheduler::types::UNLIMITED_BUDGET_POOL,
+            enable_aging: false,
+            aging_interval_ms: 0,
+        };
+        let manager = SchedulerManager::new(app, config);
+
+        let result: Result<(), AppError> = manager.with_scheduler(|_| Ok(()));
+        assert!(matches!(result, Err(AppError::NotFound(_))));
+    }
+
+    #[test]
+    #[ignore = "requires Tauri runtime with managed AppState"]
+    fn test_initialize_sets_scheduler() {
+        let app = tauri::test::mock_app(tauri::test::MockAppBuilder::new().build()).handle();
+        let config = SchedulerConfig {
+            max_concurrency: 4,
+            budget: crate::scheduler::types::UNLIMITED_BUDGET_POOL,
+            enable_aging: true,
+            aging_interval_ms: 30_000,
+        };
+        let manager = SchedulerManager::new(app, config);
+        manager.initialize().unwrap();
+        let guard = manager.scheduler.lock().unwrap();
+        assert!(guard.is_some());
+    }
+
+    #[test]
+    fn test_emit_scheduler_event_mapping() {
+        let app = tauri::test::mock_app(tauri::test::MockAppBuilder::new().build()).handle();
+        let config = SchedulerConfig {
+            max_concurrency: 4,
+            budget: crate::scheduler::types::UNLIMITED_BUDGET_POOL,
+            enable_aging: false,
+            aging_interval_ms: 0,
+        };
+        let manager = SchedulerManager::new(app, config);
+
+        let variants = [
+            SchedulerEvent::Started,
+            SchedulerEvent::Stopped,
+            SchedulerEvent::Paused,
+            SchedulerEvent::Resumed,
+            SchedulerEvent::UnitCreated,
+            SchedulerEvent::UnitQueued,
+            SchedulerEvent::UnitReady,
+            SchedulerEvent::UnitBlocked,
+            SchedulerEvent::UnitUnblocked,
+            SchedulerEvent::UnitScheduled,
+            SchedulerEvent::UnitRunning,
+            SchedulerEvent::UnitCompleted,
+            SchedulerEvent::UnitFailed,
+            SchedulerEvent::UnitCancelled,
+            SchedulerEvent::UnitRetryScheduled,
+            SchedulerEvent::BudgetExhausted,
+            SchedulerEvent::LockWaiting,
+            SchedulerEvent::PermissionWaiting,
+        ];
+
+        assert_eq!(variants.len(), 18);
+    }
+}
