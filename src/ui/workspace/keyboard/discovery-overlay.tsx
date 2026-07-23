@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { X, Keyboard } from "lucide-react"
 import { AppIcon } from "../app-icon"
 import { cn } from "@/utils/cn"
@@ -41,6 +41,8 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const activeItemRef = useRef<HTMLButtonElement>(null)
+  const activeIndexRef = useRef(0)
+  const flatItemsRef = useRef<Command[]>([])
 
   const commands = useMemo(() => registry.listCommands(), [registry])
 
@@ -81,6 +83,10 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
     return grouped.flatMap((g) => g.items)
   }, [grouped])
 
+  // Keep refs in sync for the document-level Enter handler
+  activeIndexRef.current = activeIndex
+  flatItemsRef.current = flatItems
+
   const activeCommand = flatItems[activeIndex]
 
   useEffect(() => {
@@ -91,28 +97,46 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
     inputRef.current?.focus()
   }, [])
 
-  const run = (command: Command) => {
-    const handler = registry.getCommandHandler(command.id)
-    if (handler) handler()
-    onClose()
-  }
-
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    const max = flatItems.length - 1
-    if (e.key === "ArrowDown") {
-      e.preventDefault()
-      setActiveIndex((i) => (i < max ? i + 1 : 0))
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault()
-      setActiveIndex((i) => (i > 0 ? i - 1 : max))
-    } else if (e.key === "Enter") {
-      e.preventDefault()
-      if (activeCommand) run(activeCommand)
-    } else if (e.key === "Escape") {
-      e.preventDefault()
+  const run = useCallback(
+    (command: Command) => {
+      const handler = registry.getCommandHandler(command.id)
+      if (handler) handler()
       onClose()
+    },
+    [registry, onClose],
+  )
+
+  // Document-level Enter handler — bulletproof fallback
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter") {
+        e.preventDefault()
+        e.stopPropagation()
+        const idx = activeIndexRef.current
+        const items = flatItemsRef.current
+        const cmd = items[idx]
+        if (cmd) {
+          const handler = registry.getCommandHandler(cmd.id)
+          if (handler) handler()
+          onClose()
+        }
+      } else if (e.key === "Escape") {
+        e.preventDefault()
+        e.stopPropagation()
+        onClose()
+      } else if (e.key === "ArrowDown") {
+        e.preventDefault()
+        e.stopPropagation()
+        setActiveIndex((i) => (i < flatItemsRef.current.length - 1 ? i + 1 : 0))
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault()
+        e.stopPropagation()
+        setActiveIndex((i) => (i > 0 ? i - 1 : flatItemsRef.current.length - 1))
+      }
     }
-  }
+    document.addEventListener("keydown", onKeyDown, true)
+    return () => document.removeEventListener("keydown", onKeyDown, true)
+  }, [registry, onClose])
 
   useEffect(() => {
     activeItemRef.current?.scrollIntoView({ block: "nearest" })
@@ -132,7 +156,6 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
         aria-modal="true"
         aria-label="Command palette"
         className="w-[560px] max-w-[92vw] animate-[pal-in_160ms_ease] overflow-hidden border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] shadow-[var(--Eulinx-elev-xl)] rounded-[var(--Eulinx-radius-xl)]"
-        onKeyDown={onKeyDown}
       >
         <div className="flex items-center gap-2.5 border-b border-[color:var(--Eulinx-color-border)] px-4 py-3.5">
           <AppIcon name="search" className="h-4 w-4 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
