@@ -3,10 +3,10 @@ import { fileURLToPath } from "node:url"
 import path from "node:path"
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
-const repoTargetDir = path.join(repoRoot, ".cargo-target")
+const projectTargetDir = path.join(repoRoot, ".cargo-target", "eulinx")
 const env = {
   ...process.env,
-  CARGO_TARGET_DIR: process.env.CARGO_TARGET_DIR || repoTargetDir,
+  CARGO_TARGET_DIR: process.env.CARGO_TARGET_DIR || projectTargetDir,
 }
 
 const pnpmExecPath = process.env.npm_execpath
