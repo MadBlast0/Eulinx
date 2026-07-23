@@ -45,8 +45,12 @@ export function createNativePty(shell?: string): Pty {
   void listen<string>(`pty://${id}/data`, (event) => {
     dispatchData(event.payload)
   }).then((unlisten) => { unlisteners.push(unlisten) })
-  void listen<number>(`pty://${id}/exit`, (event) => {
-    dispatchExit(event.payload)
+  void listen(`pty://${id}/exit`, (event) => {
+    // Rust emits the raw exit code number (Option<i32> serialized as number | null)
+    const code = (typeof event.payload === "number" || event.payload === null)
+      ? (event.payload as ExitCode)
+      : null
+    dispatchExit(code)
   }).then((unlisten) => { unlisteners.push(unlisten) })
 
   const pty: Pty = {

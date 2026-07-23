@@ -1349,7 +1349,7 @@ pub struct MockScheduler;
 impl SchedulerAdapter for MockScheduler {
     fn admit(&self, _request: &AdmissionRequest) -> Result<AdmissionResponse, String> {
         Ok(AdmissionResponse {
-            admitted: _request.candidates.clone(),
+            admitted: _request.candidates.iter().map(|c| c.node_id.clone()).collect(),
             deferred: vec![],
             rejected: vec![],
         })

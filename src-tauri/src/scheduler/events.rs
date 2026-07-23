@@ -187,7 +187,8 @@ impl Default for SchedulerEventEmitter {
 mod tests {
     use super::*;
     use crate::scheduler::types::{
-        BlockerKind, FailureCategory, SchedulingPriority, SchedulingState, SchedulingUnitKind,
+        BlockerKind, FailureCategory, SchedulingPriority, SchedulingState, SchedulingUnit,
+        SchedulingUnitKind,
     };
     use crate::scheduler::time_utils::now_iso;
 

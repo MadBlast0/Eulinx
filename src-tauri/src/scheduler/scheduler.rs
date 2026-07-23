@@ -1126,7 +1126,9 @@ impl Scheduler {
 mod tests {
     use super::*;
     use crate::scheduler::time_utils::now_iso;
-    use crate::scheduler::types::{BudgetPoolConfig, SchedulingPriority, SchedulingUnitKind};
+    use crate::scheduler::types::{
+        BudgetPoolConfig, SchedulingPriority, SchedulingUnitKind, UNLIMITED_BUDGET_POOL,
+    };
 
     fn make_config() -> SchedulerConfig {
         SchedulerConfig {

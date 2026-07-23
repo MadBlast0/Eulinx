@@ -74,7 +74,8 @@ pub fn pty_resize(app: AppHandle, id: String, cols: u32, rows: u32) -> Result<()
     Ok(())
 }
 
-/// Kill the shell process. Delegates to PtyManagerImpl.
+/// Kill the shell process. Sends the kill signal; the exit-wait thread handles
+/// cleanup after the process terminates.
 #[tauri::command]
 pub fn pty_kill(
     app: AppHandle,
@@ -82,11 +83,16 @@ pub fn pty_kill(
     id: String,
 ) -> Result<(), String> {
     let pty_state = app.state::<PtyState>();
-    if let Some(handle) = pty_state.children.lock().unwrap().remove(&id) {
-        if let Some(mut child) = handle.child.lock().unwrap().take() {
+    // Send kill — the exit-wait thread will observe the termination and emit
+    // the exit event. We do NOT remove the child here to avoid racing with
+    // the exit-wait thread's lock acquisition.
+    if let Some(handle) = pty_state.children.lock().unwrap().get(&id) {
+        if let Some(child) = handle.child.lock().unwrap().as_mut() {
             let _ = child.kill();
         }
     }
+    // Clean up session state — safe to do immediately since it's only used
+    // for info queries, not for process lifecycle.
     state.pty_sessions.blocking_write().remove(&id);
     Ok(())
 }
@@ -123,10 +129,10 @@ mod tests {
         let (program, flag) = resolve_shell(None);
         if cfg!(windows) {
             assert_eq!(program, "cmd.exe");
-            assert_eq!(flag, "/C");
+            assert!(flag.is_none(), "Windows default shell should have no flag");
         } else {
             assert!(!program.is_empty());
-            assert_eq!(flag, "-i");
+            assert_eq!(flag.as_deref(), Some("-i"));
         }
     }
 
@@ -141,7 +147,7 @@ mod tests {
     fn resolve_shell_honors_override_and_trims() {
         let (program, flag) = resolve_shell(Some("  bash  "));
         assert_eq!(program, "bash");
-        assert_eq!(flag, "-i");
+        assert_eq!(flag.as_deref(), Some("-i"));
     }
 
     #[test]

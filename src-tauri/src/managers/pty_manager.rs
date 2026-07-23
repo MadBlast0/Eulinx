@@ -35,7 +35,9 @@ impl PtyManagerImpl {
         let (program, flag) = super::pty_manager::resolve_shell(cmd_str.as_deref());
 
         let mut command = Command::new(&program);
-        command.arg(&flag);
+        if let Some(ref f) = flag {
+            command.arg(f);
+        }
         command.stdin(Stdio::piped());
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
@@ -92,6 +94,7 @@ impl PtyManagerImpl {
             },
         );
 
+        // Wait for exit — reads the exit code BEFORE the handle is removed.
         std::thread::spawn(move || {
             let code = {
                 let state = exit_app.state::<PtyState>();
@@ -106,13 +109,8 @@ impl PtyManagerImpl {
                     None
                 }
             };
-            let _ = exit_app.emit(
-                &format!("pty://{exit_id}/exit"),
-                PtyExit {
-                    id: exit_id.clone(),
-                    code,
-                },
-            );
+            // Emit the raw exit code number — frontend expects just the number.
+            let _ = exit_app.emit(&format!("pty://{exit_id}/exit"), code);
         });
 
         self.pid_to_id.lock().unwrap().insert(pid, id);
@@ -207,16 +205,19 @@ impl PtyManagerImpl {
 }
 
 /// Resolve the default shell for the current OS.
-pub(crate) fn resolve_shell(shell: Option<&str>) -> (String, String) {
+pub(crate) fn resolve_shell(shell: Option<&str>) -> (String, Option<String>) {
     match shell {
-        Some(s) if !s.trim().is_empty() => (s.trim().to_string(), "-i".to_string()),
+        Some(s) if !s.trim().is_empty() => {
+            (s.trim().to_string(), Some("-i".to_string()))
+        }
         _ => {
             if cfg!(windows) {
-                ("cmd.exe".to_string(), "/C".to_string())
+                // cmd.exe without /C — interactive session, stays alive
+                ("cmd.exe".to_string(), None)
             } else if let Ok(sh) = std::env::var("SHELL") {
-                (sh, "-i".to_string())
+                (sh, Some("-i".to_string()))
             } else {
-                ("/bin/sh".to_string(), "-i".to_string())
+                ("/bin/sh".to_string(), Some("-i".to_string()))
             }
         }
     }
@@ -226,12 +227,6 @@ pub(crate) struct PtyHandle {
     pub child: Mutex<Option<Child>>,
     pub stdin: Mutex<Option<std::process::ChildStdin>>,
     pub cols: Mutex<(u32, u32)>,
-}
-
-#[derive(Clone, serde::Serialize)]
-struct PtyExit {
-    id: String,
-    code: Option<i32>,
 }
 
 #[derive(Clone, serde::Serialize)]

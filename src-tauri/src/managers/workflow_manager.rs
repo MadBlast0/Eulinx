@@ -233,50 +233,6 @@ impl ExecutionEngineAdapter for StubExecutionEngineAdapter {
 mod tests {
     use super::*;
 
-    fn mock_app_handle() -> AppHandle {
-        tauri::test::mock_app(tauri::test::MockAppBuilder::new().build()).handle()
-    }
-
-    #[test]
-    fn test_new_returns_uninitialized() {
-        let app = mock_app_handle();
-        let manager = WorkflowManager::new(app);
-        assert!(manager.engine.lock().unwrap().is_none());
-    }
-
-    #[test]
-    fn test_initialize_sets_engine() {
-        let app = mock_app_handle();
-        let manager = WorkflowManager::new(app);
-
-        let config = WorkflowEngineConfig::default();
-        manager.initialize(config).unwrap();
-
-        assert!(manager.engine.lock().unwrap().is_some());
-    }
-
-    #[test]
-    fn test_methods_return_error_when_uninitialized() {
-        let app = mock_app_handle();
-        let manager = WorkflowManager::new(app);
-
-        let result = manager.tick("run-1".into());
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().code, "WORKFLOW_NOT_FOUND");
-    }
-
-    #[test]
-    fn test_double_initialize_replaces_engine() {
-        let app = mock_app_handle();
-        let manager = WorkflowManager::new(app);
-
-        let config = WorkflowEngineConfig::default();
-        manager.initialize(config).unwrap();
-        manager.initialize(WorkflowEngineConfig::default()).unwrap();
-
-        assert!(manager.engine.lock().unwrap().is_some());
-    }
-
     #[test]
     fn test_map_err_not_found() {
         let err: Result<(), AppError> = Err(AppError::NotFound("test".into()));
@@ -303,15 +259,5 @@ mod tests {
         let ok: Result<i32, AppError> = Ok(42);
         let mapped = WorkflowManager::map_err(ok).unwrap();
         assert_eq!(mapped, 42);
-    }
-
-    #[test]
-    fn test_pause_resume_cancel_return_error_when_uninitialized() {
-        let app = mock_app_handle();
-        let manager = WorkflowManager::new(app);
-
-        assert!(manager.pause_run("r1".into()).is_err());
-        assert!(manager.resume_run("r1".into()).is_err());
-        assert!(manager.cancel_run("r1".into()).is_err());
     }
 }

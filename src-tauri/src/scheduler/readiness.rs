@@ -261,6 +261,7 @@ mod tests {
     use crate::scheduler::types::{
         BudgetConfidence, BudgetEstimate, SchedulingPriority, SchedulingState, SchedulingUnitKind,
     };
+    use std::collections::HashSet;
 
     fn make_unit(
         id: &str,
