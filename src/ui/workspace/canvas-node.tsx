@@ -2,10 +2,9 @@
 import { Minus, X } from "lucide-react"
 import { cn } from "@/utils/cn"
 import { AppIcon } from "./app-icon"
-import type { CanvasNode, NodeKind, TerminalLine } from "./types"
+import type { CanvasNode, NodeKind } from "./types"
 import { Dot } from "./primitives"
 import { TerminalView } from "./terminal"
-import { useTerminal } from "./terminal/use-terminal"
 
 const NODE_TOKEN: Record<NodeKind, string> = {
   terminal: "var(--Eulinx-color-node-terminal)",
@@ -27,12 +26,7 @@ const NODE_TOKEN: Record<NodeKind, string> = {
   unknown: "var(--Eulinx-color-node-terminal)",
 }
 
-const OUTPUT_COLOR: Record<NonNullable<TerminalLine["outputColor"]>, string> = {
-  green: "var(--Eulinx-color-success)",
-  amber: "var(--Eulinx-color-warning)",
-  red: "var(--Eulinx-color-error)",
-  muted: "var(--Eulinx-color-text-muted)",
-}
+
 
 function NodeIcon({ kind }: { kind: NodeKind }) {
   const cls = "h-3.5 w-3.5"
@@ -128,7 +122,7 @@ export function CanvasNodeCard({
               <TerminalView ptyId={node.id} shell={node.shell} className="h-full" />
             </div>
           ) : (
-            <CollapsedTerminal ptyId={node.id} shell={node.shell} />
+            <CollapsedTerminal />
           ))}
 
         {node.kind === "browser" && (
@@ -178,25 +172,13 @@ export function CanvasNodeCard({
 }
 
 /**
- * Collapsed terminal preview: shows the live tail of the PTY output so a node
- * stays useful while collapsed. Reads the same PTY as the expanded view.
+ * Collapsed terminal preview — shows a placeholder since PTY output
+ * is rendered by xterm in the expanded view.
  */
-function CollapsedTerminal({ ptyId, shell }: { ptyId: string; shell?: string }) {
-  const { lines } = useTerminal(ptyId, shell)
-  const tail = lines.slice(-6)
+function CollapsedTerminal() {
   return (
     <div className="min-h-[120px] flex-1 overflow-hidden bg-[color:var(--Eulinx-color-background)] px-3 py-2 font-mono text-xs leading-relaxed">
-      {tail.length === 0 ? (
-        <span className="text-[color:var(--Eulinx-color-text-muted)]">starting shell…</span>
-      ) : (
-        tail.map((line) => (
-          <div key={line.id} className="truncate">
-            <span style={{ color: OUTPUT_COLOR[line.kind === "error" ? "red" : line.kind === "success" ? "green" : "muted"] }}>
-              {line.text}
-            </span>
-          </div>
-        ))
-      )}
+      <span className="text-[color:var(--Eulinx-color-text-muted)]">expand to interact</span>
     </div>
   )
 }

@@ -9,7 +9,6 @@ import { getStateSignal, type WorkerState } from "../a11y/state-signals"
 import { getNodeTypeMeta, type EulinxNodeKind } from "./node-types"
 import { TONE_FG } from "../state"
 import { TerminalView } from "../terminal/terminal-view"
-import { ShellPicker } from "../terminal/shell-picker"
 
 export interface CustomNodePort {
   readonly id: string
@@ -102,12 +101,6 @@ function CustomNodeImpl({ id, data, selected }: NodeProps<CustomNodeType>) {
           />
         )}
 
-        {/* Shell picker — visible in header when terminal is expanded */}
-        {isTerminal && expanded && (
-          <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
-            <ShellPicker onPick={() => {}} />
-          </div>
-        )}
       </div>
 
       {/* ── Terminal — expanded view with xterm ── */}

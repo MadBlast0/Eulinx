@@ -126,8 +126,8 @@ describe("event-history", () => {
   })
 
   describe("constants", () => {
-    it("log flush interval is 10ms", () => {
-      expect(LOG_FLUSH_INTERVAL_MS).toBe(10)
+    it("log flush interval is 5000ms", () => {
+      expect(LOG_FLUSH_INTERVAL_MS).toBe(5000)
     })
 
     it("log batch size is 100", () => {

@@ -1,16 +1,15 @@
 /**
  * P13-TOOL-TERMINAL — Terminal Built-in Tool
  *
- * Executes a command by spawning a PTY through the pty client (native shell in
- * Tauri, in-memory shell in the browser), writing the command, and collecting
- * output until the process exits or the stream goes quiet. Gated through the
- * permission manager because it is an arbitrary-execution surface.
+ * Executes a command by spawning a PTY through the Rust PTY server,
+ * writing the command, and collecting output until the process exits
+ * or the stream goes quiet. Gated through the permission manager
+ * because it is an arbitrary-execution surface.
  */
 
 import type { CoreTool } from "../tool-types"
-import { createNativePty, createMockPty } from "@/ui/workspace/terminal/pty"
+import { createNativePty } from "@/ui/workspace/terminal/pty"
 import type { Pty, ExitCode } from "@/ui/workspace/terminal/pty"
-import { isTauri } from "@tauri-apps/api/core"
 import { enforcePermission, DEFAULT_TOOL_CONTEXT } from "./permission-gate"
 import { requireString } from "./types"
 import type { BuiltInTool, ToolContext } from "./types"
@@ -27,7 +26,7 @@ export const TERM_EXEC: CoreTool = {
     type: "object",
     properties: {
       command: { type: "string", description: "The command to execute" },
-      shell: { type: "string", description: "Optional shell override (Tauri only)" },
+      shell: { type: "string", description: "Optional shell override" },
     },
     required: ["command"],
     additionalProperties: false,
@@ -63,7 +62,7 @@ function stripAnsi(text: string): string {
 }
 
 function defaultSpawn(shell?: string): Pty {
-  return isTauri() ? createNativePty(shell) : createMockPty()
+  return createNativePty(shell)
 }
 
 // ---------------------------------------------------------------------------

@@ -5,16 +5,12 @@ export { WorkerCard } from "./worker-card"
 export { CardStatePill, type CardState } from "./card-state-pill"
 export {
   useTerminal,
-  KIND_PREFIX,
-  type TerminalLine,
-  type TerminalLineKind,
-  type UseTerminalResult,
   getPty,
   setPty,
   ensurePty,
+  type UseTerminalResult,
 } from "./use-terminal"
 export {
-  createMockPty,
   createNativePty,
   type Pty,
   type PtyId,

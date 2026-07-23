@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react"
 import { AppIcon } from "./app-icon"
 import { useWorkspace } from "./use-workspace"
-import { ShellPicker } from "./terminal/shell-picker"
 import { ContextMenuTrigger } from "./node-sub-menu"
 
 interface ContextMenuProps {
@@ -33,16 +32,12 @@ export function ContextMenu({ constraint }: ContextMenuProps) {
       style={{ left: contextMenu.x, top: contextMenu.y }}
       onClick={(e) => e.stopPropagation()}
     >
-      {/* Terminal with shell picker */}
-      <div className="flex items-center">
-        <Item
-          icon={<AppIcon name="terminal" className="h-3.5 w-3.5" strokeWidth={2} />}
-          label="Add Terminal"
-          shortcut="T"
-          onClick={() => addNode("terminal")}
-        />
-        <ShellPicker align="right" onPick={(shell) => addNode("terminal", shell)} />
-      </div>
+      <Item
+        icon={<AppIcon name="terminal" className="h-3.5 w-3.5" strokeWidth={2} />}
+        label="Add Terminal"
+        shortcut="T"
+        onClick={() => addNode("terminal")}
+      />
       {/* Add Node with sub-dropdown */}
       <ContextMenuTrigger
         open={addNodeOpen}
