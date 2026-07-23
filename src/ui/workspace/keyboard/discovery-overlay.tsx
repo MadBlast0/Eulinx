@@ -155,7 +155,12 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
           id="cp-listbox"
           role="listbox"
           aria-label="Commands"
-          className="max-h-[340px] overflow-y-auto p-1.5"
+          tabIndex={-1}
+          className="max-h-[340px] overflow-y-auto p-1.5 outline-none"
+          onMouseDown={(e) => {
+            e.preventDefault()
+            inputRef.current?.focus()
+          }}
         >
           {flatItems.length === 0 ? (
             <div className="px-3 py-6 text-center text-[12.5px] text-[color:var(--Eulinx-color-text-muted)]">
@@ -180,9 +185,11 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
                       id={`cp-option-${cmd.id}`}
                       type="button"
                       role="option"
+                      tabIndex={-1}
                       aria-selected={isActive}
                       data-index={globalIndex}
                       onMouseEnter={() => setActiveIndex(globalIndex)}
+                      onMouseDown={(e) => { e.preventDefault(); inputRef.current?.focus() }}
                       onClick={() => run(cmd)}
                       className={cn(
                         "flex w-full items-center justify-between gap-3 rounded-[var(--Eulinx-radius-md)] px-2.5 py-2 text-left text-[13px] transition-colors",
