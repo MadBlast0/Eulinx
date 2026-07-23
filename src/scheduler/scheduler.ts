@@ -34,11 +34,16 @@ import type {
   QueueKind,
   BudgetEstimate,
 } from "./scheduler-types"
+import { PRIORITY_NUMERIC } from "./scheduler-types"
 import {
   SchedulerEventEmitter,
   type SchedulerEvent,
   type SchedulerEventType,
 } from "./scheduler-events"
+import {
+  partitionByReadiness,
+  type ReadinessContext,
+} from "./readiness"
 
 // ---------------------------------------------------------------------------
 // Rust-side JSON types (serialised by serde with camelCase overrides)
@@ -186,7 +191,6 @@ export class Scheduler {
     totalProcessed: 0,
   }
 
-  private latestSnapshot: SchedulerQueueSnapshot | null = null
   private latestDeadQueue: readonly DeadEntry[] = []
   private readinessContextProvider: (() => unknown) | null = null
   private readonly unlistenFns: UnlistenFn[] = []
@@ -325,7 +329,147 @@ export class Scheduler {
   // -----------------------------------------------------------------------
 
   tick(): Result<void, CoreError> {
+    if (this.lifecycleState !== "running") {
+      return ok(undefined)
+    }
+
+    const now = new Date().toISOString() as IsoTimestamp
+
+    // Build readiness context from the injected provider
+    const providerCtx = this.readinessContextProvider?.() ?? {}
+    const ctx: ReadinessContext = {
+      runtimeReady: (providerCtx as any).runtimeReady ?? true,
+      completedUnitIds: (providerCtx as any).completedUnitIds ?? new Set(),
+      heldLockIds: (providerCtx as any).heldLockIds ?? new Set(),
+      approvedPermissions: (providerCtx as any).approvedPermissions ?? new Set(),
+      approvedUnitIds: (providerCtx as any).approvedUnitIds ?? new Set(),
+      runningCount: this.runningIds.size,
+      maxConcurrency: this.config.maxConcurrency,
+      totalBudgetCostMicroUsd: (providerCtx as any).totalBudgetCostMicroUsd ?? 0,
+      maxBudgetCostMicroUsd: this.config.budget.maxCostMicroUsd,
+    }
+
+    // Collect all queued AND waiting units, sorted by priority
+    const waitingStates: SchedulingState[] = [
+      "waiting_for_dependencies", "waiting_for_permission", "waiting_for_lock",
+      "waiting_for_budget", "waiting_for_approval",
+    ]
+    const candidateUnits = [...this.units.values()]
+      .filter((u) => u.state === "queued" || waitingStates.includes(u.state))
+      .sort((a, b) => PRIORITY_NUMERIC[a.priority] - PRIORITY_NUMERIC[b.priority])
+
+    // Partition into ready and blocked
+    const { ready, blocked } = partitionByReadiness(candidateUnits, ctx)
+
+    // Emit blocked events and transition to waiting state
+    for (const { unit, result } of blocked) {
+      const blockerKind = result.blockers[0]?.kind ?? "dependency"
+      const waitState: SchedulingState =
+        blockerKind === "dependency" || blockerKind === "runtime_state" || blockerKind === "resource"
+          ? "waiting_for_dependencies"
+          : blockerKind === "permission"
+            ? "waiting_for_permission"
+            : blockerKind === "lock"
+              ? "waiting_for_lock"
+              : blockerKind === "budget"
+                ? "waiting_for_budget"
+                : "waiting_for_approval"
+
+      unit.state = waitState
+      unit.updatedAt = now
+
+      this.events.emit({
+        type: "scheduler.unit.blocked",
+        payload: {
+          unitId: unit.id,
+          kind: unit.kind,
+          priority: unit.priority,
+          blockerKind,
+          blockerMessage: result.blockers[0]?.message ?? "unknown",
+          recoverable: true,
+          timestamp: now,
+        },
+      })
+    }
+
+    // Dispatch ready units, enforcing concurrency limits
+    const dispatched: string[] = []
+    for (const unit of ready) {
+      if (this.runningIds.size >= this.config.maxConcurrency) {
+        // Stay in ready state — will be dispatched on next tick
+        unit.state = "ready"
+        unit.updatedAt = now
+
+        this.events.emit({
+          type: "scheduler.unit.ready",
+          payload: {
+            unitId: unit.id,
+            kind: unit.kind,
+            priority: unit.priority,
+            state: "ready",
+            workspaceId: unit.workspaceId,
+            timestamp: now,
+          },
+        })
+        continue
+      }
+
+      // Transition: queued → ready → scheduled → running
+      unit.state = "ready"
+      unit.updatedAt = now
+      this.events.emit({
+        type: "scheduler.unit.ready",
+        payload: {
+          unitId: unit.id,
+          kind: unit.kind,
+          priority: unit.priority,
+          state: "ready",
+          workspaceId: unit.workspaceId,
+          timestamp: now,
+        },
+      })
+
+      unit.state = "scheduled"
+      unit.updatedAt = now
+      this.events.emit({
+        type: "scheduler.unit.scheduled",
+        payload: {
+          unitId: unit.id,
+          kind: unit.kind,
+          priority: unit.priority,
+          state: "scheduled",
+          workspaceId: unit.workspaceId,
+          timestamp: now,
+        },
+      })
+
+      unit.state = "running"
+      unit.updatedAt = now
+      this.runningIds.add(unit.id)
+      dispatched.push(unit.id)
+
+      this.events.emit({
+        type: "scheduler.unit.running",
+        payload: {
+          unitId: unit.id,
+          kind: unit.kind,
+          priority: unit.priority,
+          state: "running",
+          workspaceId: unit.workspaceId,
+          timestamp: now,
+        },
+      })
+    }
+
+    // Update metrics
+    this.latestMetrics = {
+      ...this.latestMetrics,
+      runningCount: this.runningIds.size,
+    }
+
+    // Also forward to Rust
     invoke("scheduler_tick").catch(() => {})
+
     return ok(undefined)
   }
 
@@ -460,17 +604,66 @@ export class Scheduler {
     return result
   }
 
+  private unitToEntry(unit: SchedulingUnit): import("./scheduler-types").QueueSnapshotEntry {
+    return {
+      unitId: unit.id,
+      kind: unit.kind,
+      priority: unit.priority,
+      state: unit.state,
+      queuedAt: unit.createdAt,
+      ageMs: Date.now() - new Date(unit.createdAt).getTime(),
+    }
+  }
+
   getQueueSnapshot(): SchedulerQueueSnapshot {
-    if (this.latestSnapshot) return this.latestSnapshot
+    const toEntry = (u: SchedulingUnit) => this.unitToEntry(u)
+
+    const running: import("./scheduler-types").QueueSnapshotEntry[] = []
+    this.runningIds.forEach((id) => {
+      const unit = this.units.get(id)
+      if (unit) running.push(toEntry(unit))
+    })
+
+    const incoming: import("./scheduler-types").QueueSnapshotEntry[] = []
+    const dependency_wait: import("./scheduler-types").QueueSnapshotEntry[] = []
+    const runnable: import("./scheduler-types").QueueSnapshotEntry[] = []
+    const completed: import("./scheduler-types").QueueSnapshotEntry[] = []
+    const failed: import("./scheduler-types").QueueSnapshotEntry[] = []
+    const cancelled: import("./scheduler-types").QueueSnapshotEntry[] = []
+
+    this.units.forEach((unit) => {
+      switch (unit.state) {
+        case "queued": incoming.push(toEntry(unit)); break
+        case "waiting_for_dependencies":
+        case "waiting_for_permission":
+        case "waiting_for_lock":
+        case "waiting_for_budget":
+        case "waiting_for_approval":
+          dependency_wait.push(toEntry(unit)); break
+        case "ready": runnable.push(toEntry(unit)); break
+        case "completed": completed.push(toEntry(unit)); break
+        case "failed": failed.push(toEntry(unit)); break
+        case "cancelled": cancelled.push(toEntry(unit)); break
+      }
+    })
+
     return {
       queues: {
-        incoming: [], dependency_wait: [], permission_wait: [],
-        approval_wait: [], lock_wait: [], budget_wait: [],
-        runnable: [], running: [], retry: [],
-        cancelled: [], completed: [], failed: [],
+        incoming,
+        dependency_wait,
+        permission_wait: [],
+        approval_wait: [],
+        lock_wait: [],
+        budget_wait: [],
+        runnable,
+        running,
+        retry: [],
+        cancelled,
+        completed,
+        failed,
       },
       runningCount: this.runningIds.size,
-      totalBlocked: 0,
+      totalBlocked: dependency_wait.length,
       timestamp: new Date().toISOString() as IsoTimestamp,
     }
   }
@@ -523,12 +716,6 @@ export class Scheduler {
           ...this.latestMetrics,
           ...event.payload,
         }
-      }),
-    )
-
-    this.unlistenFns.push(
-      await listen<SchedulerQueueSnapshot>("scheduler://snapshot-updated", (event) => {
-        this.latestSnapshot = event.payload
       }),
     )
 
