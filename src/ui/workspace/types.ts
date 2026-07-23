@@ -55,4 +55,8 @@ export type OverlayKind = "cmd" | "welcome" | "settings" | "shortcuts" | null
 export interface ContextMenuState {
   readonly x: number
   readonly y: number
+  /** If set, this is a node right-click (not empty canvas) */
+  readonly nodeId?: string
+  readonly nodeKind?: string
+  readonly nodeLabel?: string
 }

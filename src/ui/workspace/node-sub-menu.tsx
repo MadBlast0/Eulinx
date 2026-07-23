@@ -52,7 +52,16 @@ export const NODE_SECTIONS = [
 
 type Direction = "right" | "left" | "down" | "up"
 
-function useSmartPosition(triggerRef: React.RefObject<HTMLElement | null>, open: boolean) {
+/**
+ * @param triggerRef  ref to the element that anchors the sub-dropdown
+ * @param open        whether the sub-dropdown is open
+ * @param constraint  optional bounding rect to constrain within (e.g. canvas viewport)
+ */
+function useSmartPosition(
+  triggerRef: React.RefObject<HTMLElement | null>,
+  open: boolean,
+  constraint?: DOMRect | null,
+) {
   const [pos, setPos] = useState<{ x: number; y: number; dir: Direction }>({ x: 0, y: 0, dir: "right" })
   const subRef = useRef<HTMLDivElement>(null)
 
@@ -66,11 +75,14 @@ function useSmartPosition(triggerRef: React.RefObject<HTMLElement | null>, open:
     const SUB_H = 340
     const GAP = 4
 
+    // Use constraint rect (canvas viewport) if provided, else fall back to window
+    const bounds = constraint ?? { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight }
+
     const space = {
-      right: window.innerWidth - r.right,
-      left: r.left,
-      down: window.innerHeight - r.bottom,
-      up: r.top,
+      right: bounds.right - r.right,
+      left: r.left - bounds.left,
+      down: bounds.bottom - r.bottom,
+      up: r.top - bounds.top,
     }
 
     let dir: Direction
@@ -99,12 +111,12 @@ function useSmartPosition(triggerRef: React.RefObject<HTMLElement | null>, open:
         break
     }
 
-    // Clamp to viewport
-    x = Math.max(0, Math.min(x, window.innerWidth - SUB_W))
-    y = Math.max(0, Math.min(y, window.innerHeight - SUB_H))
+    // Clamp within the constraint bounds
+    x = Math.max(bounds.left, Math.min(x, bounds.right - SUB_W))
+    y = Math.max(bounds.top, Math.min(y, bounds.bottom - SUB_H))
 
     setPos({ x, y, dir })
-  }, [open, triggerRef])
+  }, [open, triggerRef, constraint])
 
   return { subRef, pos }
 }
@@ -119,11 +131,13 @@ interface NodeSubMenuProps {
   onClose: () => void
   onPick: (kind: EulinxNodeKind) => void
   children: ReactNode
+  /** Optional bounding rect to constrain the sub-dropdown within */
+  constraint?: DOMRect | null
 }
 
-export function NodeSubMenu({ open, onOpen, onClose, onPick, children }: NodeSubMenuProps) {
+export function NodeSubMenu({ open, onOpen, onClose, onPick, children, constraint }: NodeSubMenuProps) {
   const triggerRef = useRef<HTMLDivElement>(null)
-  const { subRef, pos } = useSmartPosition(triggerRef, open)
+  const { subRef, pos } = useSmartPosition(triggerRef, open, constraint)
   const closeTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const scheduleClose = useCallback(() => {
@@ -195,11 +209,12 @@ interface ContextMenuTriggerProps {
   icon: ReactNode
   label: string
   shortcut?: string
+  constraint?: DOMRect | null
 }
 
-export function ContextMenuTrigger({ open, onOpen, onClose, onPick, icon, label, shortcut }: ContextMenuTriggerProps) {
+export function ContextMenuTrigger({ open, onOpen, onClose, onPick, icon, label, shortcut, constraint }: ContextMenuTriggerProps) {
   return (
-    <NodeSubMenu open={open} onOpen={onOpen} onClose={onClose} onPick={onPick}>
+    <NodeSubMenu open={open} onOpen={onOpen} onClose={onClose} onPick={onPick} constraint={constraint}>
       <button
         type="button"
         className="flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12.5px] text-[color:var(--Eulinx-color-text)] transition-colors duration-100 hover:bg-[color:var(--Eulinx-color-hover)]"

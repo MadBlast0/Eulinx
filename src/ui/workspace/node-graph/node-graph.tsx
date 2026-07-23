@@ -5,6 +5,7 @@ import {
   useViewport,
   type EdgeTypes,
   type NodeTypes,
+  type NodeMouseHandler,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 import { CustomNode } from "./custom-node"
@@ -13,6 +14,8 @@ import { CanvasGrid } from "./canvas-grid"
 import { ZoomControls } from "./zoom-controls"
 import { MinimapWidget } from "./minimap-widget"
 import { NodeGraphProvider, useNodeGraph } from "./use-node-graph"
+import { useWorkspace } from "../use-workspace"
+import type { EulinxNodeKind } from "./node-types"
 
 const nodeTypes: NodeTypes = { eulinx: CustomNode }
 const edgeTypes: EdgeTypes = { eulinx: CustomEdge }
@@ -21,8 +24,25 @@ function NodeGraphInner() {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect } =
     useNodeGraph()
   const { x, y, zoom } = useViewport()
+  const { openContextMenu } = useWorkspace()
 
   const defaultEdgeOptions = useMemo(() => ({ type: "eulinx" }), [])
+
+  const onNodeContextMenu: NodeMouseHandler = useMemo(
+    () => (_event, node) => {
+      _event.preventDefault()
+      _event.stopPropagation()
+      const kind = (node.data as { kind?: EulinxNodeKind }).kind ?? "unknown"
+      openContextMenu({
+        x: _event.clientX,
+        y: _event.clientY,
+        nodeId: node.id,
+        nodeKind: kind,
+        nodeLabel: (node.data as { label?: string }).label ?? node.id,
+      })
+    },
+    [openContextMenu],
+  )
 
   return (
     <div className="relative h-full w-full bg-[color:var(--Eulinx-color-background)]">
@@ -66,9 +86,11 @@ function NodeGraphInner() {
         /* ── Connection ── */
         connectionLineStyle={{ stroke: "var(--Eulinx-color-accent)", strokeWidth: 1.5 }}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+        /* ── Node interaction ── */
+        deleteKeyCode="Backspace"
+        onNodeContextMenu={onNodeContextMenu}
         /* ── Styling ── */
         className="h-full w-full"
-        deleteKeyCode={null}
       />
     </div>
   )

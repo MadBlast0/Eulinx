@@ -4,7 +4,12 @@ import { useWorkspace } from "./use-workspace"
 import { ShellPicker } from "./terminal/shell-picker"
 import { ContextMenuTrigger } from "./node-sub-menu"
 
-export function ContextMenu() {
+interface ContextMenuProps {
+  /** Bounding rect of the parent container (e.g. canvas viewport) to constrain sub-dropdowns */
+  constraint?: DOMRect | null
+}
+
+export function ContextMenu({ constraint }: ContextMenuProps) {
   const { contextMenu, closeContextMenu, addNode, autoLayout } = useWorkspace()
   const [addNodeOpen, setAddNodeOpen] = useState(false)
 
@@ -20,7 +25,7 @@ export function ContextMenu() {
     if (!contextMenu) setAddNodeOpen(false)
   }, [contextMenu])
 
-  if (!contextMenu) return null
+  if (!contextMenu || contextMenu.nodeId) return null
 
   return (
     <div
@@ -47,6 +52,7 @@ export function ContextMenu() {
         icon={<AppIcon name="variables" className="h-3.5 w-3.5" strokeWidth={2} />}
         label="Add Node"
         shortcut="N"
+        constraint={constraint}
       />
       <div className="my-1 h-px bg-[color:var(--Eulinx-color-border)]" />
       <Item
