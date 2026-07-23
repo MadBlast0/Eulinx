@@ -22,12 +22,25 @@ interface CommandPaletteProps {
   readonly onClose: () => void
 }
 
+const CATEGORY_ORDER: readonly CommandCategory[] = [
+  "application",
+  "navigation",
+  "view",
+  "graph",
+  "terminal",
+  "workers",
+  "workflow",
+  "search",
+  "merge",
+]
+
 export function CommandPalette({ onClose }: CommandPaletteProps) {
   const { registry } = useKeymap()
   const [query, setQuery] = useState("")
   const [activeIndex, setActiveIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
+  const activeItemRef = useRef<HTMLButtonElement>(null)
 
   const commands = useMemo(() => registry.listCommands(), [registry])
 
@@ -41,6 +54,34 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
         c.category.toLowerCase().includes(q),
     )
   }, [commands, query])
+
+  const grouped = useMemo(() => {
+    const byCat = new Map<CommandCategory, Command[]>()
+    for (const cmd of filtered) {
+      const list = byCat.get(cmd.category) ?? []
+      list.push(cmd)
+      byCat.set(cmd.category, list)
+    }
+    const groups: { category: CommandCategory; items: Command[] }[] = []
+    for (const cat of CATEGORY_ORDER) {
+      const items = byCat.get(cat)
+      if (items && items.length > 0) {
+        groups.push({ category: cat, items })
+      }
+    }
+    for (const [cat, items] of byCat) {
+      if (!CATEGORY_ORDER.includes(cat)) {
+        groups.push({ category: cat, items })
+      }
+    }
+    return groups
+  }, [filtered])
+
+  const flatItems = useMemo(() => {
+    return grouped.flatMap((g) => g.items)
+  }, [grouped])
+
+  const activeCommand = flatItems[activeIndex]
 
   useEffect(() => {
     setActiveIndex(0)
@@ -57,16 +98,16 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
   }
 
   const onKeyDown = (e: React.KeyboardEvent) => {
+    const max = flatItems.length - 1
     if (e.key === "ArrowDown") {
       e.preventDefault()
-      setActiveIndex((i) => Math.min(i + 1, filtered.length - 1))
+      setActiveIndex((i) => (i < max ? i + 1 : 0))
     } else if (e.key === "ArrowUp") {
       e.preventDefault()
-      setActiveIndex((i) => Math.max(i - 1, 0))
+      setActiveIndex((i) => (i > 0 ? i - 1 : max))
     } else if (e.key === "Enter") {
       e.preventDefault()
-      const cmd = filtered[activeIndex]
-      if (cmd) run(cmd)
+      if (activeCommand) run(activeCommand)
     } else if (e.key === "Escape") {
       e.preventDefault()
       onClose()
@@ -74,9 +115,10 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
   }
 
   useEffect(() => {
-    const el = listRef.current?.querySelector<HTMLElement>(`[data-index="${activeIndex}"]`)
-    el?.scrollIntoView({ block: "nearest" })
+    activeItemRef.current?.scrollIntoView({ block: "nearest" })
   }, [activeIndex])
+
+  const activeId = activeCommand ? `cp-option-${activeCommand.id}` : undefined
 
   return (
     <div
@@ -101,41 +143,64 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
             placeholder="Search nodes, run commands…"
             className="h-5 flex-1 bg-transparent text-[14px] text-[color:var(--Eulinx-color-text)] outline-none placeholder:text-[color:var(--Eulinx-color-text-muted)]"
             aria-label="Command query"
+            aria-autocomplete="list"
+            aria-controls="cp-listbox"
+            aria-activedescendant={activeId}
+            role="combobox"
           />
           <Kbd>Esc</Kbd>
         </div>
-        <div ref={listRef} className="max-h-[340px] overflow-y-auto p-1.5">
-          {filtered.length === 0 ? (
+        <div
+          ref={listRef}
+          id="cp-listbox"
+          role="listbox"
+          aria-label="Commands"
+          className="max-h-[340px] overflow-y-auto p-1.5"
+        >
+          {flatItems.length === 0 ? (
             <div className="px-3 py-6 text-center text-[12.5px] text-[color:var(--Eulinx-color-text-muted)]">
-              No results found.
+              {query ? <>No commands matching "<span className="font-medium text-[color:var(--Eulinx-color-text-secondary)]">{query}</span>"</> : "No commands available."}
             </div>
           ) : (
-            filtered.map((cmd, i) => (
-              <button
-                key={cmd.id}
-                type="button"
-                data-index={i}
-                onMouseEnter={() => setActiveIndex(i)}
-                onClick={() => run(cmd)}
-                className={cn(
-                  "flex w-full items-center justify-between gap-3 rounded-[var(--Eulinx-radius-md)] px-2.5 py-2 text-left text-[13px] transition-colors",
-                  i === activeIndex
-                    ? "bg-[color:var(--Eulinx-color-hover)] text-[color:var(--Eulinx-color-text)]"
-                    : "text-[color:var(--Eulinx-color-text-secondary)] hover:bg-[color:var(--Eulinx-color-hover)]",
-                )}
-              >
-                <span className="truncate">{cmd.title}</span>
-                <span
-                  className={cn(
-                    "shrink-0 font-mono text-[11px]",
-                    i === activeIndex
-                      ? "text-[color:var(--Eulinx-color-text-muted)]"
-                      : "text-[color:var(--Eulinx-color-text-muted)]",
-                  )}
+            grouped.map((group) => (
+              <div key={group.category} role="group" aria-labelledby={`cp-cat-${group.category}`}>
+                <div
+                  id={`cp-cat-${group.category}`}
+                  className="px-2.5 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--Eulinx-color-text-muted)]"
                 >
-                  {displayChordFor(cmd.id, registry)}
-                </span>
-              </button>
+                  {group.category}
+                </div>
+                {group.items.map((cmd) => {
+                  const globalIndex = flatItems.indexOf(cmd)
+                  const isActive = globalIndex === activeIndex
+                  return (
+                    <button
+                      key={cmd.id}
+                      ref={isActive ? activeItemRef : undefined}
+                      id={`cp-option-${cmd.id}`}
+                      type="button"
+                      role="option"
+                      aria-selected={isActive}
+                      data-index={globalIndex}
+                      onMouseEnter={() => setActiveIndex(globalIndex)}
+                      onClick={() => run(cmd)}
+                      className={cn(
+                        "flex w-full items-center justify-between gap-3 rounded-[var(--Eulinx-radius-md)] px-2.5 py-2 text-left text-[13px] transition-colors",
+                        isActive
+                          ? "bg-[color:var(--Eulinx-color-selected)] text-[color:var(--Eulinx-color-text)] font-medium shadow-[inset_3px_0_0_var(--Eulinx-color-accent)]"
+                          : "text-[color:var(--Eulinx-color-text-secondary)] hover:bg-[color:var(--Eulinx-color-hover)]",
+                      )}
+                    >
+                      <span className="truncate">{cmd.title}</span>
+                      <span
+                        className="shrink-0 font-mono text-[11px] text-[color:var(--Eulinx-color-text-muted)]"
+                      >
+                        {displayChordFor(cmd.id, registry)}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             ))
           )}
         </div>
@@ -148,7 +213,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
 /* Shortcut help overlay (registry-driven, grouped by category)            */
 /* ----------------------------------------------------------------------- */
 
-const CATEGORY_ORDER: readonly CommandCategory[] = [
+const SHORTCUT_CATEGORY_ORDER: readonly CommandCategory[] = [
   "application",
   "navigation",
   "view",
@@ -174,7 +239,7 @@ export function ShortcutHelpOverlay({ onClose }: { onClose: () => void }) {
       list.push({ label: command.title, keys: displayChordSeq(b.chord, platform) })
       byCat.set(command.category, list)
     }
-    return CATEGORY_ORDER.filter((c) => byCat.has(c)).map((c) => ({
+    return SHORTCUT_CATEGORY_ORDER.filter((c) => byCat.has(c)).map((c) => ({
       title: c.charAt(0).toUpperCase() + c.slice(1),
       rows: byCat.get(c) ?? [],
     }))
