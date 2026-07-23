@@ -12,6 +12,7 @@ import {
   BackgroundVariant,
   Controls,
   MiniMap,
+  useNodesState,
   type Node,
   type Edge,
   type NodeTypes,
@@ -284,6 +285,10 @@ function MemoryNodeComponent({ data, selected }: { data: MemoryNodeData; selecte
       </div>
     </div>
   )
+}
+
+const nodeTypes: NodeTypes = {
+  memory: MemoryNodeComponent as unknown as NodeTypes["memory"],
 }
 
 // ---------------------------------------------------------------------------
@@ -825,7 +830,9 @@ function MemoryGraphInner({
   }, [filteredNodes, searchQuery])
 
   // React Flow nodes
-  const nodes: MemoryFlowNode[] = useMemo(() => {
+  const [nodes, setNodes, onNodesChange] = useNodesState<MemoryFlowNode>([])
+
+  const computedNodes: MemoryFlowNode[] = useMemo(() => {
     return filteredNodes.map((n) => {
       const pos = layoutPositions.get(n.id) ?? { x: 0, y: 0 }
       return {
@@ -840,6 +847,10 @@ function MemoryGraphInner({
       }
     })
   }, [filteredNodes, layoutPositions, highlightedIds, selectedNode])
+
+  useEffect(() => {
+    setNodes(computedNodes)
+  }, [computedNodes, setNodes])
 
   // React Flow edges
   const edges: Edge[] = useMemo(() => {
@@ -861,19 +872,13 @@ function MemoryGraphInner({
     [onSelectNode],
   )
 
-  const nodeTypes: NodeTypes = useMemo(
-    () => ({
-      memory: MemoryNodeComponent as unknown as NodeTypes["memory"],
-    }),
-    [],
-  )
-
   return (
     <div className="flex h-full w-full">
       <div ref={containerRef} className="relative flex-1">
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          onNodesChange={onNodesChange}
           onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
           fitView

@@ -1,5 +1,8 @@
-import type { ButtonHTMLAttributes, HTMLAttributes, ReactNode } from "react"
+import type { HTMLAttributes, ReactNode } from "react"
 import { cn } from "@/utils/cn"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import { type Tone, TONE_FG } from "./state"
 
 export function Dot({ tone = "neutral" }: { tone?: Tone }) {
@@ -11,11 +14,14 @@ export function Dot({ tone = "neutral" }: { tone?: Tone }) {
   )
 }
 
-interface ToolbarButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+interface ToolbarButtonProps {
   readonly tip?: string
   readonly active?: boolean
   readonly size?: number
   readonly children: ReactNode
+  readonly className?: string
+  readonly disabled?: boolean
+  readonly onClick?: () => void
 }
 
 export function ToolbarButton({
@@ -25,34 +31,30 @@ export function ToolbarButton({
   className,
   children,
   disabled,
-  ...rest
+  onClick,
 }: ToolbarButtonProps) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
+      size="icon"
       data-tip={tip}
       disabled={disabled}
+      aria-pressed={active}
+      onClick={onClick}
       className={cn(
-        "relative flex items-center justify-center rounded-[var(--Eulinx-radius-sm)] transition-colors",
-        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-        disabled && "pointer-events-none opacity-30",
-        !disabled && (active
-          ? "bg-[color:var(--Eulinx-color-selected)] text-[color:var(--Eulinx-color-text)]"
-          : "text-[color:var(--Eulinx-color-text-muted)] hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]"),
+        "rounded-md",
+        active && "bg-accent text-accent-foreground",
         className,
       )}
       style={{ width: size, height: size }}
-      {...rest}
     >
       {children}
-    </button>
+    </Button>
   )
 }
 
 export function ToolbarSep() {
-  return (
-    <div className="mx-[3px] h-[18px] w-px shrink-0 bg-[color:var(--Eulinx-color-border)]" />
-  )
+  return <Separator orientation="vertical" className="mx-1 h-[18px]" />
 }
 
 interface PanelSurfaceProps extends HTMLAttributes<HTMLDivElement> {
@@ -68,8 +70,7 @@ export function PanelSurface({
   return (
     <Tag
       className={cn(
-        "border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)]",
-        "rounded-[var(--Eulinx-radius-md)]",
+        "border border-border bg-card rounded-lg",
         className,
       )}
       {...rest}
@@ -86,9 +87,10 @@ interface StateBadgeProps {
 /** Small token-tinted status pill used across lists, tabs, and node cards. */
 export function StateBadge({ tone = "neutral", children, className }: StateBadgeProps) {
   return (
-    <span
+    <Badge
+      variant="secondary"
       className={cn(
-        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[11px] font-medium leading-none",
+        "gap-1 rounded-full px-1.5 py-0.5 text-xs font-medium",
         className,
       )}
       style={{
@@ -97,7 +99,7 @@ export function StateBadge({ tone = "neutral", children, className }: StateBadge
       }}
     >
       {children}
-    </span>
+    </Badge>
   )
 }
 
@@ -116,12 +118,12 @@ export function ListRow({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 rounded-[var(--Eulinx-radius-sm)] px-2 py-1 text-sm",
+        "flex items-center gap-2 rounded-md px-2 py-1 text-sm",
         "transition-colors",
         interactive && "cursor-pointer",
         active
-          ? "bg-[color:var(--Eulinx-color-selected)] text-[color:var(--Eulinx-color-text)]"
-          : "text-[color:var(--Eulinx-color-text-secondary)] hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]",
+          ? "bg-accent text-accent-foreground"
+          : "text-muted-foreground hover:bg-accent/50 hover:text-foreground",
         className,
       )}
       {...rest}

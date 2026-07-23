@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react"
-import { Boxes, PanelBottom } from "lucide-react"
+import { AppIcon } from "./app-icon"
+import { Button } from "@/components/ui/button"
 import { useProjects } from "./use-projects"
 import { useWorkspace } from "./use-workspace"
 
 function StatusItem({ children }: { children: React.ReactNode }) {
   return (
-    <span className="flex h-full cursor-default items-center gap-1.5 px-2 text-[11px] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]">
+    <span className="flex h-full cursor-default items-center gap-1.5 px-2 text-xs text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground">
       {children}
     </span>
   )
@@ -37,11 +38,11 @@ export function StatusBar() {
 
   return (
     <div
-      className="z-20 flex items-center border-t border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-toolbar)] text-[11px] text-[color:var(--Eulinx-color-text-muted)]"
+      className="z-20 flex items-center border-t border-border bg-toolbar text-xs text-muted-foreground"
       style={{ height: "var(--wsx-statusbar-h)" }}
     >
       <StatusItem>
-        <span className="h-1.5 w-1.5 rounded-full bg-[color:var(--Eulinx-color-success)]" />
+        <span className="h-1.5 w-1.5 rounded-full bg-success" />
         Local
       </StatusItem>
       <StatusItem>{activeProject?.name ?? "No project"}</StatusItem>
@@ -49,26 +50,27 @@ export function StatusBar() {
         Views: {viewCount}
       </StatusItem>
       <StatusItem>
-        <Boxes className="h-3 w-3" strokeWidth={1.5} />
+        <AppIcon name="artifacts" className="h-3 w-3" strokeWidth={2.25} />
         {nodeCount} nodes
       </StatusItem>
       <span className="flex-1" />
       <StatusItem>Projects: {projects.length}</StatusItem>
       <StatusItem>Nodes: {nodeCount}</StatusItem>
       <StatusItem>{clock}</StatusItem>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={() => setBottomPanelOpen(!bottomPanelOpen)}
-        className={`flex h-full cursor-pointer items-center gap-1.5 border-l border-[color:var(--Eulinx-color-border)] px-2 text-[11px] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)] ${
+        className={`h-full gap-1.5 border-l border-border px-2 text-xs ${
           bottomPanelOpen
-            ? "text-[color:var(--Eulinx-color-accent)]"
-            : "text-[color:var(--Eulinx-color-text-muted)]"
+            ? "text-primary"
+            : "text-muted-foreground"
         }`}
         aria-label={bottomPanelOpen ? "Hide bottom panel" : "Show bottom panel"}
       >
-        <PanelBottom className="h-3 w-3" strokeWidth={1.5} />
+        <AppIcon name="panel" className="h-3 w-3" strokeWidth={2.25} />
         Panel
-      </button>
+      </Button>
     </div>
   )
 }

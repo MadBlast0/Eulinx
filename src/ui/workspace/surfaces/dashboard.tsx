@@ -1,12 +1,7 @@
 import {
   Activity,
-  Boxes,
-  CheckCircle2,
-  Cpu,
-  HardDrive,
-  MemoryStick,
-  TrendingUp,
 } from "lucide-react"
+import { AppIcon } from "../app-icon"
 import { useMemo, useState, type ReactNode } from "react"
 import { cn } from "@/utils/cn"
 import { Button } from "@/components/ui"
@@ -46,7 +41,7 @@ function buildStats(projects: number, sessions: number, memory: number): readonl
       delta: "active",
       trend: "flat",
       tone: "accent",
-      icon: <Boxes className="h-4 w-4" strokeWidth={1.5} />,
+      icon: <AppIcon name="projects" className="h-4 w-4" strokeWidth={2.25} />,
     },
     {
       id: "sessions",
@@ -55,7 +50,7 @@ function buildStats(projects: number, sessions: number, memory: number): readonl
       delta: "tracked",
       trend: "flat",
       tone: "success",
-      icon: <CheckCircle2 className="h-4 w-4" strokeWidth={1.5} />,
+      icon: <AppIcon name="scheduler" className="h-4 w-4" strokeWidth={2.25} />,
     },
     {
       id: "memory",
@@ -64,7 +59,7 @@ function buildStats(projects: number, sessions: number, memory: number): readonl
       delta: "indexed",
       trend: "flat",
       tone: "info",
-      icon: <Cpu className="h-4 w-4" strokeWidth={1.5} />,
+      icon: <AppIcon name="memory" className="h-4 w-4" strokeWidth={2.25} />,
     },
     {
       id: "health",
@@ -73,7 +68,7 @@ function buildStats(projects: number, sessions: number, memory: number): readonl
       delta: "—",
       trend: "flat",
       tone: "warning",
-      icon: <TrendingUp className="h-4 w-4" strokeWidth={1.5} />,
+      icon: <AppIcon name="diagnostics" className="h-4 w-4" strokeWidth={2.25} />,
     },
   ]
 }
@@ -213,21 +208,21 @@ export default function Dashboard() {
               Runtime Health
             </div>
             <HealthRow
-              icon={<Cpu className="h-4 w-4" strokeWidth={1.5} />}
+              icon={<AppIcon name="runtime" className="h-4 w-4" strokeWidth={2.25} />}
               label="CPU"
               value="42%"
               pct={42}
               tone="accent"
             />
             <HealthRow
-              icon={<MemoryStick className="h-4 w-4" strokeWidth={1.5} />}
+              icon={<AppIcon name="memory" className="h-4 w-4" strokeWidth={2.25} />}
               label="Memory"
               value="63%"
               pct={63}
               tone="info"
             />
             <HealthRow
-              icon={<HardDrive className="h-4 w-4" strokeWidth={1.5} />}
+              icon={<AppIcon name="projects" className="h-4 w-4" strokeWidth={2.25} />}
               label="Disk"
               value="28%"
               pct={28}

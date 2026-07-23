@@ -7,7 +7,6 @@ import {
   type ReactNode,
 } from "react"
 import {
-  addEdge,
   useEdgesState,
   useNodesState,
   type Connection,
@@ -20,10 +19,7 @@ import { useWorkspace } from "../use-workspace"
 import type { CanvasNode, EdgeConn } from "../types"
 import type { CustomNodeData, CustomNodeType } from "./custom-node"
 import type { EulinxNodeKind } from "./node-types"
-
-function toNodeKind(kind: CanvasNode["kind"]): EulinxNodeKind {
-  return kind
-}
+import type { WorkerState } from "../a11y/state-signals"
 
 function projectNode(node: CanvasNode): CustomNodeType {
   return {
@@ -32,9 +28,12 @@ function projectNode(node: CanvasNode): CustomNodeType {
     position: { x: node.x, y: node.y },
     selected: node.selected ?? false,
     data: {
-      kind: toNodeKind(node.kind),
+      kind: node.kind as EulinxNodeKind,
       label: node.label,
       url: node.url,
+      status: node.status as WorkerState | undefined,
+      shell: node.shell,
+      lines: node.lines,
     } satisfies CustomNodeData,
   }
 }
@@ -64,19 +63,18 @@ export function NodeGraphProvider({ children }: { children: ReactNode }) {
     connections,
     selectNode,
     moveNode,
+    addConnection,
   } = useWorkspace()
 
-  const [nodes, setNodes, onNodesChangeRaw] = useNodesState<CustomNodeType>(
-    wsNodes.map(projectNode),
-  )
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(
-    connections.map(projectEdge),
-  )
+  const [nodes, setNodes, onNodesChangeRaw] = useNodesState<CustomNodeType>([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
 
+  // Sync workspace nodes → ReactFlow nodes
   useEffect(() => {
     setNodes(wsNodes.map(projectNode))
   }, [wsNodes, setNodes])
 
+  // Sync workspace edges → ReactFlow edges
   useEffect(() => {
     setEdges(connections.map(projectEdge))
   }, [connections, setEdges])
@@ -96,13 +94,14 @@ export function NodeGraphProvider({ children }: { children: ReactNode }) {
     [onNodesChangeRaw, moveNode, selectNode],
   )
 
+  // Persist new connections to workspace
   const onConnect = useCallback<OnConnect>(
     (connection: Connection) => {
-      setEdges((eds) =>
-        addEdge({ ...connection, type: "eulinx" }, eds),
-      )
+      if (connection.source && connection.target) {
+        addConnection(connection.source, connection.target)
+      }
     },
-    [setEdges],
+    [addConnection],
   )
 
   const value = useMemo<NodeGraphContextValue>(

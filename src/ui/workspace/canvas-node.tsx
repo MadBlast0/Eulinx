@@ -1,6 +1,7 @@
 // @Eulinx-exception:nodegraph-canvas
-import { Globe, Map as MapIcon, Minus, TerminalSquare, X } from "lucide-react"
+import { Minus, X } from "lucide-react"
 import { cn } from "@/utils/cn"
+import { AppIcon } from "./app-icon"
 import type { CanvasNode, NodeKind, TerminalLine } from "./types"
 import { Dot } from "./primitives"
 import { TerminalView } from "./terminal"
@@ -10,6 +11,20 @@ const NODE_TOKEN: Record<NodeKind, string> = {
   terminal: "var(--Eulinx-color-node-terminal)",
   browser: "var(--Eulinx-color-node-browser)",
   map: "var(--Eulinx-color-node-map)",
+  worker: "var(--Eulinx-color-node-worker)",
+  agent: "var(--Eulinx-color-node-worker)",
+  session: "var(--Eulinx-color-node-terminal)",
+  memory: "var(--Eulinx-color-node-map)",
+  prompt: "var(--Eulinx-color-node-worker)",
+  merge: "var(--Eulinx-color-node-terminal)",
+  router: "var(--Eulinx-color-node-browser)",
+  tool: "var(--Eulinx-color-node-terminal)",
+  file: "var(--Eulinx-color-node-terminal)",
+  event: "var(--Eulinx-color-node-map)",
+  metric: "var(--Eulinx-color-node-browser)",
+  log: "var(--Eulinx-color-node-terminal)",
+  note: "var(--Eulinx-color-node-map)",
+  unknown: "var(--Eulinx-color-node-terminal)",
 }
 
 const OUTPUT_COLOR: Record<NonNullable<TerminalLine["outputColor"]>, string> = {
@@ -21,9 +36,9 @@ const OUTPUT_COLOR: Record<NonNullable<TerminalLine["outputColor"]>, string> = {
 
 function NodeIcon({ kind }: { kind: NodeKind }) {
   const cls = "h-3.5 w-3.5"
-  if (kind === "terminal") return <TerminalSquare className={cls} strokeWidth={1.5} />
-  if (kind === "browser") return <Globe className={cls} strokeWidth={1.5} />
-  return <MapIcon className={cls} strokeWidth={1.5} />
+  if (kind === "terminal") return <AppIcon name="terminal" className={cls} strokeWidth={2.25} />
+  if (kind === "browser") return <AppIcon name="api" className={cls} strokeWidth={2.25} />
+  return <AppIcon name="graph" className={cls} strokeWidth={2.25} />
 }
 
 export function CanvasNodeCard({
@@ -89,7 +104,7 @@ export function CanvasNodeCard({
               className="flex h-5 w-5 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
               onMouseDown={(e) => e.stopPropagation()}
             >
-              <Minus className="h-3 w-3" strokeWidth={1.5} />
+              <Minus className="h-3 w-3" strokeWidth={2.25} />
             </button>
             {node.kind !== "map" && (
               <button
@@ -101,7 +116,7 @@ export function CanvasNodeCard({
                   onRemove()
                 }}
               >
-                <X className="h-3 w-3" strokeWidth={1.5} />
+                <X className="h-3 w-3" strokeWidth={2.25} />
               </button>
             )}
           </div>
@@ -119,7 +134,7 @@ export function CanvasNodeCard({
         {node.kind === "browser" && (
           <div className="min-h-[100px] bg-[color:var(--Eulinx-color-background)]">
             <div className="flex items-center gap-2 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-2 py-1 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
-              <Globe className="h-3 w-3" strokeWidth={1.5} />
+              <AppIcon name="browser" className="h-3 w-3" strokeWidth={2.25} />
               <span className="font-mono text-[11px] text-[color:var(--Eulinx-color-text-secondary)]">
                 {node.url}
               </span>

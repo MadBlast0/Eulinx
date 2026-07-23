@@ -1,7 +1,12 @@
 import { useState } from "react"
-import { ChevronRight, Search } from "lucide-react"
-import { cn } from "@/utils/cn"
+import { Search } from "lucide-react"
 import { ListRow, StateBadge } from "../primitives"
+import {
+  EmptyState,
+  SearchField,
+  SegmentedControl,
+  SectionHeader,
+} from "../right-sidebar"
 
 type Filter = "workspace" | "project" | "all"
 
@@ -33,74 +38,71 @@ const SESSIONS: readonly Session[] = [
 
 export function SessionsTab() {
   const [filter, setFilter] = useState<Filter>("all")
+  const [query, setQuery] = useState("")
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-4 mb-2 mt-3 flex overflow-hidden rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)]">
-        {(["workspace", "project", "all"] as const).map((f) => (
-          <button
-            key={f}
-            type="button"
-            aria-pressed={filter === f}
-            onClick={() => setFilter(f)}
-            className={cn(
-              "flex-1 p-2 text-center text-xs capitalize transition-colors",
-              "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
-              filter === f
-                ? "bg-[color:var(--Eulinx-color-selected)] text-[color:var(--Eulinx-color-text)]"
-                : "text-[color:var(--Eulinx-color-text-muted)] hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]",
-            )}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
-
-      <div className="mx-4 mb-2 flex items-center gap-2 rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-3 py-2 text-xs text-[color:var(--Eulinx-color-text-muted)] transition-colors focus-within:border-[color:var(--Eulinx-color-ring)]">
-        <Search className="h-3.5 w-3.5" strokeWidth={1.5} />
-        <input
-          type="text"
-          placeholder="Search sessions"
-          aria-label="Search sessions"
-          className="w-full bg-transparent text-[color:var(--Eulinx-color-text)] placeholder:text-[color:var(--Eulinx-color-text-muted)] focus-visible:outline-none"
+    <div className="flex flex-1 flex-col overflow-hidden">
+      {/* ── Filter + search ── */}
+      <div className="flex flex-col gap-2 px-3 pt-2 pb-2">
+        <SegmentedControl
+          value={filter}
+          options={[
+            { value: "workspace", label: "Workspace" },
+            { value: "project", label: "Project" },
+            { value: "all", label: "All" },
+          ]}
+          onChange={setFilter}
         />
+        <SearchField value={query} onChange={setQuery} placeholder="Search sessions" />
       </div>
 
-      <div className="flex items-center justify-between px-4 py-2 text-xs font-semibold text-[color:var(--Eulinx-color-text-secondary)]">
-        <span className="flex items-center gap-1">
-          <ChevronRight className="h-3 w-3" strokeWidth={1.5} />
-          Coding/Cutsy
-        </span>
-        <span className="rounded-[var(--Eulinx-radius-sm)] bg-[color:var(--Eulinx-color-surface-raised)] px-1.5 py-px text-[10px] font-medium text-[color:var(--Eulinx-color-text-muted)]">
-          20
-        </span>
-      </div>
+      {/* ── Session list ── */}
+      <div className="flex-1 overflow-y-auto">
+        {/* Folder header */}
+        <SectionHeader label="Coding / Cutsy" count={20} />
 
-      {SESSIONS.map((session, i) => (
-        <ListRow
-          key={i}
-          role="button"
-          tabIndex={0}
-          className="flex-col items-stretch border-b border-[color:var(--Eulinx-color-border)] px-4 py-3 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        >
-          <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs font-medium text-[color:var(--Eulinx-color-text)]">
-            {session.name}
-          </div>
-          <div className="mt-0.5 line-clamp-2 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
-            {session.preview}
-          </div>
-          <div className="mt-1 flex items-center gap-2 text-[10px] text-[color:var(--Eulinx-color-text-muted)]">
-            {session.badge && (
-              <StateBadge tone="neutral" className="text-[10px]">
-                {session.badge}
-              </StateBadge>
-            )}
-            {session.meta.map((m, mi) => (
-              <span key={mi}>{m}</span>
-            ))}
-          </div>
-        </ListRow>
-      ))}
+        {SESSIONS.length === 0 ? (
+          <EmptyState
+            icon={<Search className="h-5 w-5" strokeWidth={1.5} />}
+            title="No sessions found"
+            description="Sessions will appear here once created."
+          />
+        ) : (
+          SESSIONS.map((session, i) => (
+            <SessionRow key={i} session={session} />
+          ))
+        )}
+      </div>
     </div>
+  )
+}
+
+function SessionRow({ session }: { session: Session }) {
+  return (
+    <ListRow
+      role="button"
+      tabIndex={0}
+      className="mx-1.5 flex-col items-stretch !gap-0.5 px-2.5 py-2 text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--Eulinx-color-ring)]"
+    >
+      {/* Title */}
+      <span className="truncate text-xs font-medium text-[color:var(--Eulinx-color-text)]">
+        {session.name}
+      </span>
+
+      {/* Preview */}
+      <span className="truncate text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+        {session.preview}
+      </span>
+
+      {/* Metadata */}
+      <span className="mt-0.5 flex items-center gap-1.5 text-[10px] text-[color:var(--Eulinx-color-text-muted)]">
+        {session.badge && (
+          <StateBadge tone="neutral" className="text-[10px]">{session.badge}</StateBadge>
+        )}
+        {session.meta.map((m, mi) => (
+          <span key={mi}>{m}</span>
+        ))}
+      </span>
+    </ListRow>
   )
 }

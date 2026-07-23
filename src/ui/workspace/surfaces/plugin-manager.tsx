@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo } from "react"
-import { Package, Plug, PlugZap, Trash2, Plus, Search, RefreshCw, Boxes } from "lucide-react"
+import { Trash2, Plus } from "lucide-react"
+import { AppIcon } from "../app-icon"
 import { cn } from "@/utils/cn"
 import { Input } from "@/components/ui"
 import { PanelSurface, ListRow, StateBadge, Dot } from "../primitives"
@@ -121,7 +122,7 @@ export default function PluginManager() {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <RefreshCw className="h-5 w-5 animate-spin text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+        <AppIcon name="conditions" className="h-5 w-5 animate-spin text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
       </div>
     )
   }
@@ -146,7 +147,7 @@ export default function PluginManager() {
         </div>
         <div className="flex items-center gap-2">
           <div className="relative w-56">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+            <AppIcon name="search" className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
             <Input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -174,7 +175,7 @@ export default function PluginManager() {
             title="Browse marketplace"
             className="flex h-8 items-center gap-1.5 rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] px-3 text-xs font-medium text-[color:var(--Eulinx-color-text-secondary)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
           >
-            <Boxes className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <AppIcon name="graph" className="h-3.5 w-3.5" strokeWidth={2.25} />
             Browse Marketplace
           </button>
         </div>
@@ -191,7 +192,7 @@ export default function PluginManager() {
           {filtered.length === 0 ? (
             <div className="flex h-full items-center justify-center">
               <div className="text-center">
-                <Package className="mx-auto mb-2 h-8 w-8 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+                <AppIcon name="artifacts" className="mx-auto mb-2 h-8 w-8 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
                 <p className="text-sm text-[color:var(--Eulinx-color-text-secondary)]">
                   {query ? "No plugins match your search." : "No plugins installed."}
                 </p>
@@ -218,7 +219,7 @@ export default function PluginManager() {
                   >
                     <span className="flex items-center gap-3">
                       <span className="flex h-8 w-8 items-center justify-center rounded-[var(--Eulinx-radius-sm)] bg-[color:var(--Eulinx-color-surface-sunken)]">
-                        <Package className="h-4 w-4 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+                        <AppIcon name="artifacts" className="h-4 w-4 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
                       </span>
                       <span className="flex flex-col">
                         <span className="text-[color:var(--Eulinx-color-text)]">{instance.manifest.name}</span>
@@ -244,7 +245,7 @@ export default function PluginManager() {
           <div className="w-80 overflow-y-auto p-6">
             <div className="mb-4">
               <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-[var(--Eulinx-radius-md)] bg-[color:var(--Eulinx-color-surface-sunken)]">
-                <Package className="h-6 w-6 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+                <AppIcon name="artifacts" className="h-6 w-6 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
               </div>
               <h2 className="text-base font-semibold text-[color:var(--Eulinx-color-text)]">{selected.instance.manifest.name}</h2>
               <p className="mt-0.5 text-xs text-[color:var(--Eulinx-color-text-muted)]">
@@ -320,7 +321,7 @@ export default function PluginManager() {
                   onClick={() => void deactivatePlugin(selected.instance.manifest.id)}
                   className="flex h-8 items-center justify-center gap-1.5 rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] text-xs font-medium text-[color:var(--Eulinx-color-text-secondary)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  <Plug className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <AppIcon name="connections" className="h-3.5 w-3.5" strokeWidth={2.25} />
                   Deactivate
                 </button>
               ) : selected.instance.state === 'installed' as PluginState || selected.instance.state === 'disabled' as PluginState ? (
@@ -329,7 +330,7 @@ export default function PluginManager() {
                   onClick={() => void activatePlugin(selected.instance.manifest.id)}
                   className="flex h-8 items-center justify-center gap-1.5 rounded-[var(--Eulinx-radius-sm)] bg-[color:var(--Eulinx-color-accent-primary)] text-xs font-medium text-[color:var(--Eulinx-color-text-inverse)] transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 >
-                  <PlugZap className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <AppIcon name="connections" className="h-3.5 w-3.5" strokeWidth={2.25} />
                   Activate
                 </button>
               ) : null}

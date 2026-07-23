@@ -1,12 +1,13 @@
 import { useMemo, useState } from "react"
-import { FileCode2, FileText, FileImage, FileType, Plus, Search, Trash2 } from "lucide-react"
+import { AppIcon } from "../app-icon"
+import { Plus, Trash2 } from "lucide-react"
 import { ArtifactsProvider, useArtifacts, type Artifact, type ArtifactKind } from "../artifacts-store"
 
-const KIND_META: Record<ArtifactKind, { label: string; icon: typeof FileText }> = {
-  code: { label: "Code", icon: FileCode2 },
-  markdown: { label: "Markdown", icon: FileText },
-  image: { label: "Image", icon: FileImage },
-  document: { label: "Document", icon: FileType },
+const KIND_META: Record<ArtifactKind, { label: string; iconName: string }> = {
+  code: { label: "Code", iconName: "artifacts" },
+  markdown: { label: "Markdown", iconName: "artifacts" },
+  image: { label: "Image", iconName: "artifacts" },
+  document: { label: "Document", iconName: "artifacts" },
 }
 
 function formatRelative(ts: number): string {
@@ -21,11 +22,10 @@ function formatRelative(ts: number): string {
 
 function ArtifactRow({ artifact, onRemove }: { artifact: Artifact; onRemove: (id: string) => void }) {
   const meta = KIND_META[artifact.kind]
-  const Icon = meta.icon
   return (
     <li className="group flex items-center gap-3 rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-3 py-2.5 transition-colors hover:border-[color:var(--Eulinx-color-accent)] hover:bg-[color:var(--Eulinx-color-surface-hover)]">
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--Eulinx-radius-sm)] bg-[color:var(--Eulinx-color-surface-sunken)] text-[color:var(--Eulinx-color-accent)]">
-        <Icon className="h-4 w-4" strokeWidth={1.5} />
+        <AppIcon name={meta.iconName} className="h-4 w-4" strokeWidth={2.25} />
       </span>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium text-[color:var(--Eulinx-color-text)]">
@@ -41,7 +41,7 @@ function ArtifactRow({ artifact, onRemove }: { artifact: Artifact; onRemove: (id
         aria-label={`Delete ${artifact.title}`}
         className="opacity-0 transition-opacity group-hover:opacity-100 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-error)]"
       >
-        <Trash2 className="h-4 w-4" strokeWidth={1.5} />
+        <Trash2 className="h-4 w-4" strokeWidth={2.25} />
       </button>
     </li>
   )
@@ -63,7 +63,7 @@ function ArtifactsInner() {
     <div className="flex h-full flex-col gap-3 p-4">
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+          <AppIcon name="search" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -77,7 +77,7 @@ function ArtifactsInner() {
           onClick={() => addArtifact("markdown", "")}
           className="flex h-9 items-center gap-1.5 rounded-[var(--Eulinx-radius-md)] bg-[color:var(--Eulinx-color-accent)] px-3 text-sm font-medium text-[color:var(--Eulinx-color-accent-foreground)] transition-opacity hover:opacity-90"
         >
-          <Plus className="h-4 w-4" strokeWidth={2} />
+          <Plus className="h-4 w-4" strokeWidth={2.25} />
           New
         </button>
       </div>

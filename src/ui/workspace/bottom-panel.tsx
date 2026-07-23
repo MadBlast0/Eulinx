@@ -1,15 +1,11 @@
 import { useState } from "react"
 import {
-  Activity,
   ChevronsDownUp,
   ChevronsUpDown,
-  Database,
   Minimize2,
-  ScrollText,
-  TerminalSquare,
   Trash2,
-  Triangle,
 } from "lucide-react"
+import { AppIcon } from "./app-icon"
 import { cn } from "@/utils/cn"
 import type { BottomTab } from "./types"
 import { useWorkspace } from "./use-workspace"
@@ -31,10 +27,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 
 const TABS: readonly { readonly id: BottomTab; readonly label: string; readonly icon: React.ReactNode }[] = [
-  { id: "logs", label: "Logs", icon: <TerminalSquare className="h-3.5 w-3.5" strokeWidth={1.5} /> },
-  { id: "problems", label: "Diagnostics", icon: <Triangle className="h-3.5 w-3.5" strokeWidth={1.5} /> },
-  { id: "events", label: "Events", icon: <Activity className="h-3.5 w-3.5" strokeWidth={1.5} /> },
-  { id: "memory", label: "Runtime", icon: <Database className="h-3.5 w-3.5" strokeWidth={1.5} /> },
+  { id: "logs", label: "Logs", icon: <AppIcon name="terminal" className="h-3.5 w-3.5" strokeWidth={2.25} /> },
+  { id: "problems", label: "Diagnostics", icon: <AppIcon name="diagnostics" className="h-3.5 w-3.5" strokeWidth={2.25} /> },
+  { id: "events", label: "Events", icon: <AppIcon name="events" className="h-3.5 w-3.5" strokeWidth={2.25} /> },
+  { id: "memory", label: "Runtime", icon: <AppIcon name="memory" className="h-3.5 w-3.5" strokeWidth={2.25} /> },
 ]
 
 const TAB_LABEL: Record<BottomTab, string> = {
@@ -92,7 +88,7 @@ export function BottomPanel() {
       className="flex h-full shrink-0 flex-col border-t border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-sidebar)]"
     >
       <div
-        className="flex h-9 shrink-0 items-center gap-0 border-b border-[color:var(--Eulinx-color-border)] px-2"
+        className="flex h-7 shrink-0 items-center gap-0 border-b border-[color:var(--Eulinx-color-border)] px-2"
         style={{ background: "var(--Eulinx-color-toolbar)" }}
       >
         {TABS.map((tab) => (
@@ -130,20 +126,19 @@ export function BottomPanel() {
                 "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
               )}
             >
-              <ScrollText className="h-3.5 w-3.5" strokeWidth={1.5} />
+              <AppIcon name="panel" className="h-3.5 w-3.5" strokeWidth={2.25} />
               Panels
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {PANEL_ORDER.map((key) => {
               const def = PANEL_REGISTRY[key]
-              const Icon = def.icon
               return (
                 <DropdownMenuItem
                   key={key}
                   onSelect={() => setDockView({ kind: "panel", key })}
                 >
-                  <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
+                  <AppIcon name={def.iconName} className="h-3.5 w-3.5" strokeWidth={2.25} />
                   {def.title}
                 </DropdownMenuItem>
               )
@@ -163,7 +158,7 @@ export function BottomPanel() {
               else if (bottomTab === "events") clearEvents()
             }}
           >
-            <Trash2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <Trash2 className="h-3.5 w-3.5" strokeWidth={2.25} />
           </ToolbarButton>
           <ToolbarButton
             tip={isMaximized ? "Restore panel" : "Maximize panel"}
@@ -172,9 +167,9 @@ export function BottomPanel() {
             onClick={() => setRegionSize("panel", isMaximized ? panelRegion.defaultSize : panelRegion.maxSize)}
           >
             {isMaximized ? (
-              <ChevronsDownUp className="h-3.5 w-3.5" strokeWidth={1.5} />
+              <ChevronsDownUp className="h-3.5 w-3.5" strokeWidth={2.25} />
             ) : (
-              <ChevronsUpDown className="h-3.5 w-3.5" strokeWidth={1.5} />
+              <ChevronsUpDown className="h-3.5 w-3.5" strokeWidth={2.25} />
             )}
           </ToolbarButton>
           <ToolbarButton
@@ -183,7 +178,7 @@ export function BottomPanel() {
             aria-label="Close panel"
             onClick={() => setBottomPanelOpen(false)}
           >
-            <Minimize2 className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <Minimize2 className="h-3.5 w-3.5" strokeWidth={2.25} />
           </ToolbarButton>
         </div>
       </div>

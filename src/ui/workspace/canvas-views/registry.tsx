@@ -1,15 +1,4 @@
 import type { ReactNode } from "react"
-import {
-  Network,
-  FileStack,
-  TerminalSquare,
-  Database,
-  GitBranch,
-  Layers,
-  Search,
-  BarChart3,
-  Braces,
-} from "lucide-react"
 import type { CanvasViewKind } from "../project-types"
 import { NodeGraph } from "../node-graph"
 import { ArtifactsView } from "./artifacts-view"
@@ -25,64 +14,64 @@ import QueryPlayground from "./panels/query-playground"
 
 export interface CanvasViewMeta {
   readonly label: string
-  readonly icon: typeof Network
+  readonly iconName: string
   readonly render: () => ReactNode
 }
 
 export const CANVAS_VIEW_REGISTRY: Record<CanvasViewKind, CanvasViewMeta> = {
   "node-graph": {
     label: "Graph",
-    icon: Network,
+    iconName: "graph",
     render: () => <NodeGraph />,
   },
   artifacts: {
     label: "Artifacts",
-    icon: FileStack,
+    iconName: "artifacts",
     render: () => <ArtifactsView />,
   },
   terminal: {
     label: "Terminal",
-    icon: TerminalSquare,
+    iconName: "terminal",
     render: () => <TerminalView ptyId="canvas-terminal" className="h-full" />,
   },
   "memory-graph": {
     label: "Memory Graph",
-    icon: Database,
+    iconName: "memory",
     render: () => <MemoryGraph />,
   },
   "knowledge-graph": {
     label: "Knowledge Graph",
-    icon: Network,
+    iconName: "knowledge",
     render: () => <KnowledgeGraph />,
   },
   "causal-trace": {
     label: "Causal Trace",
-    icon: GitBranch,
+    iconName: "conditions",
     render: () => <CausalTrace />,
   },
   "session-timeline": {
     label: "Session Timeline",
-    icon: Layers,
+    iconName: "loops",
     render: () => <SessionTimeline />,
   },
   "vector-explorer": {
     label: "Vector Explorer",
-    icon: BarChart3,
+    iconName: "knowledge",
     render: () => <VectorExplorer />,
   },
   "query-playground": {
     label: "Query Playground",
-    icon: Braces,
+    iconName: "variables",
     render: () => <QueryPlayground />,
   },
   "workspace-dashboard": {
     label: "Dashboard",
-    icon: BarChart3,
+    iconName: "graph",
     render: () => <WorkspaceDashboard />,
   },
   "unified-search": {
     label: "Unified Search",
-    icon: Search,
+    iconName: "search",
     render: () => <UnifiedSearch />,
   },
 }

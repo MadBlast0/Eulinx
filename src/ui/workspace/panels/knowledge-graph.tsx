@@ -12,6 +12,7 @@ import {
   BackgroundVariant,
   Controls,
   MiniMap,
+  useNodesState,
   type Node,
   type Edge,
   type NodeTypes,
@@ -20,18 +21,8 @@ import {
   Position,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
-import {
-  Search,
-  X,
-  Filter,
-  ChevronDown,
-  ChevronUp,
-  FileText,
-  Globe,
-  GitBranch,
-  File,
-  ExternalLink,
-} from "lucide-react"
+import { X, ChevronUp, ChevronDown, Filter } from "lucide-react"
+import { AppIcon } from "../app-icon"
 import { cn } from "@/utils/cn"
 import { Input } from "@/components/ui"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -93,11 +84,11 @@ const SOURCE_LABEL: Record<SourceType, string> = {
 }
 
 const SOURCE_ICON: Record<SourceType, React.ReactNode> = {
-  markdown: <FileText className="h-3 w-3" strokeWidth={1.5} />,
-  url: <Globe className="h-3 w-3" strokeWidth={1.5} />,
-  repo: <GitBranch className="h-3 w-3" strokeWidth={1.5} />,
-  pdf: <File className="h-3 w-3" strokeWidth={1.5} />,
-  text: <FileText className="h-3 w-3" strokeWidth={1.5} />,
+  markdown: <AppIcon name="prompt" className="h-3 w-3" strokeWidth={2.25} />,
+  url: <AppIcon name="browser" className="h-3 w-3" strokeWidth={2.25} />,
+  repo: <AppIcon name="conditions" className="h-3 w-3" strokeWidth={2.25} />,
+  pdf: <AppIcon name="artifacts" className="h-3 w-3" strokeWidth={2.25} />,
+  text: <AppIcon name="prompt" className="h-3 w-3" strokeWidth={2.25} />,
 }
 
 // ---------------------------------------------------------------------------
@@ -438,6 +429,10 @@ function KnowledgeNodeComponent({ data, selected }: { data: KnowledgeFlowNodeDat
   )
 }
 
+const nodeTypes: NodeTypes = {
+  knowledge: KnowledgeNodeComponent as unknown as NodeTypes["knowledge"],
+}
+
 // ---------------------------------------------------------------------------
 // Edge styling for REFERENCES edges (dashed gray)
 // ---------------------------------------------------------------------------
@@ -520,7 +515,7 @@ function DetailPanel({
               {SOURCE_ICON[node.sourceType]}
               <span className="truncate">{node.sourcePath}</span>
               {node.sourceType === "url" && (
-                <ExternalLink className="ml-auto h-3 w-3 shrink-0 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+                <AppIcon name="api" className="ml-auto h-3 w-3 shrink-0 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
               )}
             </div>
           </div>
@@ -629,7 +624,7 @@ function FilterPanel({
         onClick={() => setExpanded(!expanded)}
         className="flex h-7 w-full items-center gap-1.5 px-3 text-[11px] font-medium text-[color:var(--Eulinx-color-text-muted)] hover:bg-[color:var(--Eulinx-color-hover)]"
       >
-        <Filter className="h-3 w-3" strokeWidth={1.5} />
+        <Filter className="h-3 w-3" strokeWidth={2.25} />
         Filters
         {hasActiveFilters && (
           <span className="ml-1 rounded-full bg-[color:var(--Eulinx-color-accent)] px-1.5 py-0.5 text-[9px] text-white">
@@ -638,9 +633,9 @@ function FilterPanel({
         )}
         <div className="flex-1" />
         {expanded ? (
-          <ChevronUp className="h-3 w-3" strokeWidth={1.5} />
+          <ChevronUp className="h-3 w-3" strokeWidth={2.25} />
         ) : (
-          <ChevronDown className="h-3 w-3" strokeWidth={1.5} />
+          <ChevronDown className="h-3 w-3" strokeWidth={2.25} />
         )}
       </button>
 
@@ -796,7 +791,9 @@ function KnowledgeGraphInner({
   }, [filteredNodes, searchQuery])
 
   // React Flow nodes — knowledge nodes only (Memory nodes not shown as clusters)
-  const nodes: KnowledgeFlowNode[] = useMemo(() => {
+  const [nodes, setNodes, onNodesChange] = useNodesState<KnowledgeFlowNode>([])
+
+  const computedNodes: KnowledgeFlowNode[] = useMemo(() => {
     return filteredNodes.map((n) => {
       const pos = layoutPositions.get(n.id) ?? { x: 0, y: 0 }
       return {
@@ -811,6 +808,10 @@ function KnowledgeGraphInner({
       }
     })
   }, [filteredNodes, layoutPositions, highlightedIds, selectedNode])
+
+  useEffect(() => {
+    setNodes(computedNodes)
+  }, [computedNodes, setNodes])
 
   // React Flow edges — REFERENCES edges (dashed gray)
   const edges: Edge[] = useMemo(() => {
@@ -830,19 +831,13 @@ function KnowledgeGraphInner({
     [onSelectNode],
   )
 
-  const nodeTypes: NodeTypes = useMemo(
-    () => ({
-      knowledge: KnowledgeNodeComponent as unknown as NodeTypes["knowledge"],
-    }),
-    [],
-  )
-
   return (
     <div className="flex h-full w-full">
       <div ref={containerRef} className="relative flex-1">
         <ReactFlow
           nodes={nodes}
           edges={edges}
+          onNodesChange={onNodesChange}
           onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
           fitView
@@ -923,10 +918,7 @@ export function KnowledgeGraph({ workspaceId }: KnowledgeGraphProps) {
         </span>
         <div className="flex-1" />
         <div className="relative w-56">
-          <Search
-            className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-[color:var(--Eulinx-color-text-muted)]"
-            strokeWidth={1.5}
-          />
+          <AppIcon name="search" className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -940,7 +932,7 @@ export function KnowledgeGraph({ workspaceId }: KnowledgeGraphProps) {
               onClick={() => setSearchQuery("")}
               className="absolute right-1.5 top-1/2 -translate-y-1/2 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text)]"
             >
-              <X className="h-3 w-3" strokeWidth={1.5} />
+<X className="h-3 w-3" strokeWidth={2.25} />
             </button>
           )}
         </div>

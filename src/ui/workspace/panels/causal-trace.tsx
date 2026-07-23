@@ -44,11 +44,11 @@ function SeverityIcon({ severity }: { readonly severity: Severity }) {
   const style = { color: SEVERITY_COLORS[severity] }
   switch (severity) {
     case "error":
-      return <XCircle className={cls} style={style} strokeWidth={1.5} />
+      return <XCircle className={cls} style={style} strokeWidth={2.25} />
     case "warning":
-      return <AlertTriangle className={cls} style={style} strokeWidth={1.5} />
+      return <AlertTriangle className={cls} style={style} strokeWidth={2.25} />
     case "info":
-      return <Info className={cls} style={style} strokeWidth={1.5} />
+      return <Info className={cls} style={style} strokeWidth={2.25} />
   }
 }
 
@@ -125,7 +125,7 @@ function EventDetail({
           onClick={onClose}
           className="flex h-5 w-5 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] hover:bg-[color:var(--Eulinx-color-hover)]"
         >
-          <XCircle className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <XCircle className="h-3.5 w-3.5" strokeWidth={2.25} />
         </button>
       </div>
       <ScrollArea className="flex-1 p-3">
@@ -216,9 +216,9 @@ function TraceNodeRow({
             className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] hover:bg-[color:var(--Eulinx-color-hover)]"
           >
             {isCollapsed ? (
-              <ChevronRight className="h-3 w-3" strokeWidth={1.5} />
+              <ChevronRight className="h-3 w-3" strokeWidth={2.25} />
             ) : (
-              <ChevronDown className="h-3 w-3" strokeWidth={1.5} />
+              <ChevronDown className="h-3 w-3" strokeWidth={2.25} />
             )}
           </button>
         ) : (

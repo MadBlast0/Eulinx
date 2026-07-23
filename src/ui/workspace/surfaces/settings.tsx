@@ -19,10 +19,15 @@ import {
 import { PanelSurface } from "../primitives"
 import { useSettings } from "../settings-store"
 import { useProjects } from "../use-projects"
+import { useTheme } from "@/ui/tokens/theme-provider"
 import { useTasks } from "../tasks-store"
 import { exportWorkspace, importWorkspace, createExportData } from "../workspace-export-import"
 
-const THEMES: readonly string[] = ["Dark", "Light", "System"]
+const THEMES: readonly { value: string; label: string }[] = [
+  { value: "system", label: "System" },
+  { value: "dark", label: "Dark" },
+  { value: "light", label: "Light" },
+]
 const ACCENTS: readonly string[] = ["Blue", "Violet", "Emerald", "Amber"]
 const FONTS: readonly string[] = ["Inter", "JetBrains Mono"]
 
@@ -193,6 +198,7 @@ function WorkspaceImportButton() {
 
 export default function Settings() {
   const { settings, save, reset } = useSettings()
+  const { setPreference } = useTheme()
   const [keySaved, setKeySaved] = useState(false)
 
   // Apply accent live to :root so the whole UI re-tints immediately.
@@ -200,6 +206,15 @@ export default function Settings() {
     const hex = ACCENT_HEX[settings.accent]
     if (hex) document.documentElement.style.setProperty("--Eulinx-color-accent", hex)
   }, [settings.accent])
+
+  // Sync theme setting to ThemeProvider
+  useEffect(() => {
+    if (settings.theme === "system") {
+      setPreference({ mode: "system", darkThemeId: "Eulinx-dark", lightThemeId: "Eulinx-light" })
+    } else {
+      setPreference({ mode: "explicit", themeId: settings.theme === "dark" ? "Eulinx-dark" : "Eulinx-light" })
+    }
+  }, [settings.theme, setPreference])
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -258,8 +273,8 @@ export default function Settings() {
                   </SelectTrigger>
                   <SelectContent>
                     {THEMES.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
                       </SelectItem>
                     ))}
                   </SelectContent>

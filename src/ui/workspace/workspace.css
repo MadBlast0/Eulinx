@@ -43,7 +43,7 @@
 
   --wsx-left-w: 280px;
   --wsx-right-w: 320px;
-  --wsx-topbar-h: 48px;
+  --wsx-topbar-h: 28px;
   --wsx-statusbar-h: 28px;
   --wsx-grid-dot: rgba(236, 236, 236, 0.04);
 
@@ -172,14 +172,16 @@
   background: transparent;
 }
 .wsx-pane-divider[data-direction="vertical"] {
-  width: 6px;
+  width: 1px;
   height: 100%;
   cursor: col-resize;
+  background: var(--Eulinx-color-border);
 }
 .wsx-pane-divider[data-direction="horizontal"] {
-  height: 6px;
+  height: 1px;
   width: 100%;
   cursor: row-resize;
+  background: var(--Eulinx-color-border);
 }
 
 /* Focus ring — subtle inset shadow instead of harsh outline */

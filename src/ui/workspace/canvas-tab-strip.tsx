@@ -2,6 +2,7 @@ import { cn } from "@/utils/cn"
 import { useProjects } from "./use-projects"
 import { CANVAS_VIEW_REGISTRY } from "./canvas-views/registry"
 import { useLayout } from "./layout-state"
+import { AppIcon } from "./app-icon"
 
 export function CanvasTabStrip() {
   const { activeProject, activeView, selectView } = useProjects()
@@ -22,7 +23,6 @@ export function CanvasTabStrip() {
     >
       {views.map((view) => {
         const meta = CANVAS_VIEW_REGISTRY[view.kind]
-        const Icon = meta.icon
         const active = view.id === activeView?.id
         return (
           <button
@@ -42,7 +42,7 @@ export function CanvasTabStrip() {
                 : "border-transparent text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text-secondary)]",
             )}
           >
-            <Icon className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <AppIcon name={meta.iconName} className="h-3.5 w-3.5" strokeWidth={2.25} />
             <span>{view.name}</span>
           </button>
         )

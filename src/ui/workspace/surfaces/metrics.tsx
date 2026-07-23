@@ -1,14 +1,5 @@
-import {
-  Boxes,
-  Cpu,
-  DollarSign,
-  Gauge,
-  HardDrive,
-  MemoryStick,
-  Network,
-  Users,
-} from "lucide-react"
 import type { ReactNode } from "react"
+import { AppIcon } from "../app-icon"
 import { PanelSurface } from "../primitives"
 import { type Tone, TONE_FG, toneSurface } from "../state"
 
@@ -28,7 +19,7 @@ const CARDS: readonly StatCard[] = [
     value: "12",
     sub: "3 spawning",
     tone: "accent",
-    icon: <Boxes className="h-4 w-4" strokeWidth={1.5} />,
+    icon: <AppIcon name="artifacts" className="h-4 w-4" strokeWidth={2.25} />,
   },
   {
     id: "cpu",
@@ -36,7 +27,7 @@ const CARDS: readonly StatCard[] = [
     value: "42%",
     sub: "8 cores",
     tone: "info",
-    icon: <Cpu className="h-4 w-4" strokeWidth={1.5} />,
+    icon: <AppIcon name="runtime" className="h-4 w-4" strokeWidth={2.25} />,
   },
   {
     id: "mem",
@@ -44,7 +35,7 @@ const CARDS: readonly StatCard[] = [
     value: "63%",
     sub: "10.1 / 16 GB",
     tone: "success",
-    icon: <MemoryStick className="h-4 w-4" strokeWidth={1.5} />,
+    icon: <AppIcon name="memory" className="h-4 w-4" strokeWidth={2.25} />,
   },
   {
     id: "disk",
@@ -52,7 +43,7 @@ const CARDS: readonly StatCard[] = [
     value: "28%",
     sub: "112 GB free",
     tone: "neutral",
-    icon: <HardDrive className="h-4 w-4" strokeWidth={1.5} />,
+    icon: <AppIcon name="files" className="h-4 w-4" strokeWidth={2.25} />,
   },
   {
     id: "net",
@@ -60,7 +51,7 @@ const CARDS: readonly StatCard[] = [
     value: "1.2 Gb/s",
     sub: "inbound",
     tone: "info",
-    icon: <Network className="h-4 w-4" strokeWidth={1.5} />,
+    icon: <AppIcon name="connections" className="h-4 w-4" strokeWidth={2.25} />,
   },
   {
     id: "sessions",
@@ -68,7 +59,7 @@ const CARDS: readonly StatCard[] = [
     value: "34",
     sub: "active now",
     tone: "accent",
-    icon: <Users className="h-4 w-4" strokeWidth={1.5} />,
+    icon: <AppIcon name="scheduler" className="h-4 w-4" strokeWidth={2.25} />,
   },
   {
     id: "latency",
@@ -76,7 +67,7 @@ const CARDS: readonly StatCard[] = [
     value: "0.4ms",
     sub: "p50",
     tone: "success",
-    icon: <Gauge className="h-4 w-4" strokeWidth={1.5} />,
+    icon: <AppIcon name="loops" className="h-4 w-4" strokeWidth={2.25} />,
   },
   {
     id: "cost",
@@ -84,7 +75,7 @@ const CARDS: readonly StatCard[] = [
     value: "$0.12",
     sub: "run rate",
     tone: "warning",
-    icon: <DollarSign className="h-4 w-4" strokeWidth={1.5} />,
+    icon: <AppIcon name="secrets" className="h-4 w-4" strokeWidth={2.25} />,
   },
 ]
 

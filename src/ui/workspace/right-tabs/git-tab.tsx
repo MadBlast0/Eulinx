@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import {
   AlertCircle,
   Check,
+  ChevronDown,
   ChevronRight,
   GitPullRequest,
   RefreshCw,
@@ -19,6 +20,10 @@ import {
   stageAll,
   type GitStatus,
 } from "../git-client"
+import {
+  EmptyState,
+  SectionHeader,
+} from "../right-sidebar"
 
 const DROPDOWN_GROUPS: readonly (readonly string[])[] = [
   ["Commit", "Commit & Push", "Commit & Sync"],
@@ -73,9 +78,7 @@ export function GitTab() {
     }
   }, [repo])
 
-  useEffect(() => {
-    void refresh()
-  }, [refresh])
+  useEffect(() => { void refresh() }, [refresh])
 
   useEffect(() => {
     if (!dropdownOpen) return
@@ -98,10 +101,7 @@ export function GitTab() {
       setFeedback({ tone: "success", text: "Staged all changes" })
       await refresh()
     } catch (e) {
-      setFeedback({
-        tone: "error",
-        text: e instanceof Error ? e.message : "Stage failed",
-      })
+      setFeedback({ tone: "error", text: e instanceof Error ? e.message : "Stage failed" })
     }
   }
 
@@ -114,10 +114,7 @@ export function GitTab() {
       setFeedback({ tone: "success", text: out || "Committed" })
       await refresh()
     } catch (e) {
-      setFeedback({
-        tone: "error",
-        text: e instanceof Error ? e.message : "Commit failed",
-      })
+      setFeedback({ tone: "error", text: e instanceof Error ? e.message : "Commit failed" })
     }
   }
 
@@ -129,55 +126,38 @@ export function GitTab() {
       setFeedback({ tone: "success", text: out || "Pushed" })
       await refresh()
     } catch (e) {
-      setFeedback({
-        tone: "error",
-        text: e instanceof Error ? e.message : "Push failed",
-      })
+      setFeedback({ tone: "error", text: e instanceof Error ? e.message : "Push failed" })
     }
   }
 
   const doCreatePr = () => {
-    setFeedback({
-      tone: "neutral",
-      text: "PR creation requires a linked Git provider",
-    })
+    setFeedback({ tone: "neutral", text: "PR creation requires a linked Git provider" })
   }
 
+  // ── Empty / error state ──
+
   if (!isRepo) {
-    const reason =
-      repo === ""
-        ? "No project folder open"
-        : error ?? "Not a git repository"
+    const reason = repo === "" ? "No project folder open" : error ?? "Not a git repository"
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-10 text-center">
-        <GitPullRequest
-          className="h-6 w-6 text-[color:var(--Eulinx-color-text-muted)]"
-          strokeWidth={1.5}
-        />
-        <p className="text-xs text-[color:var(--Eulinx-color-text-secondary)]">
-          {error
-            ? "Not a git repository"
-            : "No git repository — open a project folder that is a git repo"}
-        </p>
-        <p className="text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
-          {reason}
-        </p>
-        <button
-          type="button"
-          onClick={() => void refresh()}
-          className="mt-1 flex items-center gap-1 text-[11px] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:text-[color:var(--Eulinx-color-text-secondary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        >
-          <RefreshCw className="h-3 w-3" strokeWidth={1.5} />
-          Retry
-        </button>
-      </div>
+      <EmptyState
+        icon={<GitPullRequest className="h-5 w-5" strokeWidth={1.5} />}
+        title={error ? "Not a git repository" : "No git repository"}
+        description={reason}
+        action={
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="mt-2 flex items-center gap-1.5 rounded-md border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-3 py-1.5 text-xs text-[color:var(--Eulinx-color-text-secondary)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)]"
+          >
+            <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} strokeWidth={1.5} />
+            Retry
+          </button>
+        }
+      />
     )
   }
 
-  const branchLabel =
-    status.branch !== ""
-      ? status.branch
-      : "unknown"
+  const branchLabel = status.branch !== "" ? status.branch : "unknown"
   const upstream =
     status.ahead > 0 || status.behind > 0
       ? `↑${status.ahead} ↓${status.behind}`
@@ -186,99 +166,82 @@ export function GitTab() {
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-4 mt-3 flex items-center justify-between rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-3 py-2">
-          <span className="flex items-center gap-2 text-xs font-mono text-[color:var(--Eulinx-color-text-secondary)]">
-            <GitPullRequest className="h-3.5 w-3.5" strokeWidth={1.5} />
+        {/* ── Branch info ── */}
+        <div className="flex items-center justify-between px-3 pt-2 pb-1">
+          <span className="flex items-center gap-1.5 text-xs font-mono text-[color:var(--Eulinx-color-text-secondary)]">
+            <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
             {branchLabel}
           </span>
           {upstream && (
-            <span className="font-mono text-[11px]" style={toneText("info")}>
-              {upstream}
-            </span>
+            <span className="font-mono text-[11px]" style={toneText("info")}>{upstream}</span>
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={doCreatePr}
-          className="mx-4 mt-2 flex w-[calc(100%-2rem)] items-center gap-2 rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-3 py-2 text-xs text-[color:var(--Eulinx-color-text-secondary)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-        >
-          <GitPullRequest className="h-3.5 w-3.5" strokeWidth={1.5} />
-          Create PR
-        </button>
-
-        <div className="px-4 py-2 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+        {/* ── Sync status ── */}
+        <div className="px-3 pb-2 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
           {status.ahead > 0 || status.behind > 0 ? (
-            <span>
-              vs{" "}
-              <span className="font-mono text-[color:var(--Eulinx-color-accent)]">
-                origin/{branchLabel}
-              </span>
-            </span>
+            <span>vs <span className="font-mono text-[color:var(--Eulinx-color-accent)]">origin/{branchLabel}</span></span>
           ) : (
             <span>In sync with origin/{branchLabel}</span>
           )}
         </div>
 
-        <div className="mx-4 my-2 rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-3 py-2 transition-colors focus-within:border-[color:var(--Eulinx-color-ring)]">
+        {/* ── Commit message ── */}
+        <div className="mx-3 mb-2 rounded-md border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-2.5 py-1.5 transition-colors focus-within:border-[color:var(--Eulinx-color-ring)]">
           <input
             type="text"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void doCommit()
-            }}
+            onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void doCommit() }}
             placeholder="Commit message"
             className="w-full bg-transparent text-xs text-[color:var(--Eulinx-color-text)] outline-none placeholder:text-[color:var(--Eulinx-color-text-muted)]"
           />
         </div>
 
-        <div ref={dropdownRef} className="relative mx-4 my-2 flex">
+        {/* ── Action bar ── */}
+        <div ref={dropdownRef} className="relative mx-3 mb-2 flex">
           <button
             type="button"
             onClick={() => void doStageAll()}
             disabled={loading}
-            className="flex flex-1 items-center justify-center gap-1 rounded-l-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-accent)] p-2 text-xs text-[color:var(--Eulinx-color-accent)] transition-colors hover:bg-[color:var(--Eulinx-color-accent)] hover:text-[color:var(--Eulinx-color-background)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
-            style={{ background: "color-mix(in srgb, var(--Eulinx-color-accent) 14%, transparent)" }}
+            className="flex flex-1 items-center justify-center gap-1 rounded-l-md border border-[color:var(--Eulinx-color-accent)] p-1.5 text-xs text-[color:var(--Eulinx-color-accent)] transition-colors hover:bg-[color:var(--Eulinx-color-accent)] hover:text-[color:var(--Eulinx-color-background)] disabled:opacity-50"
+            style={{ background: "color-mix(in srgb, var(--Eulinx-color-accent) 10%, transparent)" }}
           >
-            <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <Check className="h-3 w-3" strokeWidth={1.5} />
             Stage All
           </button>
           <button
             type="button"
             onClick={() => void doCommit()}
             disabled={loading || message.trim() === ""}
-            className="flex flex-1 items-center justify-center gap-1 border border-l-0 border-[color:var(--Eulinx-color-accent)] p-2 text-xs text-[color:var(--Eulinx-color-accent)] transition-colors hover:bg-[color:var(--Eulinx-color-accent)] hover:text-[color:var(--Eulinx-color-background)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
-            style={{ background: "color-mix(in srgb, var(--Eulinx-color-accent) 14%, transparent)" }}
+            className="flex flex-1 items-center justify-center gap-1 border border-l-0 border-[color:var(--Eulinx-color-accent)] p-1.5 text-xs text-[color:var(--Eulinx-color-accent)] transition-colors hover:bg-[color:var(--Eulinx-color-accent)] hover:text-[color:var(--Eulinx-color-background)] disabled:opacity-50"
+            style={{ background: "color-mix(in srgb, var(--Eulinx-color-accent) 10%, transparent)" }}
           >
-            <Check className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <Check className="h-3 w-3" strokeWidth={1.5} />
             Commit
           </button>
           <button
             type="button"
             onClick={() => void doPush()}
             disabled={loading}
-            className="flex flex-1 items-center justify-center gap-1 rounded-r-[var(--Eulinx-radius-sm)] border border-l-0 border-[color:var(--Eulinx-color-accent)] p-2 text-xs text-[color:var(--Eulinx-color-accent)] transition-colors hover:bg-[color:var(--Eulinx-color-accent)] hover:text-[color:var(--Eulinx-color-background)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50"
-            style={{ background: "color-mix(in srgb, var(--Eulinx-color-accent) 14%, transparent)" }}
+            className="flex flex-1 items-center justify-center gap-1 border border-l-0 border-[color:var(--Eulinx-color-accent)] p-1.5 text-xs text-[color:var(--Eulinx-color-accent)] transition-colors hover:bg-[color:var(--Eulinx-color-accent)] hover:text-[color:var(--Eulinx-color-background)] disabled:opacity-50"
+            style={{ background: "color-mix(in srgb, var(--Eulinx-color-accent) 10%, transparent)" }}
           >
-            <GitPullRequest className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <GitPullRequest className="h-3 w-3" strokeWidth={1.5} />
             Push
           </button>
           <button
             type="button"
             aria-label="Git action options"
             aria-expanded={dropdownOpen}
-            onClick={(e) => {
-              e.stopPropagation()
-              setDropdownOpen((v) => !v)
-            }}
-            className="flex w-7 items-center justify-center rounded-r-[var(--Eulinx-radius-sm)] border border-l-0 border-[color:var(--Eulinx-color-accent)] text-[color:var(--Eulinx-color-accent)] transition-colors hover:bg-[color:var(--Eulinx-color-accent)] hover:text-[color:var(--Eulinx-color-background)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-            style={{ background: "color-mix(in srgb, var(--Eulinx-color-accent) 14%, transparent)" }}
+            onClick={(e) => { e.stopPropagation(); setDropdownOpen((v) => !v) }}
+            className="flex w-7 items-center justify-center rounded-r-md border border-l-0 border-[color:var(--Eulinx-color-accent)] text-[color:var(--Eulinx-color-accent)] transition-colors hover:bg-[color:var(--Eulinx-color-accent)] hover:text-[color:var(--Eulinx-color-background)]"
+            style={{ background: "color-mix(in srgb, var(--Eulinx-color-accent) 10%, transparent)" }}
           >
-            <ChevronRight className="h-3 w-3 rotate-90" strokeWidth={1.5} />
+            <ChevronDown className="h-3 w-3" strokeWidth={1.5} />
           </button>
           {dropdownOpen && (
-            <div className="absolute right-0 top-full z-[var(--Eulinx-z-dropdown)] mt-0.5 min-w-[200px] rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-raised)] p-1 shadow-[var(--Eulinx-elev-lg)]">
+            <div className="absolute right-0 top-full z-[var(--Eulinx-z-dropdown)] mt-0.5 min-w-[200px] rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] p-1 shadow-lg">
               {DROPDOWN_GROUPS.map((group, gi) => (
                 <div key={gi}>
                   {group.map((item) => (
@@ -289,13 +252,9 @@ export function GitTab() {
                         setDropdownOpen(false)
                         if (item === "Push") void doPush()
                         else if (item === "Create PR") doCreatePr()
-                        else
-                          setFeedback({
-                            tone: "neutral",
-                            text: `${item} is not available yet`,
-                          })
+                        else setFeedback({ tone: "neutral", text: `${item} is not available yet` })
                       }}
-                      className="flex w-full cursor-pointer items-center gap-2 rounded-[var(--Eulinx-radius-sm)] px-3 py-2 text-left text-xs text-[color:var(--Eulinx-color-text-secondary)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                      className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2.5 py-1.5 text-left text-xs text-[color:var(--Eulinx-color-text-secondary)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]"
                     >
                       {item}
                     </button>
@@ -309,9 +268,20 @@ export function GitTab() {
           )}
         </div>
 
+        {/* ── Create PR shortcut ── */}
+        <button
+          type="button"
+          onClick={doCreatePr}
+          className="mx-3 mb-2 flex w-[calc(100%-1.5rem)] items-center gap-2 rounded-md border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-2.5 py-1.5 text-xs text-[color:var(--Eulinx-color-text-secondary)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]"
+        >
+          <GitPullRequest className="h-3.5 w-3.5 shrink-0 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+          Create PR
+        </button>
+
+        {/* ── Feedback ── */}
         {feedback && (
           <div
-            className="mx-4 my-1 flex items-start gap-1.5 rounded-[var(--Eulinx-radius-sm)] px-2 py-1.5 text-[11px]"
+            className="mx-3 mb-2 flex items-start gap-1.5 rounded-md px-2 py-1.5 text-[11px]"
             style={toneText(feedback.tone)}
           >
             {feedback.tone === "error" && (
@@ -321,65 +291,66 @@ export function GitTab() {
           </div>
         )}
 
-        <SectionHead label={`Changes ${status.changes.length}`} />
-        {status.changes.length === 0 && (
-          <EmptyRow text="No staged or modified files" />
+        {/* ── Changes ── */}
+        <SectionHeader label="Changes" count={status.changes.length} />
+        {status.changes.length === 0 ? (
+          <div className="px-3 py-1 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+            No staged or modified files
+          </div>
+        ) : (
+          status.changes.map((file) => <GitFileRow key={file.path} file={file} />)
         )}
-        {status.changes.map((file) => (
-          <GitFileRow key={file.path} file={file} />
-        ))}
 
-        <SectionHead label={`Untracked ${status.untracked.length}`} />
-        {status.untracked.length === 0 && <EmptyRow text="No untracked files" />}
-        {status.untracked.map((file) => (
-          <GitFileRow key={file.path} file={file} />
-        ))}
+        {/* ── Untracked ── */}
+        <SectionHeader label="Untracked" count={status.untracked.length} />
+        {status.untracked.length === 0 ? (
+          <div className="px-3 py-1 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+            No untracked files
+          </div>
+        ) : (
+          status.untracked.map((file) => <GitFileRow key={file.path} file={file} />)
+        )}
       </div>
 
+      {/* ── Commits (collapsible footer) ── */}
       <div className="shrink-0 border-t border-[color:var(--Eulinx-color-border)]">
-        <button
-          type="button"
+        <div
+          role="button"
+          tabIndex={0}
           aria-expanded={commitsOpen}
           onClick={() => setCommitsOpen((v) => !v)}
-          className="flex w-full items-center justify-between px-4 py-2 transition-colors hover:bg-[color:var(--Eulinx-color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setCommitsOpen((v) => !v) } }}
+          className="flex w-full cursor-pointer items-center justify-between px-3 py-1.5 transition-colors hover:bg-[color:var(--Eulinx-color-hover)]/50"
         >
-          <span className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--Eulinx-color-text-muted)]">
-            Commits {status.commits.length}
+          <span className="text-[11px] font-medium uppercase tracking-wider text-[color:var(--Eulinx-color-text-muted)]">
+            Commits
+            <span className="ml-1 text-[color:var(--Eulinx-color-text-muted)]/60">{status.commits.length}</span>
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               type="button"
               aria-label="Refresh"
-              onClick={(e) => {
-                e.stopPropagation()
-                void refresh()
-              }}
-              className="flex h-5 w-5 items-center justify-center text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:text-[color:var(--Eulinx-color-text-secondary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              onClick={(e) => { e.stopPropagation(); void refresh() }}
+              className="flex h-5 w-5 items-center justify-center text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:text-[color:var(--Eulinx-color-text-secondary)]"
             >
-              <RefreshCw
-                className={cn("h-3 w-3", loading && "animate-spin")}
-                strokeWidth={1.5}
-              />
+              <RefreshCw className={cn("h-3 w-3", loading && "animate-spin")} strokeWidth={1.5} />
             </button>
             <ChevronRight
               className={cn(
-                "h-3 w-3 text-[color:var(--Eulinx-color-text-muted)] transition-transform",
+                "h-3 w-3 text-[color:var(--Eulinx-color-text-muted)] transition-transform duration-150",
                 commitsOpen && "rotate-90",
               )}
               strokeWidth={1.5}
             />
           </div>
-        </button>
+        </div>
         {commitsOpen && (
           <div className="max-h-[250px] overflow-y-auto border-t border-[color:var(--Eulinx-color-border)]">
-            {status.commits.length === 0 && (
-              <div className="px-4 py-3 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
-                No commits yet
-              </div>
+            {status.commits.length === 0 ? (
+              <div className="px-3 py-3 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">No commits yet</div>
+            ) : (
+              status.commits.map((commit, i) => <CommitItem key={commit.hash || i} commit={commit} />)
             )}
-            {status.commits.map((commit, i) => (
-              <CommitItem key={commit.hash || i} commit={commit} />
-            ))}
           </div>
         )}
       </div>
@@ -387,23 +358,7 @@ export function GitTab() {
   )
 }
 
-function SectionHead({ label }: { label: string }) {
-  return (
-    <div className="flex items-center justify-between px-4 py-2">
-      <span className="text-[11px] font-semibold uppercase tracking-wide text-[color:var(--Eulinx-color-text-muted)]">
-        {label}
-      </span>
-    </div>
-  )
-}
-
-function EmptyRow({ text }: { text: string }) {
-  return (
-    <div className="px-4 py-1 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
-      {text}
-    </div>
-  )
-}
+// ── File row ──
 
 function GitFileRow({ file }: { file: ChangeEntry }) {
   const badge = file.status.trim().charAt(0) || "M"
@@ -415,41 +370,35 @@ function GitFileRow({ file }: { file: ChangeEntry }) {
     <ListRow
       role="button"
       tabIndex={0}
-      className="mx-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+      className="mx-1.5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--Eulinx-color-ring)]"
     >
-      <span className="h-3.5 w-3.5 shrink-0 text-[color:var(--Eulinx-color-text-muted)]" />
+      <span className="h-3.5 w-3.5 shrink-0" />
       <span className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-left font-mono text-xs">
         {name}
       </span>
       {dir && (
-        <span className="shrink-0 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
-          {dir}
-        </span>
+        <span className="shrink-0 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">{dir}</span>
       )}
       <span className="flex shrink-0 gap-1 font-mono text-[11px]">
         {file.add > 0 && <span style={toneText("success")}>+{file.add}</span>}
         {file.del > 0 && <span style={toneText("error")}>-{file.del}</span>}
       </span>
-      <StateBadge tone={changeBadgeTone(file.status)} className="font-mono">
-        {badge}
-      </StateBadge>
+      <StateBadge tone={changeBadgeTone(file.status)} className="font-mono">{badge}</StateBadge>
     </ListRow>
   )
 }
 
+// ── Commit row ──
+
 function CommitItem({ commit }: { commit: CommitEntry }) {
   return (
-    <div className="border-b border-[color:var(--Eulinx-color-border)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)]">
-      <div className="flex w-full items-start gap-2 px-4 py-2 text-left">
-        <span className="mt-[5px]">
-          <Dot tone="info" />
-        </span>
+    <div className="border-b border-[color:var(--Eulinx-color-border)]/50 transition-colors hover:bg-[color:var(--Eulinx-color-hover)]/30">
+      <div className="flex items-start gap-2 px-3 py-1.5 text-left">
+        <span className="mt-[5px]"><Dot tone="info" /></span>
         <span className="min-w-0 flex-1">
           <span className="block overflow-hidden text-ellipsis whitespace-nowrap text-xs leading-tight text-[color:var(--Eulinx-color-text)]">
             {commit.message}
-            <StateBadge tone="accent" className="ml-1 text-[9px] font-semibold">
-              {commit.hash}
-            </StateBadge>
+            <StateBadge tone="accent" className="ml-1 text-[9px] font-semibold">{commit.hash}</StateBadge>
           </span>
           <span className="mt-px block text-[10px] text-[color:var(--Eulinx-color-text-muted)]">
             {commit.author} · {commit.when}

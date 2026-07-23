@@ -6,7 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { Activity, Server, Zap } from "lucide-react"
+import { AppIcon } from "./app-icon"
 import { EventBus } from "@/event-bus/event-bus"
 import { type Tone } from "./state"
 
@@ -72,7 +72,7 @@ function buildServices(): readonly RuntimeService[] {
       metric: state,
       metricLabel: "state",
       pct: isRunning ? 22 : state === "degraded" ? 68 : 96,
-      icon: <Activity className="h-4 w-4" strokeWidth={1.5} />,
+      icon: <AppIcon name="diagnostics" className="h-4 w-4" strokeWidth={2.25} />,
     },
     {
       id: "svc-pub",
@@ -81,7 +81,7 @@ function buildServices(): readonly RuntimeService[] {
       metric: String(metrics.published),
       metricLabel: "total published",
       pct: Math.min(metrics.published % 101, 100),
-      icon: <Server className="h-4 w-4" strokeWidth={1.5} />,
+      icon: <AppIcon name="api" className="h-4 w-4" strokeWidth={2.25} />,
     },
     {
       id: "svc-del",
@@ -90,7 +90,7 @@ function buildServices(): readonly RuntimeService[] {
       metric: String(metrics.delivered),
       metricLabel: "total delivered",
       pct: metrics.delivered > 0 ? Math.min(metrics.delivered % 101, 100) : 0,
-      icon: <Zap className="h-4 w-4" strokeWidth={1.5} />,
+      icon: <AppIcon name="loop" className="h-4 w-4" strokeWidth={2.25} />,
     },
     {
       id: "svc-queue",
@@ -99,7 +99,7 @@ function buildServices(): readonly RuntimeService[] {
       metric: String(metrics.coreQueueDepth),
       metricLabel: "depth",
       pct: Math.min(Math.round((metrics.coreQueueDepth / 100) * 100), 100),
-      icon: <Server className="h-4 w-4" strokeWidth={1.5} />,
+      icon: <AppIcon name="api" className="h-4 w-4" strokeWidth={2.25} />,
     },
     {
       id: "svc-subs",
@@ -108,7 +108,7 @@ function buildServices(): readonly RuntimeService[] {
       metric: String(bus.getSubscriptions().length),
       metricLabel: "active",
       pct: Math.min(bus.getSubscriptions().length * 10, 100),
-      icon: <Activity className="h-4 w-4" strokeWidth={1.5} />,
+      icon: <AppIcon name="diagnostics" className="h-4 w-4" strokeWidth={2.25} />,
     },
   ]
   return items

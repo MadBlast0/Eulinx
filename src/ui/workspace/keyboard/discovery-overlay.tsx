@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { Search, X, Keyboard } from "lucide-react"
+import { X, Keyboard } from "lucide-react"
+import { AppIcon } from "../app-icon"
 import { cn } from "@/utils/cn"
 import type { Command, CommandCategory } from "./keymap-types"
 import { displayChordSeq, detectPlatform } from "./chord"
@@ -92,7 +93,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
         onKeyDown={onKeyDown}
       >
         <div className="flex items-center gap-2.5 border-b border-[color:var(--Eulinx-color-border)] px-4 py-3.5">
-          <Search className="h-4 w-4 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+          <AppIcon name="search" className="h-4 w-4 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
           <input
             ref={inputRef}
             value={query}
@@ -202,7 +203,7 @@ export function ShortcutHelpOverlay({ onClose }: { onClose: () => void }) {
       >
         <div className="flex items-center justify-between border-b border-[color:var(--Eulinx-color-border)] p-4">
           <h2 className="text-base font-semibold text-[color:var(--Eulinx-color-text)] flex items-center gap-2">
-            <Keyboard className="h-4 w-4" strokeWidth={1.5} />
+            <Keyboard className="h-4 w-4" strokeWidth={2.25} />
             Keyboard Shortcuts
           </h2>
           <button
@@ -212,7 +213,7 @@ export function ShortcutHelpOverlay({ onClose }: { onClose: () => void }) {
             onClick={onClose}
             className="flex h-7 w-7 items-center justify-center rounded-[var(--Eulinx-radius-sm)] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text-secondary)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
-            <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <X className="h-3.5 w-3.5" strokeWidth={2.25} />
           </button>
         </div>
         <div className="max-h-[calc(70vh-60px)] overflow-y-auto p-4">

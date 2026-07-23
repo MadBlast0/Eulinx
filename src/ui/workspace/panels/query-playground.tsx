@@ -1,15 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  Play,
-  Download,
-  Trash2,
-  Clock,
-  FileCode2,
-  AlertTriangle,
-  ChevronRight,
-  Copy,
-  Check,
-} from "lucide-react"
+import { Play, Download, Trash2, AlertTriangle, ChevronRight, Copy, Check } from "lucide-react"
+import { AppIcon } from "../app-icon"
 import { cn } from "@/utils/cn"
 import { Button, ScrollArea, Textarea } from "@/components/ui"
 import { getConfig } from "@/core/config"
@@ -376,7 +367,7 @@ export function QueryPlayground({ workspaceId }: QueryPlaygroundProps) {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-[color:var(--Eulinx-color-border)] px-4 py-3">
         <div className="flex items-center gap-2">
-          <FileCode2 className="h-4 w-4 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+          <AppIcon name="artifacts" className="h-4 w-4 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
           <span className="text-sm font-medium text-[color:var(--Eulinx-color-text)]">
             HelixDB Query Playground
           </span>
@@ -415,7 +406,7 @@ export function QueryPlayground({ workspaceId }: QueryPlaygroundProps) {
           >
             <ChevronRight
               className={cn("h-3 w-3 transition-transform", showHistory && "rotate-90")}
-              strokeWidth={1.5}
+              strokeWidth={2.25}
             />
             {showHistory && "Templates & History"}
           </button>
@@ -456,7 +447,7 @@ export function QueryPlayground({ workspaceId }: QueryPlaygroundProps) {
                       onClick={clearHistory}
                       className="text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text)]"
                     >
-                      <Trash2 className="h-3 w-3" strokeWidth={1.5} />
+                      <Trash2 className="h-3 w-3" strokeWidth={2.25} />
                     </button>
                   )}
                 </div>
@@ -473,7 +464,7 @@ export function QueryPlayground({ workspaceId }: QueryPlaygroundProps) {
                       className="flex w-full flex-col rounded-[var(--Eulinx-radius-sm)] px-2 py-1.5 text-left hover:bg-[color:var(--Eulinx-color-hover)]"
                     >
                       <span className="flex items-center gap-1.5 text-[10px] text-[color:var(--Eulinx-color-text-muted)]">
-                        <Clock className="h-2.5 w-2.5" strokeWidth={1.5} />
+                        <AppIcon name="scheduler" className="h-2.5 w-2.5" strokeWidth={2.25} />
                         {formatTimestamp(entry.timestamp)}
                         <span className="text-[color:var(--Eulinx-color-text-secondary)]">
                           {formatDuration(entry.durationMs)}
@@ -526,7 +517,7 @@ export function QueryPlayground({ workspaceId }: QueryPlaygroundProps) {
                 disabled={!query.trim() || running}
                 className="h-7 gap-1 text-xs"
               >
-                <Play className="h-3 w-3" strokeWidth={1.5} />
+                <Play className="h-3 w-3" strokeWidth={2.25} />
                 {running ? "Running..." : "Run Query"}
               </Button>
               {resultCount > 0 && (
@@ -541,7 +532,7 @@ export function QueryPlayground({ workspaceId }: QueryPlaygroundProps) {
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
             {error && (
               <div className="flex items-start gap-2 border-b border-red-500/30 bg-red-500/10 px-4 py-3">
-                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" strokeWidth={1.5} />
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" strokeWidth={2.25} />
                 <div className="min-w-0 flex-1">
                   <div className="text-xs font-medium text-red-500">Query Error</div>
                   <div className="mt-0.5 break-words font-mono text-[11px] text-red-400">
@@ -591,7 +582,7 @@ export function QueryPlayground({ workspaceId }: QueryPlaygroundProps) {
               )}
               {!error && !results && !running && (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
-                  <FileCode2 className="mb-3 h-8 w-8 text-[color:var(--Eulinx-color-text-muted)] opacity-40" strokeWidth={1} />
+                  <AppIcon name="artifacts" className="mb-3 h-8 w-8 text-[color:var(--Eulinx-color-text-muted)] opacity-40" strokeWidth={2.25} />
                   <div className="text-sm text-[color:var(--Eulinx-color-text-muted)]">
                     Write a HelixQL query and press Run
                   </div>

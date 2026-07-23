@@ -1,4 +1,22 @@
-export type NodeKind = "terminal" | "browser" | "map"
+/** All supported node kinds — matches EulinxNodeKind from node-types.ts */
+export type NodeKind =
+  | "terminal"
+  | "browser"
+  | "map"
+  | "worker"
+  | "agent"
+  | "session"
+  | "memory"
+  | "prompt"
+  | "merge"
+  | "router"
+  | "tool"
+  | "file"
+  | "event"
+  | "metric"
+  | "log"
+  | "note"
+  | "unknown"
 
 export interface CanvasNode {
   readonly id: string
@@ -13,6 +31,8 @@ export interface CanvasNode {
   /** Optional shell override for terminal nodes (e.g. "pwsh", "bash"). */
   shell?: string
   selected?: boolean
+  /** Worker/runtime status for status badge rendering. */
+  status?: string
 }
 
 export interface TerminalLine {

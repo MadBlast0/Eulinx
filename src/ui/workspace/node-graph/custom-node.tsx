@@ -1,12 +1,15 @@
 import { memo, useMemo, useRef, useState, type ReactNode } from "react"
 import { Handle, Position, useNodes, type Node, type NodeProps } from "@xyflow/react"
-import { Globe, Map as MapIcon } from "lucide-react"
+import { ChevronDown, ChevronRight } from "lucide-react"
+import { AppIcon } from "../app-icon"
 import { cn } from "@/utils/cn"
 import { StateBadge } from "../primitives"
 import type { Tone } from "../state"
 import { getStateSignal, type WorkerState } from "../a11y/state-signals"
 import { getNodeTypeMeta, type EulinxNodeKind } from "./node-types"
 import { TONE_FG } from "../state"
+import { TerminalView } from "../terminal/terminal-view"
+import { ShellPicker } from "../terminal/shell-picker"
 
 export interface CustomNodePort {
   readonly id: string
@@ -19,6 +22,8 @@ export interface CustomNodeData extends Record<string, unknown> {
   readonly label: string
   readonly url?: string
   readonly status?: WorkerState
+  readonly shell?: string
+  readonly lines?: readonly { prompt?: string; command?: string; output?: string; outputColor?: string; cursor?: boolean }[]
   readonly ports?: readonly CustomNodePort[]
   readonly children?: ReactNode
 }
@@ -30,41 +35,59 @@ const DEFAULT_PORTS: readonly CustomNodePort[] = [
   { id: "out", position: Position.Right, type: "source" },
 ]
 
-function CustomNodeImpl({ data, selected }: NodeProps<CustomNodeType>) {
+function CustomNodeImpl({ id, data, selected }: NodeProps<CustomNodeType>) {
   const meta = getNodeTypeMeta(data.kind)
-  const IconComp = meta.icon
   const ports = data.ports ?? DEFAULT_PORTS
   const signal = data.status ? getStateSignal(data.status) : null
+  const isTerminal = data.kind === "terminal"
+  const [expanded, setExpanded] = useState(false)
 
   return (
     <div
       className={cn(
-        "flex w-[260px] min-w-[220px] max-w-[420px] select-none flex-col rounded-[var(--Eulinx-radius-lg)] border bg-[color:var(--Eulinx-color-surface)] p-4 transition-[border-color,box-shadow] duration-[160ms]",
+        "group flex select-none flex-col rounded-lg border bg-[color:var(--Eulinx-color-surface)] transition-[border-color,box-shadow] duration-150",
+        expanded ? "w-[480px]" : "min-w-[120px] max-w-[420px]",
         selected
-          ? "border-[color:var(--Eulinx-color-accent)] shadow-[0_0_0_1px_var(--Eulinx-color-accent)]"
-          : "border-[color:var(--Eulinx-color-border)] hover:border-[color:var(--Eulinx-color-border-strong)]",
+          ? "border-[color:var(--Eulinx-color-accent)]/40 shadow-[0_0_0_1px_var(--Eulinx-color-accent)]"
+          : "border-[color:var(--Eulinx-color-border)] shadow-sm hover:border-[color:var(--Eulinx-color-border-strong)] hover:shadow-md",
       )}
     >
+      {/* ── Ports ── */}
       {ports.map((port) => (
         <Handle
           key={port.id}
           id={port.id}
           type={port.type}
           position={port.position}
-          className="!h-2.5 !w-2.5 !border-2 !border-[color:var(--Eulinx-color-border)] !bg-[color:var(--Eulinx-color-surface)] hover:!border-[color:var(--Eulinx-color-accent)] hover:!bg-[color:var(--Eulinx-color-accent)]"
+          className="!h-2 !w-2 !border-2 !border-[color:var(--Eulinx-color-border)] !bg-[color:var(--Eulinx-color-surface)] !transition-all !duration-150 hover:!h-2.5 hover:!w-2.5 hover:!border-[color:var(--Eulinx-color-accent)] hover:!bg-[color:var(--Eulinx-color-accent)]"
         />
       ))}
 
-      <div className="flex cursor-grab items-center gap-2">
+      {/* ── Header row ── */}
+      <div className="flex h-8 cursor-grab items-center gap-2 whitespace-nowrap px-3">
+        {/* Expand/collapse toggle for terminal nodes */}
+        {isTerminal && (
+          <button
+            type="button"
+            aria-label={expanded ? "Collapse terminal" : "Expand terminal"}
+            onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v) }}
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:text-[color:var(--Eulinx-color-text)]"
+          >
+            {expanded
+              ? <ChevronDown className="h-3.5 w-3.5" strokeWidth={2} />
+              : <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />}
+          </button>
+        )}
+
         <span
-          className="flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)]"
+          className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] transition-colors duration-150"
           style={{ color: meta.accentVar }}
         >
-          <IconComp className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <AppIcon name={meta.iconName} className="h-3.5 w-3.5" strokeWidth={2} />
         </span>
         <span
           title={data.label}
-          className="flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[13px] font-semibold text-[color:var(--Eulinx-color-text)]"
+          className="text-[13px] font-semibold leading-none text-[color:var(--Eulinx-color-text)]"
         >
           {data.label}
         </span>
@@ -78,17 +101,40 @@ function CustomNodeImpl({ data, selected }: NodeProps<CustomNodeType>) {
             title={signal.label}
           />
         )}
+
+        {/* Shell picker — visible in header when terminal is expanded */}
+        {isTerminal && expanded && (
+          <div className="ml-auto" onClick={(e) => e.stopPropagation()}>
+            <ShellPicker onPick={() => {}} />
+          </div>
+        )}
       </div>
 
+      {/* ── Terminal — expanded view with xterm ── */}
+      {isTerminal && expanded && (
+        <div
+          className="mx-2.5 mb-2.5 mt-1.5 flex h-[240px] flex-col overflow-hidden rounded-md border border-[color:var(--Eulinx-color-border)]"
+          onPointerDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+        >
+          <TerminalView ptyId={id} shell={data.shell} className="min-h-0 flex-1" />
+        </div>
+      )}
+
+      {/* ── Browser preview ── */}
       {data.kind === "browser" && data.url && <BrowserPreview url={data.url} />}
 
+      {/* ── Map overview ── */}
       {data.kind === "map" && <MapOverview />}
 
+      {/* ── Status badge + children ── */}
       {(signal || data.children) && data.kind !== "browser" && data.kind !== "map" && (
-        <div className="mt-2.5 flex min-h-[36px] flex-col gap-2 text-xs text-[color:var(--Eulinx-color-text-secondary)]">
+        <div className="mt-2 flex min-h-[36px] flex-col gap-2 px-3 pb-2.5 pt-0 text-xs text-[color:var(--Eulinx-color-text-secondary)]">
           {signal && (
             <StateBadge tone={signal.tone as Tone} className="self-start">
-              <signal.icon className="h-3 w-3" strokeWidth={1.5} />
+              <AppIcon name={signal.iconName} className="h-3 w-3" strokeWidth={2} />
               {signal.label}
             </StateBadge>
           )}
@@ -102,9 +148,9 @@ function CustomNodeImpl({ data, selected }: NodeProps<CustomNodeType>) {
 function BrowserPreview({ url }: { url: string }) {
   const [loadError, setLoadError] = useState(false)
   return (
-    <div className="mt-2.5 flex min-h-[120px] flex-col overflow-hidden rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)]">
+    <div className="mx-3 mt-2 flex min-h-[120px] flex-col overflow-hidden rounded-md border border-[color:var(--Eulinx-color-border)]">
       <div className="flex items-center gap-2 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-2 py-1 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
-        <Globe className="h-3 w-3" strokeWidth={1.5} />
+        <AppIcon name="api" className="h-3 w-3" strokeWidth={2} />
         <span className="flex-1 truncate font-mono">{url}</span>
         {loadError && <span className="text-[color:var(--Eulinx-color-error)]">Failed to load</span>}
       </div>
@@ -112,7 +158,7 @@ function BrowserPreview({ url }: { url: string }) {
         src={url}
         title={url}
         className="h-full w-full flex-1 bg-white"
-        sandbox="allow-scripts allow-same-origin"
+        sandbox="allow-scripts"
         onError={() => setLoadError(true)}
       />
     </div>
@@ -141,14 +187,14 @@ function MapOverview() {
   const scale = Math.min((viewW - padding * 2) / bounds.width, (viewH - padding * 2) / bounds.height, 1)
 
   return (
-    <div className="mt-2.5 flex flex-col gap-1.5">
+    <div className="mx-3 mt-2 flex flex-col gap-1.5">
       <div className="flex items-center gap-1 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
-        <MapIcon className="h-3 w-3" strokeWidth={1.5} />
+        <AppIcon name="graph" className="h-3 w-3" strokeWidth={2} />
         <span>{nodes.length} nodes</span>
       </div>
       <div
         ref={containerRef}
-        className="relative overflow-hidden rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-sunken)]"
+        className="relative overflow-hidden rounded-md border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-sunken)]"
         style={{ aspectRatio: "16/9", maxHeight: viewH }}
       >
         <svg width={viewW} height={viewH} className="overflow-visible">

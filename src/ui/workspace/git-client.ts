@@ -99,10 +99,9 @@ export async function getStatus(_repo: string): Promise<GitStatus> {
     return emptyStatus()
   }
   try {
-    const result = await gitService.status(_repo)
-    return result
-  } catch {
-    console.warn("eulinx: git_status invoke failed, returning empty status")
+    return await gitService.status(_repo)
+  } catch (e) {
+    console.warn("eulinx: git_status invoke failed, returning empty status", e)
     return emptyStatus()
   }
 }

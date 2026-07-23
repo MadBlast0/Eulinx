@@ -104,7 +104,7 @@ const SURFACES: Record<SurfaceKey, ComponentType> = {
   knowledge: KnowledgeWorkspace,
 }
 
-const DIVIDER_WIDTH = 6
+const DIVIDER_WIDTH = 1
 
 function WorkspaceShell() {
   const {
@@ -123,7 +123,6 @@ function WorkspaceShell() {
     layout,
     focusedRegion,
     setRegionDelta,
-    toggleRegion,
     bulkSetLayout,
     setFocusedRegion,
   } = useLayout()
@@ -215,7 +214,6 @@ function WorkspaceShell() {
   const inspectorRegion = layout.regions.inspector
   const panelRegion = layout.regions.panel
   const statusBarRegion = layout.regions.statusBar
-  const titleBarRegion = layout.regions.titleBar
 
   const sidebarVisible = leftSidebarOpen && !sidebarRegion.collapsed
   const inspectorVisible = rightSidebarOpen && !inspectorRegion.collapsed
@@ -270,7 +268,7 @@ function WorkspaceShell() {
         display: "grid",
         gridTemplateColumns: cols,
         gridTemplateRows: [
-          `${titleBarRegion.size}px`,
+          "var(--wsx-topbar-h)",
           "38px",
           "1fr",
           `${statusBarRegion.size}px`,
@@ -344,10 +342,9 @@ function WorkspaceShell() {
               <ToolbarButton
                 tip="Back to canvas"
                 aria-label="Back to canvas"
-                title="Back to canvas"
                 onClick={() => setSurface(null)}
               >
-                <ArrowLeft className="h-4 w-4" strokeWidth={1.5} />
+                <ArrowLeft className="h-4 w-4" strokeWidth={2.25} />
               </ToolbarButton>
             </div>
             <ActiveSurface />

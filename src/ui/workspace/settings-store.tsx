@@ -22,7 +22,7 @@ export interface SettingsState {
 const DEFAULTS: SettingsState = {
   general: { startup: false, telemetry: true, autoupdate: true },
   providers: { openai: true, anthropic: true, local: false },
-  theme: "Dark",
+  theme: "system",
   accent: "Blue",
   font: "Inter",
   density: true,

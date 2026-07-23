@@ -1,12 +1,5 @@
-import {
-  Activity,
-  Brain,
-  Calendar,
-  Database,
-  FileText,
-  RefreshCw,
-  Zap,
-} from "lucide-react"
+import { RefreshCw } from "lucide-react"
+import { AppIcon } from "../app-icon"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { cn } from "@/utils/cn"
 import { PanelSurface, Dot, StateBadge, ToolbarButton } from "../primitives"
@@ -256,7 +249,7 @@ function StorageEstimate({ metrics }: { readonly metrics: DashboardMetrics }) {
 
   return (
     <div className="flex items-center gap-2 text-xs text-[color:var(--Eulinx-color-text-muted)]">
-      <Database className="h-3.5 w-3.5 shrink-0" strokeWidth={1.5} />
+      <AppIcon name="memory" className="h-3.5 w-3.5 shrink-0" strokeWidth={2.25} />
       <span>
         ~{mb} MB stored across {totalNodes.toLocaleString()} nodes
       </span>
@@ -356,7 +349,7 @@ export function WorkspaceDashboard({ workspaceId }: WorkspaceDashboardProps) {
         id: "memory",
         label: "Total Memories",
         value: metrics.memoryCount,
-        icon: <Brain className="h-4 w-4" strokeWidth={1.5} />,
+        icon: <AppIcon name="memory" className="h-4 w-4" strokeWidth={2.25} />,
         tone: "accent",
         sparkline: sparkData.memory,
       },
@@ -364,7 +357,7 @@ export function WorkspaceDashboard({ workspaceId }: WorkspaceDashboardProps) {
         id: "events",
         label: "Events",
         value: metrics.eventCount,
-        icon: <Zap className="h-4 w-4" strokeWidth={1.5} />,
+        icon: <AppIcon name="runtime" className="h-4 w-4" strokeWidth={2.25} />,
         tone: "info",
         sparkline: sparkData.event,
       },
@@ -372,7 +365,7 @@ export function WorkspaceDashboard({ workspaceId }: WorkspaceDashboardProps) {
         id: "sessions",
         label: "Sessions",
         value: metrics.sessionCount,
-        icon: <Calendar className="h-4 w-4" strokeWidth={1.5} />,
+        icon: <AppIcon name="scheduler" className="h-4 w-4" strokeWidth={2.25} />,
         tone: "success",
         sparkline: sparkData.session,
       },
@@ -380,7 +373,7 @@ export function WorkspaceDashboard({ workspaceId }: WorkspaceDashboardProps) {
         id: "knowledge",
         label: "Knowledge Chunks",
         value: metrics.knowledgeCount,
-        icon: <FileText className="h-4 w-4" strokeWidth={1.5} />,
+        icon: <AppIcon name="prompt" className="h-4 w-4" strokeWidth={2.25} />,
         tone: "warning",
         sparkline: sparkData.knowledge,
       },
@@ -412,7 +405,7 @@ export function WorkspaceDashboard({ workspaceId }: WorkspaceDashboardProps) {
           >
             <RefreshCw
               className={cn("h-3.5 w-3.5", isLoading && "animate-spin")}
-              strokeWidth={1.5}
+              strokeWidth={2.25}
             />
           </ToolbarButton>
         </div>
@@ -436,7 +429,7 @@ export function WorkspaceDashboard({ workspaceId }: WorkspaceDashboardProps) {
         {/* Activity Feed */}
         <PanelSurface className="mt-6 flex flex-col">
           <div className="flex items-center gap-2 border-b border-[color:var(--Eulinx-color-border)] px-4 py-3">
-            <Activity className="h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-secondary)]" strokeWidth={1.5} />
+            <AppIcon name="diagnostics" className="h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-secondary)]" strokeWidth={2.25} />
             <span className="text-xs font-semibold text-[color:var(--Eulinx-color-text-secondary)]">
               Recent Activity
             </span>

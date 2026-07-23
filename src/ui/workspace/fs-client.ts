@@ -118,9 +118,7 @@ export async function createDir(path: string): Promise<void> {
     }
     return
   }
-  // TODO: route through fsService once a `fs_create_dir` command exists.
-  // Currently falls back to writeText with empty content to create the path.
-  await fsService.writeText(path + "/.keep", "")
+  await fsService.createDir(path)
 }
 
 export { isTauri }

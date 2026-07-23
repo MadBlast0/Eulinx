@@ -22,20 +22,11 @@ import {
   type EulinxNodeKind,
 } from "./node-graph/node-types"
 
-const NODE_KINDS: readonly NodeKind[] = ["terminal", "browser", "map"]
-
-function isNodeKind(kind: string): kind is NodeKind {
-  return (NODE_KINDS as readonly string[]).includes(kind)
-}
-
-/** Project a persisted GraphNode onto the presentational CanvasNode shape.
- *  The persisted kind set is a superset; non-3 base kinds fall back to "map"
- *  for the canvas token lookup. */
+/** Project a persisted GraphNode onto the presentational CanvasNode shape. */
 function toCanvasNode(node: GraphNode, selected: boolean): CanvasNode {
-  const kind: NodeKind = isNodeKind(node.kind) ? node.kind : "map"
   return {
     id: node.id,
-    kind,
+    kind: node.kind as NodeKind,
     label: node.label,
     x: node.x,
     y: node.y,
@@ -77,6 +68,7 @@ interface WorkspaceContextValue {
   moveNode(id: string, x: number, y: number): void
   addNode(kind: EulinxNodeKind, shell?: string): void
   removeNode(id: string): void
+  addConnection(from: string, to: string): void
   autoLayout(): void
   undo(): void
   redo(): void
@@ -209,6 +201,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     [projects, pushSnapshot],
   )
 
+  const addConnection = useCallback(
+    (from: string, to: string) => {
+      if (!projects.graph) return
+      pushSnapshot()
+      const newEdge: GraphEdge = { id: `${from}->${to}`, from, to }
+      projects.setGraphEdges([...projects.graph.edges, newEdge])
+    },
+    [projects, pushSnapshot],
+  )
+
   const canUndo = undoStack.length > 0
   const canRedo = redoStack.length > 0
 
@@ -238,6 +240,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       moveNode,
       addNode,
       removeNode,
+      addConnection,
       autoLayout,
       undo,
       redo,
@@ -259,6 +262,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       moveNode,
       addNode,
       removeNode,
+      addConnection,
       autoLayout,
       undo,
       redo,

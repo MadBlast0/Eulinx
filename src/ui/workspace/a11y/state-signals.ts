@@ -1,12 +1,3 @@
-import {
-  Circle,
-  CircleCheck,
-  CircleSlash,
-  Ghost,
-  LoaderCircle,
-  XCircle,
-  type LucideIcon,
-} from "lucide-react"
 import { type Tone, toneSurface, toneText } from "../state"
 
 export type WorkerState =
@@ -19,17 +10,17 @@ export type WorkerState =
 
 export interface StateSignal {
   tone: Tone
-  icon: LucideIcon
+  iconName: string
   label: string
 }
 
 const STATE_SIGNALS: Record<WorkerState, StateSignal> = {
-  running: { tone: "success", icon: CircleCheck, label: "Running" },
-  idle: { tone: "neutral", icon: Circle, label: "Idle" },
-  error: { tone: "error", icon: XCircle, label: "Error" },
-  spawning: { tone: "info", icon: LoaderCircle, label: "Spawning" },
-  zombie: { tone: "warning", icon: Ghost, label: "Zombie" },
-  stopped: { tone: "neutral", icon: CircleSlash, label: "Stopped" },
+  running: { tone: "success", iconName: "diagnostics", label: "Running" },
+  idle: { tone: "neutral", iconName: "diagnostics", label: "Idle" },
+  error: { tone: "error", iconName: "diagnostics", label: "Error" },
+  spawning: { tone: "info", iconName: "conditions", label: "Spawning" },
+  zombie: { tone: "warning", iconName: "diagnostics", label: "Zombie" },
+  stopped: { tone: "neutral", iconName: "diagnostics", label: "Stopped" },
 }
 
 export function getStateSignal(state: WorkerState): StateSignal {

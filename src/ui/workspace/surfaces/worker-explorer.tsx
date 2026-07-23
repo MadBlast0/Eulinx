@@ -1,4 +1,5 @@
-import { Boxes, Cpu, Gauge, RotateCw, AlertTriangle } from "lucide-react"
+import { Cpu, Gauge, RotateCw, AlertTriangle } from "lucide-react"
+import { AppIcon } from "../app-icon"
 import { cn } from "@/utils/cn"
 import { Button, Progress } from "@/components/ui"
 import { Dot, PanelSurface, StateBadge } from "../primitives"
@@ -26,7 +27,7 @@ function WorkerCard({
           className="flex h-8 w-8 items-center justify-center rounded-[var(--Eulinx-radius-sm)]"
           style={{ color: `var(--Eulinx-color-node-worker)`, background: "color-mix(in srgb, var(--Eulinx-color-node-worker) 14%, transparent)" }}
         >
-          <Boxes className="h-4 w-4" strokeWidth={1.5} />
+          <AppIcon name="graph" className="h-4 w-4" strokeWidth={2.25} />
         </span>
         <span className="flex-1 text-sm font-medium text-[color:var(--Eulinx-color-text)]">
           {worker.name}
@@ -105,7 +106,7 @@ export default function WorkerExplorer() {
           </p>
         </div>
         <Button size="sm" variant="outline" onClick={() => spawnWorker("New Worker")}>
-          <Boxes className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <AppIcon name="graph" className="h-3.5 w-3.5" strokeWidth={2.25} />
           Spawn Worker
         </Button>
       </div>

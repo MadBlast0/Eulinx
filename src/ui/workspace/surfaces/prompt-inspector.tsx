@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { FileCode2, Eye, ListTree } from "lucide-react"
+import { Eye, ListTree } from "lucide-react"
+import { AppIcon } from "../app-icon"
 import { cn } from "@/utils/cn"
 import { PanelSurface, StateBadge, Dot } from "../primitives"
 import { type Tone } from "../state"
@@ -46,7 +47,7 @@ export default function PromptInspector() {
                   : "hover:bg-[color:var(--Eulinx-color-hover)]",
               )}
             >
-              <FileCode2 className="h-4 w-4 shrink-0 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+              <AppIcon name="artifacts" className="h-4 w-4 shrink-0 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
               <span className="flex flex-1 flex-col overflow-hidden">
                 <span className="truncate text-[13px] text-[color:var(--Eulinx-color-text)]">{p.name}</span>
                 <span className="font-mono text-[11px] text-[color:var(--Eulinx-color-text-muted)]">

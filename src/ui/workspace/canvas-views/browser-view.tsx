@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, type FormEvent } from "react"
-import { ArrowLeft, ArrowRight, RotateCw, Globe, TriangleAlert, FileText } from "lucide-react"
+import { ArrowLeft, ArrowRight, RotateCw, TriangleAlert, FileText } from "lucide-react"
+import { AppIcon } from "../app-icon"
 import { fetchPage } from "@/tools/built-in/browser"
 import type { BrowserFetchResult } from "@/tools/built-in/browser"
 
@@ -111,7 +112,7 @@ export function BrowserView({ url: initialUrl = "about:blank" }: BrowserViewProp
           aria-label="Go back"
           className="flex h-7 w-7 items-center justify-center rounded-[var(--Eulinx-radius-sm)] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] disabled:opacity-30"
         >
-          <ArrowLeft className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.25} />
         </button>
         <button
           type="button"
@@ -120,7 +121,7 @@ export function BrowserView({ url: initialUrl = "about:blank" }: BrowserViewProp
           aria-label="Go forward"
           className="flex h-7 w-7 items-center justify-center rounded-[var(--Eulinx-radius-sm)] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] disabled:opacity-30"
         >
-          <ArrowRight className="h-3.5 w-3.5" strokeWidth={1.5} />
+          <ArrowRight className="h-3.5 w-3.5" strokeWidth={2.25} />
         </button>
         <button
           type="button"
@@ -130,7 +131,7 @@ export function BrowserView({ url: initialUrl = "about:blank" }: BrowserViewProp
         >
           <RotateCw
             className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
-            strokeWidth={1.5}
+            strokeWidth={2.25}
           />
         </button>
         <button
@@ -140,12 +141,12 @@ export function BrowserView({ url: initialUrl = "about:blank" }: BrowserViewProp
           aria-label="Extract readable text"
           className="flex h-7 items-center gap-1 rounded-[var(--Eulinx-radius-sm)] px-2 text-[11px] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] disabled:opacity-30"
         >
-          <FileText className={`h-3.5 w-3.5 ${extracting ? "animate-spin" : ""}`} strokeWidth={1.5} />
+          <FileText className={`h-3.5 w-3.5 ${extracting ? "animate-spin" : ""}`} strokeWidth={2.25} />
           Extract
         </button>
         <form onSubmit={handleSubmit} className="flex flex-1">
           <div className="relative flex w-full items-center">
-            <Globe className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+            <AppIcon name="browser" className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
             <input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -166,7 +167,7 @@ export function BrowserView({ url: initialUrl = "about:blank" }: BrowserViewProp
         {error ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[color:var(--Eulinx-color-surface)]">
-              <TriangleAlert className="h-6 w-6 text-[color:var(--Eulinx-color-error)]" strokeWidth={1.5} />
+              <TriangleAlert className="h-6 w-6 text-[color:var(--Eulinx-color-error)]" strokeWidth={2.25} />
             </div>
             <p className="text-sm font-medium text-[color:var(--Eulinx-color-text)]">
               This page could not be loaded
@@ -180,7 +181,7 @@ export function BrowserView({ url: initialUrl = "about:blank" }: BrowserViewProp
               onClick={handleRefresh}
               className="mt-1 flex h-8 items-center gap-1.5 rounded-[var(--Eulinx-radius-md)] bg-[color:var(--Eulinx-color-accent)] px-3 text-xs font-medium text-[color:var(--Eulinx-color-accent-foreground)] transition-opacity hover:opacity-90"
             >
-              <RotateCw className="h-3.5 w-3.5" strokeWidth={1.5} />
+              <RotateCw className="h-3.5 w-3.5" strokeWidth={2.25} />
               Try again
             </button>
           </div>
@@ -189,7 +190,7 @@ export function BrowserView({ url: initialUrl = "about:blank" }: BrowserViewProp
             {currentUrl === "about:blank" ? (
               <div className="flex h-full w-full items-center justify-center">
                 <div className="flex flex-col items-center gap-2 text-center">
-                  <Globe className="h-8 w-8 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1} />
+                  <AppIcon name="browser" className="h-8 w-8 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
                   <p className="text-xs text-[color:var(--Eulinx-color-text-muted)]">
                     Enter a URL to start browsing
                   </p>
@@ -213,7 +214,7 @@ export function BrowserView({ url: initialUrl = "about:blank" }: BrowserViewProp
       {extracted && (
         <div className="shrink-0 border-t border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-3">
           <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-[color:var(--Eulinx-color-text-muted)]">
-            <FileText className="h-3.5 w-3.5" strokeWidth={1.5} />
+            <FileText className="h-3.5 w-3.5" strokeWidth={2.25} />
             Extracted text
             <span className="ml-auto font-normal opacity-70">
               {extracted.status} · {extracted.contentType || "n/a"}

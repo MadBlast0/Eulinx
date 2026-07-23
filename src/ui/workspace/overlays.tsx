@@ -1,12 +1,6 @@
 import { useEffect } from "react"
-import {
-  Download,
-  FolderOpen,
-  GitBranch,
-  Plus,
-  Squircle,
-  X,
-} from "lucide-react"
+import { X } from "lucide-react"
+import { AppIcon } from "./app-icon"
 import { cn } from "@/utils/cn"
 import {
   Button,
@@ -73,7 +67,7 @@ function CloseButton() {
       onClick={() => setOverlay(null)}
       className="fixed right-4 top-4 z-[1] flex h-8 w-8 items-center justify-center rounded-[var(--Eulinx-radius-sm)] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
-      <X className="h-4 w-4" strokeWidth={1.5} />
+      <X className="h-4 w-4" strokeWidth={2.25} />
     </button>
   )
 }
@@ -83,10 +77,10 @@ function CloseButton() {
 /* ----------------------------------------------------------------------- */
 
 const WELCOME_ACTIONS = [
-  { icon: <FolderOpen className="h-5 w-5" strokeWidth={1.5} />, title: "Open Folder", desc: "Open an existing project folder" },
-  { icon: <Plus className="h-5 w-5" strokeWidth={1.5} />, title: "New Project", desc: "Create a new project from scratch" },
-  { icon: <Download className="h-5 w-5" strokeWidth={1.5} />, title: "Import Project", desc: "Import from Git or a template" },
-  { icon: <GitBranch className="h-5 w-5" strokeWidth={1.5} />, title: "Clone from Git", desc: "Clone a repository" },
+  { icon: <AppIcon name="projects" className="h-5 w-5" strokeWidth={2.25} />, title: "Open Folder", desc: "Open an existing project folder" },
+  { icon: <AppIcon name="graph" className="h-5 w-5" strokeWidth={2.25} />, title: "New Project", desc: "Create a new project from scratch" },
+  { icon: <AppIcon name="aiAgent" className="h-5 w-5" strokeWidth={2.25} />, title: "Import Project", desc: "Import from Git or a template" },
+  { icon: <AppIcon name="conditions" className="h-5 w-5" strokeWidth={2.25} />, title: "Clone from Git", desc: "Clone a repository" },
 ] as const
 
 const RECENT = [
@@ -123,7 +117,7 @@ function WelcomeScreen() {
         <div className="mb-8">
           <div className="mb-3 flex items-center gap-2">
             <span className="flex h-9 w-9 items-center justify-center rounded-[var(--Eulinx-radius-md)] bg-[color:var(--Eulinx-color-accent)] text-white">
-              <Squircle className="h-5 w-5" strokeWidth={1.5} />
+              <AppIcon name="projects" className="h-5 w-5" strokeWidth={2.25} />
             </span>
             <h1 className="text-2xl font-semibold text-[color:var(--Eulinx-color-text)]">Welcome to Eulinx</h1>
           </div>
@@ -165,7 +159,7 @@ function WelcomeScreen() {
               className="flex w-full items-center gap-3 rounded-[var(--Eulinx-radius-sm)] p-3 text-left transition-colors hover:bg-[color:var(--Eulinx-color-surface)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
               <span className="flex h-8 w-8 items-center justify-center rounded-[var(--Eulinx-radius-sm)] bg-[color:var(--Eulinx-color-surface)] text-[color:var(--Eulinx-color-text-muted)]">
-                <FolderOpen className="h-4 w-4" strokeWidth={1.5} />
+                <AppIcon name="projects" className="h-4 w-4" strokeWidth={2.25} />
               </span>
               <span>
                 <span className="block text-[13px] font-medium text-[color:var(--Eulinx-color-text)]">

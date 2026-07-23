@@ -1,13 +1,5 @@
 import { useState } from "react"
-import {
-  BarChart3,
-  Braces,
-  Database,
-  GitBranch,
-  Layers,
-  Network,
-  Search,
-} from "lucide-react"
+import { AppIcon } from "./app-icon"
 import { cn } from "@/utils/cn"
 import UnifiedSearch from "./canvas-views/panels/unified-search"
 import WorkspaceDashboard from "./canvas-views/panels/workspace-dashboard"
@@ -26,14 +18,14 @@ interface KnowledgeTab {
 }
 
 const KNOWLEDGE_TABS: readonly KnowledgeTab[] = [
-  { id: "search", label: "Search", icon: <Search className="h-4 w-4" strokeWidth={1.5} />, component: UnifiedSearch },
-  { id: "dashboard", label: "Dashboard", icon: <BarChart3 className="h-4 w-4" strokeWidth={1.5} />, component: WorkspaceDashboard },
-  { id: "memory", label: "Memory Graph", icon: <Database className="h-4 w-4" strokeWidth={1.5} />, component: MemoryGraph },
-  { id: "knowledge", label: "Knowledge Graph", icon: <Network className="h-4 w-4" strokeWidth={1.5} />, component: KnowledgeGraph },
-  { id: "trace", label: "Causal Trace", icon: <GitBranch className="h-4 w-4" strokeWidth={1.5} />, component: CausalTrace },
-  { id: "timeline", label: "Session Timeline", icon: <Layers className="h-4 w-4" strokeWidth={1.5} />, component: SessionTimeline },
-  { id: "vectors", label: "Vector Explorer", icon: <BarChart3 className="h-4 w-4" strokeWidth={1.5} />, component: VectorExplorer },
-  { id: "query", label: "Query Playground", icon: <Braces className="h-4 w-4" strokeWidth={1.5} />, component: QueryPlayground },
+  { id: "search", label: "Search", icon: <AppIcon name="search" className="h-4 w-4" strokeWidth={2.25} />, component: UnifiedSearch },
+  { id: "dashboard", label: "Dashboard", icon: <AppIcon name="graph" className="h-4 w-4" strokeWidth={2.25} />, component: WorkspaceDashboard },
+  { id: "memory", label: "Memory Graph", icon: <AppIcon name="memory" className="h-4 w-4" strokeWidth={2.25} />, component: MemoryGraph },
+  { id: "knowledge", label: "Knowledge Graph", icon: <AppIcon name="knowledge" className="h-4 w-4" strokeWidth={2.25} />, component: KnowledgeGraph },
+  { id: "trace", label: "Causal Trace", icon: <AppIcon name="conditions" className="h-4 w-4" strokeWidth={2.25} />, component: CausalTrace },
+  { id: "timeline", label: "Session Timeline", icon: <AppIcon name="loops" className="h-4 w-4" strokeWidth={2.25} />, component: SessionTimeline },
+  { id: "vectors", label: "Vector Explorer", icon: <AppIcon name="knowledge" className="h-4 w-4" strokeWidth={2.25} />, component: VectorExplorer },
+  { id: "query", label: "Query Playground", icon: <AppIcon name="variables" className="h-4 w-4" strokeWidth={2.25} />, component: QueryPlayground },
 ]
 
 export function KnowledgeWorkspace() {
