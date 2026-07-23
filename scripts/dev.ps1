@@ -3,7 +3,7 @@ param(
 )
 
 if ($Tauri) {
-  pnpm tauri dev
+  node scripts/run-tauri.mjs dev
 } else {
   pnpm dev
 }

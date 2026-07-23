@@ -1,8 +1,9 @@
 import { spawn } from "node:child_process"
-import { tmpdir } from "node:os"
+import { fileURLToPath } from "node:url"
 import path from "node:path"
 
-const repoTargetDir = path.join(tmpdir(), "eulinx-cargo-target")
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
+const repoTargetDir = path.join(repoRoot, ".cargo-target")
 const env = {
   ...process.env,
   CARGO_TARGET_DIR: process.env.CARGO_TARGET_DIR || repoTargetDir,
@@ -18,6 +19,7 @@ const child = pnpmExecPath
   : spawn("pnpm", pnpmArgs, {
       stdio: "inherit",
       env,
+      shell: process.platform === "win32",
     })
 
 child.on("exit", (code, signal) => {
