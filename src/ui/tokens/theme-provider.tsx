@@ -335,91 +335,91 @@ function makeBuiltin(
 }
 
 const EULINX_DARK_COLORS: ThemeColors = {
-  // Base — soft marketplace (warm near-black canvas, coral accent)
-  surface: "#1F1F1F",
-  elevated: "#262626",
-  "elevated-2": "#2B2B2B",
-  border: "#2E2E2E",
-  "border-strong": "#4A4A4A",
-  "text-primary": "#F7F7F7",
-  "text-muted": "#A0A0A0",
-  accent: "#FF385C",
-  success: "#3FB950",
-  warning: "#D29922",
-  danger: "#F85149",
-  info: "#6EA8FF",
+  // Base — user's dark color scheme
+  surface: "#333333",
+  elevated: "#454545",
+  "elevated-2": "#5a5a5a",
+  border: "#4f4f4f",
+  "border-strong": "#a0a0a0",
+  "text-primary": "#dcdcdc",
+  "text-muted": "#a0a0a0",
+  accent: "#e0e0e0",
+  success: "#22C55E",
+  warning: "#F59E0B",
+  danger: "#d9afaf",
+  info: "#60A5FA",
   // Worker states
-  "state-requested": "#8B949E",
-  "state-queued": "#FF385C",
-  "state-spawning": "#FF5C79",
-  "state-initializing": "#D29922",
-  "state-idle": "#8B949E",
-  "state-working": "#FF385C",
-  "state-waiting": "#D29922",
-  "state-blocked": "#F85149",
-  "state-paused": "#D29922",
-  "state-failing": "#F85149",
-  "state-terminating": "#FF7B72",
-  "state-terminated": "#6E7681",
-  "state-zombie": "#9E0030",
+  "state-requested": "#a0a0a0",
+  "state-queued": "#b0b0b0",
+  "state-spawning": "#c0c0c0",
+  "state-initializing": "#F59E0B",
+  "state-idle": "#a0a0a0",
+  "state-working": "#b0b0b0",
+  "state-waiting": "#F59E0B",
+  "state-blocked": "#d9afaf",
+  "state-paused": "#F59E0B",
+  "state-failing": "#d9afaf",
+  "state-terminating": "#a0a0a0",
+  "state-terminated": "#707070",
+  "state-zombie": "#5a5a5a",
 }
 
 const EULINX_LIGHT_COLORS: ThemeColors = {
-  // Base — soft marketplace (airy white canvas, coral accent)
-  surface: "#F7F7F7",
-  elevated: "#EFEFEF",
-  "elevated-2": "#E6E6E6",
-  border: "#DDDDDD",
-  "border-strong": "#C1C1C1",
-  "text-primary": "#222222",
-  "text-muted": "#6A6A6A",
-  accent: "#FF385C",
-  success: "#1A7F37",
-  warning: "#9A6700",
-  danger: "#CF222E",
-  info: "#428BFF",
+  // Base — user's light color scheme
+  surface: "#ffffff",
+  elevated: "#f0f0f0",
+  "elevated-2": "#dedede",
+  border: "#747272",
+  "border-strong": "#a0a0a0",
+  "text-primary": "#3a3a3a",
+  "text-muted": "#505050",
+  accent: "#f3eac8",
+  success: "#22C55E",
+  warning: "#F59E0B",
+  danger: "#c87a7a",
+  info: "#3B82F6",
   // Worker states
-  "state-requested": "#59636E",
-  "state-queued": "#FF385C",
-  "state-spawning": "#FF8AA0",
-  "state-initializing": "#9A6700",
-  "state-idle": "#59636E",
-  "state-working": "#FF385C",
-  "state-waiting": "#9A6700",
-  "state-blocked": "#CF222E",
-  "state-paused": "#9A6700",
-  "state-failing": "#CF222E",
-  "state-terminating": "#A40E26",
-  "state-terminated": "#6E7781",
-  "state-zombie": "#9E0030",
+  "state-requested": "#a0a0a0",
+  "state-queued": "#606060",
+  "state-spawning": "#747272",
+  "state-initializing": "#F59E0B",
+  "state-idle": "#a0a0a0",
+  "state-working": "#606060",
+  "state-waiting": "#F59E0B",
+  "state-blocked": "#c87a7a",
+  "state-paused": "#F59E0B",
+  "state-failing": "#c87a7a",
+  "state-terminating": "#a0a0a0",
+  "state-terminated": "#b0b0b0",
+  "state-zombie": "#707070",
 }
 
 const EULINX_HIGH_CONTRAST_COLORS: ThemeColors = {
   surface: "#000000",
-  elevated: "#0B0B0B",
-  "elevated-2": "#161616",
+  elevated: "#1a1a1a",
+  "elevated-2": "#333333",
   border: "#FFFFFF",
   "border-strong": "#FFFFFF",
   "text-primary": "#FFFFFF",
-  "text-muted": "#E0E0E0",
-  accent: "#FF8AA0",
-  success: "#3FF23F",
-  warning: "#FFD60A",
-  danger: "#FF5C5C",
-  info: "#5CC8FF",
+  "text-muted": "#d0d0d0",
+  accent: "#e0e0e0",
+  success: "#22C55E",
+  warning: "#F59E0B",
+  danger: "#ef9a9a",
+  info: "#90caf9",
   "state-requested": "#FFFFFF",
-  "state-queued": "#F6B47A",
-  "state-spawning": "#E692FF",
-  "state-initializing": "#FFD60A",
+  "state-queued": "#d0d0d0",
+  "state-spawning": "#e0e0e0",
+  "state-initializing": "#F59E0B",
   "state-idle": "#FFFFFF",
-  "state-working": "#F6B47A",
-  "state-waiting": "#FFD60A",
-  "state-blocked": "#FF5C5C",
-  "state-paused": "#FFD60A",
-  "state-failing": "#FF5C5C",
-  "state-terminating": "#FF8A8A",
-  "state-terminated": "#C9C9C9",
-  "state-zombie": "#E692FF",
+  "state-working": "#d0d0d0",
+  "state-waiting": "#F59E0B",
+  "state-blocked": "#ef9a9a",
+  "state-paused": "#F59E0B",
+  "state-failing": "#ef9a9a",
+  "state-terminating": "#a0a0a0",
+  "state-terminated": "#808080",
+  "state-zombie": "#606060",
 }
 
 export const BUILTIN_THEMES: Record<string, Theme> = {
@@ -467,15 +467,13 @@ export function buildThemeStyle(theme: Theme): Record<string, string> {
   return style
 }
 
-function applyThemeStyle(style: Record<string, string>, themeId: string): void {
+function applyThemeStyle(_style: Record<string, string>, themeId: string): void {
   const root = document.documentElement
-  for (const [prop, value] of Object.entries(style)) {
-    root.style.setProperty(prop, value)
-  }
-  // `data-theme` is set only for native/OS hints (titlebar, scrollbar).
-  // Component CSS MUST NOT branch on it; all colour flows through the
-  // `--Eulinx-color-*` custom properties written above.
-  root.setAttribute("data-theme", themeId)
+  // Colors are defined in globals.css — skip inline overrides.
+  // Toggle .dark class for CSS dark mode, and set data-theme for native hints.
+  const isDark = themeId === "Eulinx-dark" || themeId === "Eulinx-high-contrast"
+  root.classList.toggle("dark", isDark)
+  root.setAttribute("data-theme", isDark ? "dark" : "light")
 }
 
 function removeBootCloak(): void {
