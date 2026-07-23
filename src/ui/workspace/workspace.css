@@ -164,7 +164,7 @@
   border-radius: var(--Eulinx-radius-sm);
 }
 
-/* Pane divider */
+/* Pane divider — thin visual line with generous invisible hit area */
 .wsx-pane-divider {
   position: relative;
   z-index: 10;
@@ -175,13 +175,45 @@
   width: 1px;
   height: 100%;
   cursor: col-resize;
-  background: var(--Eulinx-color-border);
+}
+.wsx-pane-divider[data-direction="vertical"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -5px;
+  width: 11px;
+  background: var(--Eulinx-color-accent);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.wsx-pane-divider[data-direction="vertical"]:hover::after {
+  opacity: 0.4;
+}
+.wsx-pane-divider[data-direction="vertical"].wsx-dividing::after {
+  opacity: 0.7;
 }
 .wsx-pane-divider[data-direction="horizontal"] {
   height: 1px;
   width: 100%;
   cursor: row-resize;
-  background: var(--Eulinx-color-border);
+}
+.wsx-pane-divider[data-direction="horizontal"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -5px;
+  height: 11px;
+  background: var(--Eulinx-color-accent);
+  opacity: 0;
+  transition: opacity 150ms ease;
+}
+.wsx-pane-divider[data-direction="horizontal"]:hover::after {
+  opacity: 0.4;
+}
+.wsx-pane-divider[data-direction="horizontal"].wsx-dividing::after {
+  opacity: 0.7;
 }
 
 /* Focus ring — subtle inset shadow instead of harsh outline */
