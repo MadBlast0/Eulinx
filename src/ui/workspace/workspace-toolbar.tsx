@@ -5,13 +5,7 @@ import { ToolbarButton, ToolbarSep } from "./primitives"
 import { useWorkspace } from "./use-workspace"
 import { useProjects } from "./use-projects"
 import { useRunGraph } from "./orchestrator-run"
-
-const ADD_NODE_OPTIONS = [
-  { kind: "terminal" as const, label: "Terminal", icon: "terminal" },
-  { kind: "browser" as const, label: "Browser", icon: "browser" },
-  { kind: "worker" as const, label: "Worker", icon: "graph" },
-  { kind: "map" as const, label: "Map", icon: "map" },
-] as const
+import { NodeSubMenu } from "./node-sub-menu"
 
 export function Toolbar() {
   const { addNode, autoLayout, undo, redo, canUndo, canRedo } = useWorkspace()
@@ -74,39 +68,25 @@ export function Toolbar() {
 
         <ToolbarSep />
 
-        {/* Add node dropdown */}
-        <div className="relative">
+        {/* Add node — shared sub-menu */}
+        <NodeSubMenu
+          open={addOpen}
+          onOpen={() => setAddOpen(true)}
+          onClose={() => setAddOpen(false)}
+          onPick={(kind) => addNode(kind)}
+        >
           <button
             type="button"
             aria-label="Add node"
-            onClick={() => setAddOpen((v) => !v)}
-            className="flex h-7 items-center gap-1.5 rounded-md border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-hover)] px-2.5 text-[12px] font-medium text-[color:var(--Eulinx-color-text)] transition-colors duration-150 hover:border-[color:var(--Eulinx-color-border-strong)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            className="flex h-7 items-center gap-1 rounded-md bg-[color:var(--Eulinx-color-toolbar)] px-2.5 text-[12px] font-medium text-[color:var(--Eulinx-color-text)] transition-colors duration-150 hover:bg-[color:var(--Eulinx-color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={2} />
+            <span>Add</span>
           </button>
-          {addOpen && (
-            <>
-              <div className="fixed inset-0 z-[var(--Eulinx-z-dropdown)]" onClick={() => setAddOpen(false)} />
-              <div className="absolute right-0 top-full z-[var(--Eulinx-z-dropdown)] mt-1 min-w-[160px] animate-[ctx-in_120ms_ease] rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] p-1 shadow-lg">
-                {ADD_NODE_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.kind}
-                    type="button"
-                    onClick={() => {
-                      setAddOpen(false)
-                      addNode(opt.kind)
-                    }}
-                    className="flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12.5px] text-[color:var(--Eulinx-color-text)] transition-colors duration-100 hover:bg-[color:var(--Eulinx-color-hover)]"
-                  >
-                    <AppIcon name={opt.icon} className="h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2} />
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
+        </NodeSubMenu>
       </div>
     </div>
   )
 }
+
+

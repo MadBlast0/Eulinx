@@ -1,10 +1,12 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { AppIcon } from "./app-icon"
 import { useWorkspace } from "./use-workspace"
 import { ShellPicker } from "./terminal/shell-picker"
+import { ContextMenuTrigger } from "./node-sub-menu"
 
 export function ContextMenu() {
   const { contextMenu, closeContextMenu, addNode, autoLayout } = useWorkspace()
+  const [addNodeOpen, setAddNodeOpen] = useState(false)
 
   useEffect(() => {
     if (!contextMenu) return
@@ -13,14 +15,20 @@ export function ContextMenu() {
     return () => document.removeEventListener("click", onClick)
   }, [contextMenu, closeContextMenu])
 
+  // Reset sub-menu state when context menu closes
+  useEffect(() => {
+    if (!contextMenu) setAddNodeOpen(false)
+  }, [contextMenu])
+
   if (!contextMenu) return null
 
   return (
     <div
-      className="fixed z-[var(--Eulinx-z-dropdown)] min-w-[180px] animate-[ctx-in_120ms_ease] rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] p-1 shadow-lg"
+      className="fixed z-[var(--Eulinx-z-dropdown)] min-w-[200px] animate-[ctx-in_120ms_ease] rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] p-1 shadow-lg"
       style={{ left: contextMenu.x, top: contextMenu.y }}
       onClick={(e) => e.stopPropagation()}
     >
+      {/* Terminal with shell picker */}
       <div className="flex items-center">
         <Item
           icon={<AppIcon name="terminal" className="h-3.5 w-3.5" strokeWidth={2} />}
@@ -30,17 +38,15 @@ export function ContextMenu() {
         />
         <ShellPicker align="right" onPick={(shell) => addNode("terminal", shell)} />
       </div>
-      <Item
-        icon={<AppIcon name="api" className="h-3.5 w-3.5" strokeWidth={2} />}
-        label="Add Browser"
-        shortcut="B"
-        onClick={() => addNode("browser")}
-      />
-      <Item
-        icon={<AppIcon name="graph" className="h-3.5 w-3.5" strokeWidth={2} />}
-        label="Add Worker"
-        shortcut="W"
-        onClick={() => addNode("worker")}
+      {/* Add Node with sub-dropdown */}
+      <ContextMenuTrigger
+        open={addNodeOpen}
+        onOpen={() => setAddNodeOpen(true)}
+        onClose={() => setAddNodeOpen(false)}
+        onPick={(kind) => addNode(kind)}
+        icon={<AppIcon name="variables" className="h-3.5 w-3.5" strokeWidth={2} />}
+        label="Add Node"
+        shortcut="N"
       />
       <div className="my-1 h-px bg-[color:var(--Eulinx-color-border)]" />
       <Item
