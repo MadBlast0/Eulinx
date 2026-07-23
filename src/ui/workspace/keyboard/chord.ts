@@ -14,9 +14,25 @@ function mods(chord: KeyChord): string {
   return MOD_ORDER.filter((m) => chord[m]).map((m) => m).join("+")
 }
 
+const KEY_ALIASES: Record<string, string> = {
+  ",": "comma",
+  ".": "period",
+  ";": "semicolon",
+  ":": "colon",
+  "'": "quote",
+  "/": "slash",
+  "\\": "backslash",
+  "[": "bracketleft",
+  "]": "bracketright",
+  "-": "minus",
+  "=": "equal",
+  "`": "backquote",
+}
+
 function keyLabel(key: string): string {
   const k = key.toLowerCase()
   if (k === " ") return "space"
+  if (KEY_ALIASES[k]) return KEY_ALIASES[k]
   if (k.length === 1) return k
   return k
 }
