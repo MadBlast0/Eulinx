@@ -385,13 +385,15 @@ function WorkspaceShell() {
                 type="button"
                 aria-label="Back to canvas"
                 onClick={() => setSurface(null)}
-                className="flex items-center gap-2 rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] px-3 py-1.5 text-[13px] font-medium text-[color:var(--Eulinx-color-text)] shadow-[var(--Eulinx-elev-sm)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--Eulinx-color-accent)]"
+                className="flex items-center gap-1.5 rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] px-2.5 py-1.5 text-[13px] font-medium text-[color:var(--Eulinx-color-text)] shadow-[var(--Eulinx-elev-sm)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--Eulinx-color-accent)]"
               >
-                <ArrowLeft className="h-4 w-4" strokeWidth={2.25} />
+                <ArrowLeft className="h-3.5 w-3.5" strokeWidth={2.25} />
                 Back
               </button>
             </div>
-            <ActiveSurface />
+            <div className="flex-1 overflow-auto pl-[90px]">
+              <ActiveSurface />
+            </div>
           </div>
         ) : (
           <>
