@@ -187,7 +187,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
                       className={cn(
                         "flex w-full items-center justify-between gap-3 rounded-[var(--Eulinx-radius-md)] px-2.5 py-2 text-left text-[13px] transition-colors",
                         isActive
-                          ? "bg-[color:color-mix(in_srgb,var(--Eulinx-color-accent)_22%,var(--Eulinx-color-surface-elevated))] text-[color:var(--Eulinx-color-text)] font-medium shadow-[inset_3px_0_0_var(--Eulinx-color-accent)]"
+                          ? "bg-[color:var(--Eulinx-color-selected)] text-[color:var(--Eulinx-color-text)] font-medium shadow-[inset_3px_0_0_var(--Eulinx-color-accent)]"
                           : "text-[color:var(--Eulinx-color-text-secondary)] hover:bg-[color:var(--Eulinx-color-hover)]",
                       )}
                     >
