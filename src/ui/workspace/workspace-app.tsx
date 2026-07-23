@@ -117,6 +117,8 @@ function WorkspaceShell() {
     removeNode,
     toggleLeftSidebar,
     toggleRightSidebar,
+    addNode,
+    autoLayout,
   } = useWorkspace()
 
   const {
@@ -183,6 +185,46 @@ function WorkspaceShell() {
   useCommand("surface.helix-vector-explorer", () => setSurface("helix-vector-explorer"))
   useCommand("surface.helix-query-playground", () => setSurface("helix-query-playground"))
   useCommand("surface.knowledge", () => setSurface("knowledge"))
+
+  // Navigation — focus cycling
+  const REGION_ORDER: RegionId[] = ["sidebar", "canvas", "inspector", "panel"]
+  useCommand("app.focusNext", () => {
+    const idx = Math.max(0, REGION_ORDER.indexOf(focusedRegion))
+    const next = REGION_ORDER[(idx + 1) % REGION_ORDER.length]!
+    setFocusedRegion(next)
+    const el = document.querySelector(`[data-region="${next}"]`)
+    if (el instanceof HTMLElement) el.focus()
+  })
+  useCommand("app.focusPrevious", () => {
+    const idx = Math.max(0, REGION_ORDER.indexOf(focusedRegion))
+    const prev = REGION_ORDER[(idx - 1 + REGION_ORDER.length) % REGION_ORDER.length]!
+    setFocusedRegion(prev)
+    const el = document.querySelector(`[data-region="${prev}"]`)
+    if (el instanceof HTMLElement) el.focus()
+  })
+
+  // Navigation — close surface
+  useCommand("app.closeTab", () => {
+    if (surface) setSurface(null)
+  })
+
+  // Graph — add nodes
+  useCommand("node.addTerminal", () => addNode("terminal"))
+  useCommand("node.addBrowser", () => addNode("browser"))
+  useCommand("node.addWorker", () => addNode("worker"))
+  useCommand("terminal.new", () => addNode("terminal"))
+  useCommand("workers.spawn", () => addNode("worker"))
+
+  // Graph — layout
+  useCommand("graph.autoLayout", () => autoLayout())
+  useCommand("graph.zoomToFit", () => {
+    window.dispatchEvent(new CustomEvent("eulinx:graph-fit-view"))
+  })
+
+  // Workflow
+  useCommand("workflow.run", () => {
+    window.dispatchEvent(new CustomEvent("eulinx:workflow-run"))
+  })
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
