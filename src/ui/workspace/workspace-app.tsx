@@ -47,7 +47,7 @@ import {
   VectorExplorer,
   QueryPlayground,
 } from "./canvas-views"
-import { ToolbarButton } from "./primitives"
+
 import { KeymapProvider, useCommand } from "./keyboard/use-keyboard"
 import { PluginsProvider } from "./plugins-store"
 import { EventBridge } from "./event-bridge"
@@ -381,13 +381,15 @@ function WorkspaceShell() {
             onFocus={handleFocusRegion("canvas")}
           >
             <div className="absolute left-3 top-3 z-[1]">
-              <ToolbarButton
-                tip="Back to canvas"
+              <button
+                type="button"
                 aria-label="Back to canvas"
                 onClick={() => setSurface(null)}
+                className="flex items-center gap-2 rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] px-3 py-1.5 text-[13px] font-medium text-[color:var(--Eulinx-color-text)] shadow-[var(--Eulinx-elev-sm)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--Eulinx-color-accent)]"
               >
                 <ArrowLeft className="h-4 w-4" strokeWidth={2.25} />
-              </ToolbarButton>
+                Back
+              </button>
             </div>
             <ActiveSurface />
           </div>
