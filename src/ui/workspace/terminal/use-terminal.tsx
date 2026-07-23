@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import type { Pty, PtyId, ExitCode } from "./pty"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { createNativePty } from "./pty"
+import type { Pty, PtyId, ExitCode, PtyConnectionState } from "./pty"
+
+export type { PtyConnectionState }
 
 export interface UseTerminalResult {
   readonly pty: Pty | null
@@ -8,6 +10,7 @@ export interface UseTerminalResult {
   readonly clear: () => void
   readonly fit: () => void
   readonly exitCode: ExitCode
+  readonly connectionState: PtyConnectionState
 }
 
 // ---------------------------------------------------------------------------
@@ -38,29 +41,32 @@ export function useTerminal(
   ptyId: PtyId | undefined,
   shell?: string,
 ): UseTerminalResult {
-  const ptyRef = useRef<Pty | null>(null)
   const [exitCode, setExitCode] = useState<ExitCode>(null)
+  const [connectionState, setConnectionState] = useState<PtyConnectionState>("connecting")
+  const pty = ptyId ? ensurePty(ptyId, shell) : null
 
   useEffect(() => {
     if (!ptyId) {
-      ptyRef.current = null
       setExitCode(null)
+      setConnectionState("connecting")
       return
     }
-    const pty = ensurePty(ptyId, shell)
-    ptyRef.current = pty
+    if (!pty) return
 
     const offExit = pty.onExit((code) => setExitCode(code))
+    const offConn = pty.onConnectionChange((state) => setConnectionState(state))
+
+    setConnectionState(pty.connectionState)
 
     return () => {
       offExit()
-      ptyRef.current = null
+      offConn()
     }
-  }, [ptyId, shell])
+  }, [ptyId, shell, pty])
 
   const write = useCallback((data: string) => {
-    ptyRef.current?.write(data)
-  }, [])
+    if (pty) pty.write(data)
+  }, [pty])
 
   const clear = useCallback(() => {
     // No-op — xterm handles clear via its own API
@@ -70,10 +76,8 @@ export function useTerminal(
     // Geometry changes are owned by the xterm view via ResizeObserver
   }, [])
 
-  const pty = ptyRef.current
-
   return useMemo<UseTerminalResult>(
-    () => ({ pty, write, clear, fit, exitCode }),
-    [pty, write, clear, fit, exitCode],
+    () => ({ pty, write, clear, fit, exitCode, connectionState }),
+    [pty, write, clear, fit, exitCode, connectionState],
   )
 }

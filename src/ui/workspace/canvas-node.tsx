@@ -118,7 +118,7 @@ export function CanvasNodeCard({
 
         {node.kind === "terminal" &&
           (node.selected ? (
-            <div className="min-h-[120px] flex-1 p-2">
+            <div className="flex-1">
               <TerminalView ptyId={node.id} shell={node.shell} className="h-full" />
             </div>
           ) : (

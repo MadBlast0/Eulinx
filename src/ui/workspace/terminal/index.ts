@@ -15,5 +15,6 @@ export {
   type Pty,
   type PtyId,
   type ExitCode,
+  type PtyConnectionState,
 } from "./pty"
 export { buildXtermTheme } from "./xterm-theme"

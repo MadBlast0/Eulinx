@@ -94,23 +94,21 @@ impl PtyManagerImpl {
             },
         );
 
-        // Wait for exit — reads the exit code BEFORE the handle is removed.
+        // Wait for exit — reads the exit code. Do NOT hold the children lock
+        // during wait(), otherwise every write/resize/kill command deadlocks.
+        let exit_id_clone = exit_id.clone();
+        let exit_app_clone = exit_app.clone();
         std::thread::spawn(move || {
-            let code = {
-                let state = exit_app.state::<PtyState>();
+            let child = {
+                let state = exit_app_clone.state::<PtyState>();
                 let guard = state.children.lock().unwrap();
-                if let Some(handle) = guard.get(&exit_id) {
-                    if let Some(child) = handle.child.lock().unwrap().as_mut() {
-                        child.wait().ok().and_then(|s| s.code())
-                    } else {
-                        None
-                    }
-                } else {
-                    None
-                }
+                guard.get(&exit_id_clone).and_then(|handle| {
+                    handle.child.lock().unwrap().take()
+                })
             };
-            // Emit the raw exit code number — frontend expects just the number.
-            let _ = exit_app.emit(&format!("pty://{exit_id}/exit"), code);
+            let code = child
+                .and_then(|mut c| c.wait().ok().and_then(|s| s.code()));
+            let _ = exit_app_clone.emit(&format!("pty://{exit_id_clone}/exit"), code);
         });
 
         self.pid_to_id.lock().unwrap().insert(pid, id);
@@ -238,26 +236,15 @@ pub(crate) struct PtyResizePayload {
 
 fn stream_to_events<R: std::io::Read>(mut reader: R, id: &str, app: AppHandle) {
     let mut buf = [0u8; 4096];
+    let event = format!("pty://{id}/data");
     loop {
         match reader.read(&mut buf) {
             Ok(0) => break,
             Ok(n) => {
                 let chunk = String::from_utf8_lossy(&buf[..n]).to_string();
-                let _ = app.emit(
-                    &format!("pty://{id}/data"),
-                    super::pty_manager::PtyData {
-                        id: id.to_string(),
-                        chunk,
-                    },
-                );
+                let _ = app.emit(&event, chunk);
             }
             Err(_) => break,
         }
     }
-}
-
-#[derive(Clone, serde::Serialize)]
-struct PtyData {
-    id: String,
-    chunk: String,
 }
