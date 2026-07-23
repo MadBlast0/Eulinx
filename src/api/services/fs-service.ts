@@ -47,6 +47,10 @@ export const fsService = {
     )
   },
 
+  createDir(path: string): Promise<void> {
+    return call<void>("fs_create_dir", { path })
+  },
+
   pickFolder(): Promise<string | null> {
     return call<string | null>("dialog_pick_folder")
   },

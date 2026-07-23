@@ -7,6 +7,7 @@
  */
 
 import { isTauri } from "@tauri-apps/api/core"
+import { getCurrentWindow } from "@tauri-apps/api/window"
 import { call } from "../transport"
 
 function isFullscreen(): boolean {
@@ -14,28 +15,41 @@ function isFullscreen(): boolean {
 }
 
 export const windowService = {
-  close(): void {
+  async drag(): Promise<void> {
     if (isTauri()) {
-      void call("plugin:window|close")
+      await getCurrentWindow().startDragging()
+    }
+  },
+
+  async close(): Promise<void> {
+    if (isTauri()) {
+      await call("plugin:window|close")
     } else {
       window.close()
     }
   },
 
-  minimize(): void {
+  async minimize(): Promise<void> {
     if (isTauri()) {
-      void call("plugin:window|minimize")
+      await call("plugin:window|minimize")
     }
   },
 
-  toggleMaximize(): void {
+  async toggleMaximize(): Promise<void> {
     if (isTauri()) {
-      void call("plugin:window|toggle_maximize")
+      await call("plugin:window|toggle_maximize")
     } else {
       void (isFullscreen()
         ? document.exitFullscreen()
         : document.documentElement.requestFullscreen())
     }
+  },
+
+  async isMaximized(): Promise<boolean> {
+    if (isTauri()) {
+      return getCurrentWindow().isMaximized()
+    }
+    return isFullscreen()
   },
 } as const
 

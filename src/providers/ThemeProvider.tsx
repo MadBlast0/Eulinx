@@ -15,6 +15,7 @@ interface ThemeContextValue {
 function applyTheme(resolved: ResolvedTheme): void {
   if (typeof document === "undefined") return
   document.documentElement.setAttribute("data-theme", resolved)
+  document.documentElement.classList.toggle("dark", resolved === "dark")
 }
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)

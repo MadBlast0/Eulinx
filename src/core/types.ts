@@ -51,8 +51,7 @@ export type PluginCapability = Brand<string, "PluginCapability">
  * Usage: brand<WorkspaceId>("ws_123") — returns WorkspaceId
  * The type parameter is the TARGET branded type, not the underlying type.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function brand<B>(value: any): B {
+export function brand<B>(value: unknown): B {
   return value as B
 }
 

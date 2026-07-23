@@ -71,7 +71,6 @@ export class DatabaseManager {
 
   readonly search: SearchIndex
 
-  // @ts-ignore — stored for future event-driven features
   private eventBus: EventBus | null = null
   private initialized = false
 
@@ -101,9 +100,34 @@ export class DatabaseManager {
 
     this.initialized = true
     log.info('Database manager initialized')
+
+    if (this.eventBus) {
+      try {
+        await this.eventBus.publish({
+          source: "DatabaseManager",
+          timestamp: new Date().toISOString(),
+          event: "runtime.initialized",
+          payload: { component: "database" },
+        } as unknown as Parameters<EventBus["publish"]>[0])
+      } catch (e) {
+        log.warn(`Failed to emit database initialized event: ${e}`)
+      }
+    }
   }
 
   async close(): Promise<void> {
+    if (this.eventBus && this.initialized) {
+      try {
+        await this.eventBus.publish({
+          source: "DatabaseManager",
+          timestamp: new Date().toISOString(),
+          event: "runtime.stopped",
+          payload: { component: "database" },
+        } as unknown as Parameters<EventBus["publish"]>[0])
+      } catch (e) {
+        log.warn(`Failed to emit database closed event: ${e}`)
+      }
+    }
     this.initialized = false
     log.info('Database manager closed')
   }
