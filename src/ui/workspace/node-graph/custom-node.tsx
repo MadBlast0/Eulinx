@@ -106,11 +106,10 @@ function CustomNodeImpl({ id, data, selected }: NodeProps<CustomNodeType>) {
       {/* ── Terminal — expanded view with xterm ── */}
       {isTerminal && expanded && (
         <div
-          className="mx-2.5 mb-2.5 mt-1.5 flex h-[240px] flex-col overflow-hidden rounded-md border border-[color:var(--Eulinx-color-border)]"
+          className="mx-2.5 mb-2.5 mt-1.5 flex h-[240px] flex-col overflow-hidden rounded-md border border-[color:var(--Eulinx-color-border)] nodrag"
           onPointerDown={(e) => e.stopPropagation()}
-          onPointerUp={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
-          onDoubleClick={(e) => e.stopPropagation()}
         >
           <TerminalView ptyId={id} shell={data.shell} className="min-h-0 flex-1" />
         </div>

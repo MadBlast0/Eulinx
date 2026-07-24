@@ -118,7 +118,12 @@ export function CanvasNodeCard({
 
         {node.kind === "terminal" &&
           (node.selected ? (
-            <div className="flex-1">
+            <div
+              className="flex-1 nodrag"
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+            >
               <TerminalView ptyId={node.id} shell={node.shell} className="h-full" />
             </div>
           ) : (
