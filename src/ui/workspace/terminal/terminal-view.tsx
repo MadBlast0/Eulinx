@@ -296,7 +296,7 @@ function TerminalXterm({
     >
       {/* ── Header ── */}
       <div
-        className="flex items-center justify-between gap-2 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-toolbar)] px-2 py-1.5"
+        className="flex items-center justify-between gap-2 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-toolbar)] px-2 py-0.5"
         role="toolbar"
         aria-label="Terminal controls"
       >
@@ -320,9 +320,9 @@ function TerminalXterm({
               aria-expanded={menuOpen}
               aria-haspopup="menu"
               onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v) }}
-              className="flex h-6 w-6 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]"
+              className="flex h-5 w-5 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]"
             >
-              <MoreHorizontal className="h-3.5 w-3.5" strokeWidth={1.5} />
+              <MoreHorizontal className="h-3 w-3" strokeWidth={1.5} />
             </button>
             {menuOpen && (
               <>

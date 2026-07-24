@@ -41,19 +41,33 @@ function CustomNodeImpl({ id, data, selected, width, height }: NodeProps<CustomN
   const isTerminal = data.kind === "terminal"
   const [expanded, setExpanded] = useState(false)
   const rf = useReactFlow()
+  const savedSize = useRef<{ width: number; height: number } | null>(null)
   const hasEverExpanded = useRef(false)
 
-  // When collapsing, discard any custom resize so the next expand always starts
-  // at the default size (640x432).
+  // On collapse: save custom dimensions then clear ReactFlow wrapper width/height
+  // so the node visually shrinks to content size.
+  // On expand: restore the saved dimensions.
   useEffect(() => {
     if (expanded) {
       hasEverExpanded.current = true
-      return
+      if (savedSize.current) {
+        const s = savedSize.current
+        savedSize.current = null
+        rf.setNodes((nodes) =>
+          nodes.map((n) =>
+            n.id === id ? { ...n, width: s.width, height: s.height } : n,
+          ),
+        )
+      }
+    } else if (hasEverExpanded.current) {
+      rf.setNodes((nodes) => {
+        const n = nodes.find((x) => x.id === id)
+        if (n?.width && n?.height) {
+          savedSize.current = { width: n.width, height: n.height }
+        }
+        return nodes.map((x) => (x.id === id ? { ...x, width: undefined, height: undefined } : x))
+      })
     }
-    if (!hasEverExpanded.current) return
-    rf.setNodes((nodes) =>
-      nodes.map((n) => (n.id === id ? { ...n, width: undefined, height: undefined } : n)),
-    )
   }, [expanded])
 
   return (
