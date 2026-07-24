@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { Handle, NodeResizer, Position, useNodes, useReactFlow, type Node, type NodeProps } from "@xyflow/react"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronRight, Terminal } from "lucide-react"
 import { AppIcon } from "../app-icon"
 import { cn } from "@/utils/cn"
 import { StateBadge } from "../primitives"
@@ -105,26 +105,31 @@ function CustomNodeImpl({ id, data, selected, width, height }: NodeProps<CustomN
       ))}
 
       {/* ── Header row ── */}
-      <div className="flex h-8 cursor-grab items-center gap-2 whitespace-nowrap px-3">
+      <div className="flex h-8 cursor-grab items-center gap-1.5 whitespace-nowrap px-3">
         {/* Expand/collapse toggle for terminal nodes */}
         {isTerminal && (
           <button
             type="button"
             aria-label={expanded ? "Collapse terminal" : "Expand terminal"}
             onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v) }}
-            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:text-[color:var(--Eulinx-color-text)]"
+            className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:text-[color:var(--Eulinx-color-text)]"
           >
             {expanded
-              ? <ChevronDown className="h-3.5 w-3.5" strokeWidth={2} />
-              : <ChevronRight className="h-3.5 w-3.5" strokeWidth={2} />}
+              ? <ChevronDown className="h-3 w-3" strokeWidth={2.5} />
+              : <ChevronRight className="h-3 w-3" strokeWidth={2.5} />}
           </button>
         )}
+
+        {/* Divider between arrow and icon+label */}
+        {isTerminal && <div className="h-4 w-px bg-[color:var(--Eulinx-color-border)]" />}
 
         <span
           className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] transition-colors duration-150"
           style={{ color: meta.accentVar }}
         >
-          <AppIcon name={meta.iconName} className="h-3.5 w-3.5" strokeWidth={2} />
+          {isTerminal
+            ? <Terminal className="h-3.5 w-3.5" strokeWidth={2} />
+            : <AppIcon name={meta.iconName} className="h-3.5 w-3.5" strokeWidth={2} />}
         </span>
         <span
           title={data.label}
