@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
-import { ChevronRight, Plus } from "lucide-react"
+import { ChevronRight, FolderPlus, Plus } from "lucide-react"
 import { AppIcon } from "./app-icon"
 import { cn } from "@/utils/cn"
 import { Button } from "@/components/ui/button"
@@ -213,7 +213,7 @@ export function LeftSidebar({
   activeSurface: SurfaceKey | null
   onOpenSurface: (key: SurfaceKey | null) => void
 }) {
-  const { setOverlay, toggleLeftSidebar } = useWorkspace()
+  const { setOverlay } = useWorkspace()
   const { projects, activeProjectId, selectProject, selectView, addProject } = useProjects()
 
   const handleAddProject = useCallback(async (): Promise<void> => {
@@ -230,45 +230,10 @@ export function LeftSidebar({
   return (
     <div className="flex h-full flex-col overflow-hidden bg-sidebar">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between px-3 pb-2 pt-2.5">
+      <div className="px-3 pb-2 pt-2.5">
         <span className="text-[11px] font-medium uppercase tracking-wider text-[color:var(--Eulinx-color-text-muted)]">
           Explorer
         </span>
-        <div className="flex items-center gap-0.5">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Add project"
-                title="Add project"
-                className="h-5 w-5 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
-              >
-                <Plus className="h-3.5 w-3.5" strokeWidth={2} />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="bottom" className="w-48">
-              <DropdownMenuItem onClick={() => void handleAddProject()}>
-                <AppIcon name="projects" className="mr-2 h-3.5 w-3.5" strokeWidth={2} />
-                Open Folder…
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => void handleAddProject()}>
-                <AppIcon name="graph" className="mr-2 h-3.5 w-3.5" strokeWidth={2} />
-                New Empty Project
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Collapse sidebar"
-            title="Collapse sidebar"
-            onClick={toggleLeftSidebar}
-            className="h-5 w-5 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
-          >
-            <ChevronRight className="h-3.5 w-3.5 rotate-180" strokeWidth={2} />
-          </Button>
-        </div>
       </div>
 
       {/* ── Scrollable content ── */}
@@ -303,9 +268,31 @@ export function LeftSidebar({
             <span className="text-[11px] font-medium uppercase tracking-wider text-[color:var(--Eulinx-color-text-muted)]">
               Projects
             </span>
-            <span className="text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
-              {projects.length}
-            </span>
+            <div className="flex items-center">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Add project"
+                    title="Add project"
+                    className="h-5 w-5 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
+                  >
+                    <FolderPlus className="h-3.5 w-3.5" strokeWidth={2} />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" side="bottom" className="w-48">
+                  <DropdownMenuItem onClick={() => void handleAddProject()}>
+                    <AppIcon name="projects" className="mr-2 h-3.5 w-3.5" strokeWidth={2} />
+                    Open Folder…
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => void handleAddProject()}>
+                    <AppIcon name="graph" className="mr-2 h-3.5 w-3.5" strokeWidth={2} />
+                    New Empty Project
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
 
           {/* Empty state */}
