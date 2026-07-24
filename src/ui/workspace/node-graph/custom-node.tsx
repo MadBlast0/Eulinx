@@ -105,14 +105,14 @@ function CustomNodeImpl({ id, data, selected, width, height }: NodeProps<CustomN
       ))}
 
       {/* ── Header row ── */}
-      <div className="flex h-8 cursor-grab items-center gap-1.5 whitespace-nowrap px-3">
+      <div className="flex h-8 cursor-grab items-center gap-1.5 whitespace-nowrap pl-[9px] pr-3">
         {/* Expand/collapse toggle for terminal nodes */}
         {isTerminal && (
           <button
             type="button"
             aria-label={expanded ? "Collapse terminal" : "Expand terminal"}
             onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v) }}
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:text-[color:var(--Eulinx-color-text)]"
+            className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:text-[color:var(--Eulinx-color-text)]"
           >
             {expanded
               ? <ChevronDown className="h-3 w-3" strokeWidth={2.5} />
@@ -153,7 +153,7 @@ function CustomNodeImpl({ id, data, selected, width, height }: NodeProps<CustomN
       {/* ── Terminal — expanded view with xterm ── */}
       {isTerminal && expanded && (
         <div
-          className="flex flex-1 flex-col overflow-hidden border-t border-[color:var(--Eulinx-color-border)] nodrag"
+          className="flex flex-1 flex-col overflow-hidden nodrag"
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}

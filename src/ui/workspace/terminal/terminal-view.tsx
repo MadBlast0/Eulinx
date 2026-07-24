@@ -288,7 +288,7 @@ function TerminalXterm({
     <div
       ref={wrapperRef}
       className={cn(
-        "flex flex-col overflow-hidden rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-sunken)]",
+        "flex flex-col overflow-hidden rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)]",
         className,
       )}
       onClick={handleWrapperClick}
