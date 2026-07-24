@@ -260,3 +260,11 @@
   color: var(--wsx-text);
   border-bottom-color: var(--wsx-accent);
 }
+
+/* ── Hand tool cursor ── */
+.wsx .hand-tool .react-flow__pane {
+  cursor: grab !important;
+}
+.wsx .hand-tool .react-flow__pane.dragging {
+  cursor: grabbing !important;
+}

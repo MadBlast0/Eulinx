@@ -79,6 +79,7 @@ export function NodeGraphProvider({ children }: { children: ReactNode }) {
         const p = projectNode(ws)
         return {
           ...p,
+          data: { ...prev?.data, ...p.data },
           width: prev?.width ?? p.width,
           height: prev?.height ?? p.height,
         }

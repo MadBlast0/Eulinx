@@ -25,6 +25,7 @@ export interface CustomNodeData extends Record<string, unknown> {
   readonly lines?: readonly { prompt?: string; command?: string; output?: string; outputColor?: string; cursor?: boolean }[]
   readonly ports?: readonly CustomNodePort[]
   readonly children?: ReactNode
+  readonly expanded?: boolean
 }
 
 export type CustomNodeType = Node<CustomNodeData, "eulinx">
@@ -39,7 +40,7 @@ function CustomNodeImpl({ id, data, selected, width, height }: NodeProps<CustomN
   const ports = data.ports ?? DEFAULT_PORTS
   const signal = data.status ? getStateSignal(data.status) : null
   const isTerminal = data.kind === "terminal"
-  const [expanded, setExpanded] = useState(false)
+  const expanded = data.expanded ?? false
   const rf = useReactFlow()
   const savedSize = useRef<{ width: number; height: number } | null>(null)
   const hasEverExpanded = useRef(false)
@@ -111,7 +112,7 @@ function CustomNodeImpl({ id, data, selected, width, height }: NodeProps<CustomN
           <button
             type="button"
             aria-label={expanded ? "Collapse terminal" : "Expand terminal"}
-            onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v) }}
+            onClick={(e) => { e.stopPropagation(); rf.setNodes((nodes) => nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, expanded: !expanded } } : n))) }}
             className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:text-[color:var(--Eulinx-color-text)]"
           >
             {expanded

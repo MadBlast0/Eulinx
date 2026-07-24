@@ -1,4 +1,4 @@
-import { useMemo } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -15,6 +15,8 @@ import { ZoomControls } from "./zoom-controls"
 import { MinimapWidget } from "./minimap-widget"
 import { NodeGraphProvider, useNodeGraph } from "./use-node-graph"
 import { useWorkspace } from "../use-workspace"
+import { useCommand } from "../keyboard/use-keyboard"
+import { cn } from "@/utils/cn"
 import type { EulinxNodeKind } from "./node-types"
 
 const nodeTypes: NodeTypes = { eulinx: CustomNode }
@@ -25,6 +27,32 @@ function NodeGraphInner() {
     useNodeGraph()
   const { x, y, zoom } = useViewport()
   const { openContextMenu } = useWorkspace()
+  const [handTool, setHandTool] = useState(false)
+
+  // Toggle hand tool (command registered in default-keymap)
+  useCommand("graph.panTool", useCallback(() => {
+    setHandTool((v) => !v)
+  }, []))
+
+  // Exit hand mode on Escape
+  useEffect(() => {
+    if (!handTool) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setHandTool(false)
+      }
+    }
+    document.addEventListener("keydown", onKey)
+    return () => document.removeEventListener("keydown", onKey)
+  }, [handTool])
+
+  // Dynamic pan/selection based on hand tool state
+  const panOnDrag: number[] | undefined = useMemo(() => {
+    if (handTool) return [0, 1, 2]
+    return [1, 2]
+  }, [handTool])
+
+  const selectionOnDrag = !handTool
 
   const defaultEdgeOptions = useMemo(() => ({ type: "eulinx" }), [])
 
@@ -75,9 +103,9 @@ function NodeGraphInner() {
         zoomOnScroll
         /* ── Performance ── */
         onlyRenderVisibleElements
-        /* ── Selection ── */
-        selectionOnDrag
-        panOnDrag={[1, 2]}          /* middle/right click = pan */
+        /* ── Selection / Pan ── */
+        selectionOnDrag={selectionOnDrag}
+        panOnDrag={panOnDrag}       /* H toggles left-click pan */
         selectionKeyCode="Shift"
         multiSelectionKeyCode="Control"
         /* ── Grid ── */
@@ -90,7 +118,7 @@ function NodeGraphInner() {
         deleteKeyCode="Backspace"
         onNodeContextMenu={onNodeContextMenu}
         /* ── Styling ── */
-        className="h-full w-full"
+        className={cn("h-full w-full", handTool && "hand-tool")}
       />
     </div>
   )

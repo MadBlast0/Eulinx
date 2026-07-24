@@ -21,6 +21,7 @@ export const DEFAULT_COMMANDS: readonly Command[] = [
   { id: "node.addWorker", title: "Add Worker Node", category: "graph" },
   { id: "graph.zoomToFit", title: "Zoom to Fit", category: "graph" },
   { id: "graph.autoLayout", title: "Auto Layout", category: "graph" },
+  { id: "graph.panTool", title: "Toggle Pan Tool (Hand)", category: "graph", when: "!inputFocused" },
   // Terminal
   { id: "terminal.new", title: "New Terminal Node", category: "terminal" },
   // Workers
@@ -76,6 +77,8 @@ export const DEFAULT_BINDINGS: readonly Binding[] = [
   { command: "workers.spawn", chord: "Ctrl+Shift+W" },
   // Workflow
   { command: "workflow.run", chord: "Ctrl+Shift+R" },
+  // Hand tool
+  { command: "graph.panTool", chord: "H" },
   // Search
   { command: "search.open", chord: "Ctrl+F" },
 ]
