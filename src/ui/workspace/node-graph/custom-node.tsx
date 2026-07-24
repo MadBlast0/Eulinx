@@ -1,5 +1,5 @@
-import { memo, useMemo, useRef, useState, type ReactNode } from "react"
-import { Handle, Position, useNodes, type Node, type NodeProps } from "@xyflow/react"
+import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
+import { Handle, NodeResizer, Position, useNodes, useReactFlow, type Node, type NodeProps } from "@xyflow/react"
 import { ChevronDown, ChevronRight } from "lucide-react"
 import { AppIcon } from "../app-icon"
 import { cn } from "@/utils/cn"
@@ -34,23 +34,51 @@ const DEFAULT_PORTS: readonly CustomNodePort[] = [
   { id: "out", position: Position.Right, type: "source" },
 ]
 
-function CustomNodeImpl({ id, data, selected }: NodeProps<CustomNodeType>) {
+function CustomNodeImpl({ id, data, selected, width, height }: NodeProps<CustomNodeType>) {
   const meta = getNodeTypeMeta(data.kind)
   const ports = data.ports ?? DEFAULT_PORTS
   const signal = data.status ? getStateSignal(data.status) : null
   const isTerminal = data.kind === "terminal"
   const [expanded, setExpanded] = useState(false)
+  const rf = useReactFlow()
+  const hasEverExpanded = useRef(false)
+
+  // When collapsing, discard any custom resize so the next expand always starts
+  // at the default size (640x432).
+  useEffect(() => {
+    if (expanded) {
+      hasEverExpanded.current = true
+      return
+    }
+    if (!hasEverExpanded.current) return
+    rf.setNodes((nodes) =>
+      nodes.map((n) => (n.id === id ? { ...n, width: undefined, height: undefined } : n)),
+    )
+  }, [expanded])
 
   return (
     <div
       className={cn(
         "group flex select-none flex-col rounded-lg border bg-[color:var(--Eulinx-color-surface)] transition-[border-color,box-shadow] duration-150",
-        expanded ? "w-[480px]" : "min-w-[120px] max-w-[420px]",
+        expanded ? "" : "max-w-[420px]",
         selected
           ? "border-[color:var(--Eulinx-color-accent)]/40 shadow-[0_0_0_1px_var(--Eulinx-color-accent)]"
           : "border-[color:var(--Eulinx-color-border)] shadow-sm hover:border-[color:var(--Eulinx-color-border-strong)] hover:shadow-md",
       )}
+      style={expanded ? { width: width ?? 640, height: height ?? 432, minWidth: 400, minHeight: 300 } : undefined}
     >
+      {/* ── Resize handles (expanded terminal only) ── */}
+      {isTerminal && expanded && (
+        <NodeResizer
+          isVisible
+          minWidth={400}
+          minHeight={300}
+          color="var(--Eulinx-color-node-terminal)"
+          handleClassName="!opacity-0"
+          lineClassName="!opacity-0"
+        />
+      )}
+
       {/* ── Ports ── */}
       {ports.map((port) => (
         <Handle
@@ -106,7 +134,7 @@ function CustomNodeImpl({ id, data, selected }: NodeProps<CustomNodeType>) {
       {/* ── Terminal — expanded view with xterm ── */}
       {isTerminal && expanded && (
         <div
-          className="mx-2.5 mb-2.5 mt-1.5 flex h-[240px] flex-col overflow-hidden rounded-md border border-[color:var(--Eulinx-color-border)] nodrag"
+          className="flex flex-1 flex-col overflow-hidden border-t border-[color:var(--Eulinx-color-border)] nodrag"
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}

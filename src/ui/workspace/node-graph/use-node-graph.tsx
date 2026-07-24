@@ -69,9 +69,21 @@ export function NodeGraphProvider({ children }: { children: ReactNode }) {
   const [nodes, setNodes, onNodesChangeRaw] = useNodesState<CustomNodeType>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
 
-  // Sync workspace nodes → ReactFlow nodes
+  // Sync workspace nodes → ReactFlow nodes, preserving any internal dimensions
+  // (e.g. from NodeResizer) that aren't persisted to the project store.
   useEffect(() => {
-    setNodes(wsNodes.map(projectNode))
+    setNodes((prev) => {
+      const prevMap = new Map(prev.map((n) => [n.id, n]))
+      return wsNodes.map((ws) => {
+        const prev = prevMap.get(ws.id)
+        const p = projectNode(ws)
+        return {
+          ...p,
+          width: prev?.width ?? p.width,
+          height: prev?.height ?? p.height,
+        }
+      })
+    })
   }, [wsNodes, setNodes])
 
   // Sync workspace edges → ReactFlow edges

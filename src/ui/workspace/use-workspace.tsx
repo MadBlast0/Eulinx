@@ -152,7 +152,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const y = 150 + Math.random() * 200
       const label =
         shell && shell.length > 0 ? `Terminal (${shell})` : getNodeTypeMeta(kind).label
-      const width = kind === "browser" ? 280 : kind === "map" ? 180 : 240
+      const width = kind === "browser" ? 280 : kind === "map" ? 180 : kind === "terminal" ? 480 : 240
       const node: GraphNode = {
         id,
         kind,
