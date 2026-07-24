@@ -123,6 +123,7 @@ export function CanvasNodeCard({
               onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => e.stopPropagation()}
+              onContextMenu={(e) => { e.stopPropagation(); e.preventDefault() }}
             >
               <TerminalView ptyId={node.id} shell={node.shell} className="h-full" />
             </div>

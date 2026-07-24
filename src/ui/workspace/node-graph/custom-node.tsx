@@ -110,6 +110,7 @@ function CustomNodeImpl({ id, data, selected }: NodeProps<CustomNodeType>) {
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => { e.stopPropagation(); e.preventDefault() }}
         >
           <TerminalView ptyId={id} shell={data.shell} className="min-h-0 flex-1" />
         </div>

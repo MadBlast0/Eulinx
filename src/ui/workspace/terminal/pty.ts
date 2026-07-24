@@ -61,11 +61,12 @@ export function createNativePty(shell?: string): Pty {
 
   // Subscribe to PTY events
   void listen<string>(`pty://${id}/data`, (event) => {
+    const chunk = typeof event.payload === "string" ? event.payload : ""
     if (!hasReceivedData) {
       hasReceivedData = true
       dispatchConnectionChange("connected")
     }
-    dispatchData(event.payload)
+    dispatchData(chunk)
   }).then((unlisten) => { unlisteners.push(unlisten) })
 
   void listen(`pty://${id}/exit`, (event) => {

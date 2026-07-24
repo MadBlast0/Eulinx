@@ -9,6 +9,7 @@ import { CheckCircle2, XCircle, MoreHorizontal, Loader2, WifiOff, TerminalSquare
 import { cn } from "@/utils/cn"
 import { TerminalSearch } from "./terminal-search"
 import type { PtyConnectionState } from "./use-terminal"
+import type { Pty } from "./pty"
 import { useTerminal } from "./use-terminal"
 import { buildXtermTheme } from "./xterm-theme"
 
@@ -72,10 +73,31 @@ function TerminalXterm({
 
   const [searchOpen, setSearchOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
-  const [hasReceivedData, setHasReceivedData] = useState(false)
   const hasReceivedDataRef = useRef(false)
 
   const { pty, clear: ptyClear, exitCode, connectionState } = useTerminal(ptyId, shell)
+
+  const fitTerm = useCallback((term?: XTerm | null, _fit?: FitAddon | null, host?: HTMLDivElement | null, ptyInstance?: Pty | null): boolean => {
+    const t = term ?? termRef.current
+    const h = host ?? hostRef.current
+    if (!t || !h) return false
+    try {
+      const dims = (t as any)._core?._renderService?.dimensions
+      if (!dims || dims.css.cell.width === 0 || dims.css.cell.height === 0) return false
+      const style = getComputedStyle(h)
+      const padX = parseInt(style.paddingLeft || "0") + parseInt(style.paddingRight || "0")
+      const padY = parseInt(style.paddingTop || "0") + parseInt(style.paddingBottom || "0")
+      const cols = Math.max(2, Math.floor((h.clientWidth - padX) / dims.css.cell.width))
+      const rows = Math.max(1, Math.floor((h.clientHeight - padY) / dims.css.cell.height))
+      if (t.rows !== rows || t.cols !== cols) {
+        t.resize(cols, rows)
+      }
+      if (ptyInstance?.resize) {
+        ptyInstance.resize(cols, rows)
+      }
+      return true
+    } catch { return false }
+  }, [])
 
   // Create terminal + addons once.
   useEffect(() => {
@@ -91,7 +113,6 @@ function TerminalXterm({
       cursorStyle: "bar",
       scrollback: 2000,
       theme: buildXtermTheme(theme),
-      allowProposedApi: true,
     })
     const fit = new FitAddon()
     const webLinks = new WebLinksAddon()
@@ -105,13 +126,19 @@ function TerminalXterm({
     fitRef.current = fit
     searchRef.current = search
 
-    try {
-      fit.fit()
-    } catch {
-      console.warn("eulinx: xterm fit failed on initial mount (host not yet measurable)")
+    let retries = 0
+    const fitLoop = () => {
+      if (fitTerm(term, fit, host, pty)) {
+        if (autoFocus) term.focus()
+      } else if (retries < 60) {
+        retries++
+        requestAnimationFrame(fitLoop)
+      }
     }
+    const raf = requestAnimationFrame(fitLoop)
 
     return () => {
+      cancelAnimationFrame(raf)
       term.dispose()
       termRef.current = null
       fitRef.current = null
@@ -135,7 +162,6 @@ function TerminalXterm({
       term.write(chunk)
       if (!hasReceivedDataRef.current) {
         hasReceivedDataRef.current = true
-        setHasReceivedData(true)
       }
     })
 
@@ -147,11 +173,8 @@ function TerminalXterm({
       term.write("\r\n\x1b[2m[session terminated]\x1b[0m\r\n")
     })
 
-    try {
-      fitRef.current?.fit()
-    } catch {
-      console.warn("eulinx: xterm fit failed during PTY binding")
-    }
+    fitTerm(term, fitRef.current, hostRef.current, pty)
+    if (autoFocus) term.focus()
 
     return () => {
       offData()
@@ -172,11 +195,7 @@ function TerminalXterm({
         cancelAnimationFrame(raf)
         raf = requestAnimationFrame(() => {
           try {
-            fitRef.current?.fit()
-            const term = termRef.current
-            if (term && pty) {
-              pty.resize(term.cols, term.rows)
-            }
+            fitTerm(termRef.current, fitRef.current, hostRef.current, pty)
           } catch {
             // ignore transient measure failures
           }
@@ -191,15 +210,16 @@ function TerminalXterm({
     }
   }, [pty])
 
-  // Auto-focus on mount / reconnect / expand
+  // Focus and re-fit when terminal becomes connected
   useEffect(() => {
-    if (autoFocus && pty && connectionState === "connected" && hostRef.current) {
-      const term = termRef.current
-      if (term) {
-        term.focus()
-      }
-    }
-  }, [autoFocus, pty, connectionState])
+    if (connectionState !== "connected") return
+    const term = termRef.current
+    if (!term) return
+    try {
+      fitTerm(termRef.current, fitRef.current, hostRef.current, pty)
+      term.focus()
+    } catch {}
+  }, [connectionState, pty])
 
   // Click anywhere in terminal area → focus
   const handleWrapperClick = useCallback(() => {
@@ -220,7 +240,7 @@ function TerminalXterm({
   const handleClear = useCallback(() => {
     termRef.current?.clear()
     ptyClear()
-    setHasReceivedData(false)
+    hasReceivedDataRef.current = false
     setMenuOpen(false)
   }, [ptyClear])
 
@@ -263,8 +283,6 @@ function TerminalXterm({
   }, [exitCode])
 
   const status = STATUS_CONFIG[connectionState]
-  const isConnecting = connectionState === "connecting"
-  const isDisconnected = connectionState === "disconnected" || connectionState === "error"
 
   return (
     <div
@@ -274,6 +292,7 @@ function TerminalXterm({
         className,
       )}
       onClick={handleWrapperClick}
+      onContextMenu={(e) => { e.stopPropagation(); e.preventDefault() }}
     >
       {/* ── Header ── */}
       <div
@@ -353,8 +372,8 @@ function TerminalXterm({
         aria-label="Live terminal"
         role="terminal"
       >
-        {isConnecting && !hasReceivedData && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[color:var(--Eulinx-color-surface-sunken)] z-10">
+        {connectionState === "connecting" && (
+          <div className="absolute inset-0 flex items-center justify-center bg-[color:var(--Eulinx-color-surface-sunken)] z-10 pointer-events-none">
             <div className="flex flex-col items-center gap-3 text-[color:var(--Eulinx-color-text-muted)]">
               <Loader2 className="h-6 w-6 animate-spin" strokeWidth={2} />
               <span className="text-sm">Starting shell…</span>
@@ -362,7 +381,7 @@ function TerminalXterm({
           </div>
         )}
 
-        {isDisconnected && !hasReceivedData && (
+        {(connectionState === "disconnected" || connectionState === "error") && (
           <div className="absolute inset-0 flex items-center justify-center bg-[color:var(--Eulinx-color-surface-sunken)] z-10">
             <div className="flex flex-col items-center gap-3 text-center px-4 text-[color:var(--Eulinx-color-text-muted)]">
               <WifiOff className="h-8 w-8" strokeWidth={1.5} />
@@ -377,13 +396,6 @@ function TerminalXterm({
             </div>
           </div>
         )}
-
-        <div
-          className={cn(
-            "absolute inset-0",
-            (isConnecting || isDisconnected) && !hasReceivedData && "pointer-events-none",
-          )}
-        />
       </div>
 
       {exitBadge && (

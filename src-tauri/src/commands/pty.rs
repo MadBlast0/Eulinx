@@ -4,8 +4,10 @@
 // process lifecycle; commands are thin Tauri entry points.
 
 use std::collections::HashMap;
+use std::io::Write;
 use std::sync::Mutex;
 
+use portable_pty::PtySize;
 use tauri::AppHandle;
 use tauri::Emitter;
 use tauri::Manager;
@@ -15,12 +17,11 @@ use crate::state::AppState;
 
 #[derive(Default)]
 pub struct PtyState {
-    /// Live child processes keyed by PTY id. Stdin kept for writes; Child kept
-    /// so kill() can terminate it.
+    /// Live child processes keyed by PTY id.
     pub children: Mutex<HashMap<String, PtyHandle>>,
 }
 
-/// Spawn a real shell. Delegates to PtyManagerImpl.
+/// Spawn a real shell in a PTY. Delegates to PtyManagerImpl.
 #[tauri::command]
 pub fn pty_spawn(
     app: AppHandle,
@@ -34,38 +35,39 @@ pub fn pty_spawn(
     Ok(id)
 }
 
-/// Write input into the shell's stdin. Delegates to PtyManagerImpl.
+/// Write input into the shell's PTY master.
 #[tauri::command]
 pub fn pty_write(app: AppHandle, id: String, data: String) -> Result<(), String> {
-    // We need to find the PID for this id, then delegate
     let state = app.state::<PtyState>();
     let guard = state.children.lock().unwrap();
-    // Find PID by iterating children — but PtyManagerImpl has pid_to_id map
-    // Since we don't have direct access, use the manager's write via PID lookup
-    // For now, delegate directly using the handle
     let handle = guard.get(&id).ok_or("no such pty")?;
-    let mut stdin = handle.stdin.lock().unwrap();
-    if let Some(s) = stdin.as_mut() {
-        use std::io::Write;
-        let _ = s.write_all(data.as_bytes());
-        let _ = s.flush();
+    let mut writer = handle.writer.lock().unwrap();
+    if let Some(w) = writer.as_mut() {
+        let _ = w.write_all(data.as_bytes());
+        let _ = w.flush();
     }
     Ok(())
 }
 
-/// Resize the terminal dimensions. Delegates to PtyManagerImpl.
+/// Resize terminal dimensions and propagate to the PTY.
 #[tauri::command]
 pub fn pty_resize(app: AppHandle, id: String, cols: u32, rows: u32) -> Result<(), String> {
-    // Store new dimensions
     let state = app.state::<PtyState>();
     let guard = state.children.lock().unwrap();
     if let Some(handle) = guard.get(&id) {
-        let mut dims = handle.cols.lock().unwrap();
-        *dims = (cols, rows);
+        *handle.cols.lock().unwrap() = (cols, rows);
+        if let Some(master) = handle.master.lock().unwrap().as_mut() {
+            let size = PtySize {
+                rows: rows as u16,
+                cols: cols as u16,
+                pixel_width: 0,
+                pixel_height: 0,
+            };
+            let _ = master.resize(size);
+        }
     }
     drop(guard);
 
-    // Emit resize event
     let _ = app.emit(
         &format!("pty://{id}/resize"),
         serde_json::json!({ "id": id, "cols": cols, "rows": rows }),
@@ -83,16 +85,11 @@ pub fn pty_kill(
     id: String,
 ) -> Result<(), String> {
     let pty_state = app.state::<PtyState>();
-    // Send kill — the exit-wait thread will observe the termination and emit
-    // the exit event. We do NOT remove the child here to avoid racing with
-    // the exit-wait thread's lock acquisition.
     if let Some(handle) = pty_state.children.lock().unwrap().get(&id) {
         if let Some(child) = handle.child.lock().unwrap().as_mut() {
             let _ = child.kill();
         }
     }
-    // Clean up session state — safe to do immediately since it's only used
-    // for info queries, not for process lifecycle.
     state.pty_sessions.blocking_write().remove(&id);
     Ok(())
 }
