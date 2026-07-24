@@ -37,6 +37,14 @@ export function ensurePty(id: PtyId, shell?: string): Pty {
   return pty
 }
 
+/** Kill and remove a PTY by id. Safe to call even if none exists. */
+export function destroyPty(id: PtyId): void {
+  const pty = registry.get(id)
+  if (!pty) return
+  pty.kill()
+  registry.delete(id)
+}
+
 export function useTerminal(
   ptyId: PtyId | undefined,
   shell?: string,

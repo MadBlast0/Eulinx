@@ -21,6 +21,7 @@ import {
   getNodeTypeMeta,
   type EulinxNodeKind,
 } from "./node-graph/node-types"
+import { destroyPty } from "./terminal/use-terminal"
 
 /** Project a persisted GraphNode onto the presentational CanvasNode shape. */
 function toCanvasNode(node: GraphNode, selected: boolean): CanvasNode {
@@ -176,25 +177,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     const g = projects.graph
     if (!g) return
     pushSnapshot()
-    const graphNodes = g.nodes
-    if (graphNodes.length > 0) {
-      const columns = Math.max(1, Math.ceil(Math.sqrt(graphNodes.length)))
-      const originX = 120
-      const originY = 120
-      const colSpacing = 320
-      const rowSpacing = 200
-      graphNodes.forEach((node, index) => {
-        const col = index % columns
-        const row = Math.floor(index / columns)
-        projects.moveNode(node.id, originX + col * colSpacing, originY + row * rowSpacing)
-      })
-    }
+    window.dispatchEvent(new CustomEvent("eulinx:graph-auto-layout"))
     setContextMenu(null)
   }, [projects, pushSnapshot])
 
   const removeNode = useCallback(
     (id: string) => {
       pushSnapshot()
+      const node = projects.graph?.nodes.find((n) => n.id === id)
+      if (node?.kind === "terminal") destroyPty(id)
       projects.removeNode(id)
       setSelectedId((prev) => (prev === id ? null : prev))
     },
