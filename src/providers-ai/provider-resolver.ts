@@ -115,7 +115,8 @@ export class CapabilityResolver {
 
     if (sorted.length === 0) return undefined
 
-    const best = sorted[0]!
+    const best = sorted[0]
+    if (!best) return undefined
     const alternatives = sorted.slice(1)
 
     return {
