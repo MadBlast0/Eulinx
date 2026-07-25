@@ -178,7 +178,8 @@ export class WorkerHierarchyManager {
     const queue = [nodeId]
 
     while (queue.length > 0) {
-      const current = queue.shift()!
+      const current = queue.shift()
+      if (!current) break
       const node = this.nodes.get(current)
       if (!node) continue
 
@@ -201,7 +202,8 @@ export class WorkerHierarchyManager {
     const queue = [nodeId]
 
     while (queue.length > 0) {
-      const current = queue.shift()!
+      const current = queue.shift()
+      if (!current) break
       const node = this.nodes.get(current)
       if (!node) continue
 
@@ -224,7 +226,8 @@ export class WorkerHierarchyManager {
     const queue = [nodeId]
 
     while (queue.length > 0) {
-      const current = queue.shift()!
+      const current = queue.shift()
+      if (!current) break
       const node = this.nodes.get(current)
       if (!node) continue
 
@@ -334,7 +337,8 @@ export class WorkerHierarchyManager {
     const descendants: HierarchyNode[] = []
     const queue = [nodeId]
     while (queue.length > 0) {
-      const current = queue.shift()!
+      const current = queue.shift()
+      if (!current) break
       const node = this.nodes.get(current)
       if (!node) continue
       descendants.push(...node.childIds.map(id => this.nodes.get(id)).filter((n): n is HierarchyNode => n !== undefined))

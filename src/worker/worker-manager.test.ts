@@ -92,7 +92,7 @@ describe("WorkerManager", () => {
       mgr.registerWorker(mockRecord())
 
       mgr.transitionWorker(wid("wkr_1"), "working")
-      expect(mgr.getWorker(wid("wkr_1"))!.state).toBe("working")
+      expect(mgr.getWorker(wid("wkr_1"))?.state).toBe("working")
     })
 
     it("emits worker.state_changed event", () => {
@@ -112,7 +112,7 @@ describe("WorkerManager", () => {
       mgr.registerWorker(mockRecord())
 
       mgr.updateHealth(wid("wkr_1"), "degraded")
-      expect(mgr.getWorker(wid("wkr_1"))!.health).toBe("degraded")
+      expect(mgr.getWorker(wid("wkr_1"))?.health).toBe("degraded")
     })
 
     it("emits health_changed only on actual change", () => {
@@ -146,7 +146,7 @@ describe("WorkerManager", () => {
 
       const metrics = mgr.getMetrics(wid("wkr_1"))
       expect(metrics).toBeDefined()
-      expect(metrics!.totalTokensUsed).toBe(0)
+      expect(metrics?.totalTokensUsed).toBe(0)
     })
 
     it("updates metrics", () => {
@@ -154,7 +154,7 @@ describe("WorkerManager", () => {
       mgr.registerWorker(mockRecord())
 
       mgr.updateMetrics(wid("wkr_1"), { totalTokensUsed: 1000 })
-      expect(mgr.getMetrics(wid("wkr_1"))!.totalTokensUsed).toBe(1000)
+      expect(mgr.getMetrics(wid("wkr_1"))?.totalTokensUsed).toBe(1000)
     })
   })
 

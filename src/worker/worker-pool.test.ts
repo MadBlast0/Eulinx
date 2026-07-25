@@ -36,10 +36,10 @@ describe("WorkerPoolManager", () => {
       mgr.addToPool("pool_1", wid("w_1"))
       mgr.addToPool("pool_1", wid("w_2"))
 
-      expect(mgr.getPool("pool_1")!.workerIds).toEqual(["w_1", "w_2"])
+      expect(mgr.getPool("pool_1")?.workerIds).toEqual(["w_1", "w_2"])
 
       mgr.removeFromPool("pool_1", wid("w_1"))
-      expect(mgr.getPool("pool_1")!.workerIds).toEqual(["w_2"])
+      expect(mgr.getPool("pool_1")?.workerIds).toEqual(["w_2"])
     })
   })
 

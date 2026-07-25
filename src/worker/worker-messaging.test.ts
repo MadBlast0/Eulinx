@@ -74,9 +74,9 @@ describe("WorkerMessageRouter", () => {
       router.sendMessage(makeEnvelope(), mockHierarchy)
 
       const delivered = router.getDelivered()
-      expect(delivered[0]!.sequence).toBe(1)
-      expect(delivered[1]!.sequence).toBe(2)
-      expect(delivered[2]!.sequence).toBe(3)
+      expect(delivered[0]?.sequence).toBe(1)
+      expect(delivered[1]?.sequence).toBe(2)
+      expect(delivered[2]?.sequence).toBe(3)
     })
 
     it("control priority jumps the queue", () => {
@@ -87,8 +87,8 @@ describe("WorkerMessageRouter", () => {
       router.sendMessage(makeEnvelope({ priority: "control", kind: "cancel" }), mockHierarchy)
 
       const delivered = router.getDelivered()
-      expect(delivered[2]!.kind).toBe("cancel")
-      expect(delivered[2]!.priority).toBe("control")
+      expect(delivered[2]?.kind).toBe("cancel")
+      expect(delivered[2]?.priority).toBe("control")
     })
   })
 

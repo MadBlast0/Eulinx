@@ -200,8 +200,8 @@ describe("WorkerHierarchyManager", () => {
       const affected = mgr.cascadePause(orc.id)
       expect(affected).toContain(orc.id)
       expect(affected).toContain(worker.id)
-      expect(mgr.getNode(orc.id)!.state).toBe("paused")
-      expect(mgr.getNode(worker.id)!.state).toBe("paused")
+      expect(mgr.getNode(orc.id)?.state).toBe("paused")
+      expect(mgr.getNode(worker.id)?.state).toBe("paused")
     })
   })
 
@@ -228,7 +228,7 @@ describe("WorkerHierarchyManager", () => {
       })
 
       mgr.cascadeCancel(root.id)
-      expect(mgr.getNode(worker.id)!.state).toBe("cancelled")
+      expect(mgr.getNode(worker.id)?.state).toBe("cancelled")
     })
   })
 
@@ -261,8 +261,8 @@ describe("WorkerHierarchyManager", () => {
         producedAt: new Date().toISOString() as IsoTimestamp,
       })
 
-      expect(mgr.getNode(worker.id)!.state).toBe("completed")
-      expect(mgr.getNode(worker.id)!.result!.outcome).toBe("success")
+      expect(mgr.getNode(worker.id)?.state).toBe("completed")
+      expect(mgr.getNode(worker.id)?.result?.outcome).toBe("success")
     })
   })
 
@@ -329,12 +329,12 @@ describe("WorkerHierarchyManager", () => {
 
       const children = mgr.getChildren(root.id)
       expect(children.length).toBe(1)
-      expect(children[0]!.id).toBe(orc.id)
+      expect(children[0]?.id).toBe(orc.id)
 
       const ancestors = mgr.getAncestors(worker.id)
       expect(ancestors.length).toBe(2)
-      expect(ancestors[0]!.id).toBe(orc.id)
-      expect(ancestors[1]!.id).toBe(root.id)
+      expect(ancestors[0]?.id).toBe(orc.id)
+      expect(ancestors[1]?.id).toBe(root.id)
     })
   })
 })

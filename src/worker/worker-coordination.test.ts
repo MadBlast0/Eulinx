@@ -30,11 +30,11 @@ describe("WorkerCoordinationManager", () => {
       expect(barrier.state).toBe("waiting")
 
       mgr.completeBarrierWorker("bar_1", wid("w_1"))
-      expect(mgr.getBarrier("bar_1")!.state).toBe("waiting")
+      expect(mgr.getBarrier("bar_1")?.state).toBe("waiting")
 
       mgr.completeBarrierWorker("bar_1", wid("w_2"))
-      expect(mgr.getBarrier("bar_1")!.state).toBe("passed")
-      expect(mgr.getBarrier("bar_1")!.passedAt).toBeTruthy()
+      expect(mgr.getBarrier("bar_1")?.state).toBe("passed")
+      expect(mgr.getBarrier("bar_1")?.passedAt).toBeTruthy()
     })
 
     it("fails a barrier", () => {
@@ -42,7 +42,7 @@ describe("WorkerCoordinationManager", () => {
       mgr.createBarrier({ barrierId: "bar_1", label: "Test", expectedWorkerIds: [wid("w_1")] })
 
       mgr.failBarrier("bar_1")
-      expect(mgr.getBarrier("bar_1")!.state).toBe("failed")
+      expect(mgr.getBarrier("bar_1")?.state).toBe("failed")
     })
 
     it("cancels a barrier", () => {
@@ -50,7 +50,7 @@ describe("WorkerCoordinationManager", () => {
       mgr.createBarrier({ barrierId: "bar_1", label: "Test", expectedWorkerIds: [wid("w_1")] })
 
       mgr.cancelBarrier("bar_1")
-      expect(mgr.getBarrier("bar_1")!.state).toBe("cancelled")
+      expect(mgr.getBarrier("bar_1")?.state).toBe("cancelled")
     })
   })
 
@@ -65,7 +65,7 @@ describe("WorkerCoordinationManager", () => {
       expect(mgr.getWorkItemsForWorker(wid("w_1")).length).toBe(1)
 
       mgr.completeWorkItem("wi_1", successResult)
-      expect(mgr.getWorkItemsForWorker(wid("w_1"))[0]!.state).toBe("completed")
+      expect(mgr.getWorkItemsForWorker(wid("w_1"))[0]?.state).toBe("completed")
     })
 
     it("gets unassigned work items", () => {
@@ -76,7 +76,7 @@ describe("WorkerCoordinationManager", () => {
 
       const unassigned = mgr.getUnassignedWorkItems()
       expect(unassigned.length).toBe(1)
-      expect(unassigned[0]!.itemId).toBe("wi_2")
+      expect(unassigned[0]?.itemId).toBe("wi_2")
     })
   })
 
@@ -84,8 +84,8 @@ describe("WorkerCoordinationManager", () => {
     it("aggregates success results", () => {
       const mgr = new WorkerCoordinationManager()
       const results: NodeResult[] = [
-        { outcome: "success", summary: "A", artifactIds: ["art_1"], producedAt: "" as any },
-        { outcome: "success", summary: "B", artifactIds: ["art_2"], producedAt: "" as any },
+        { outcome: "success", summary: "A", artifactIds: ["art_1"], producedAt: "" as IsoTimestamp },
+        { outcome: "success", summary: "B", artifactIds: ["art_2"], producedAt: "" as IsoTimestamp },
       ]
 
       const agg = mgr.aggregateResults(results)
@@ -96,8 +96,8 @@ describe("WorkerCoordinationManager", () => {
     it("aggregates mixed results as partial", () => {
       const mgr = new WorkerCoordinationManager()
       const results: NodeResult[] = [
-        { outcome: "success", summary: "A", artifactIds: [], producedAt: "" as any },
-        { outcome: "failure", summary: "B", artifactIds: [], producedAt: "" as any },
+        { outcome: "success", summary: "A", artifactIds: [], producedAt: "" as IsoTimestamp },
+        { outcome: "failure", summary: "B", artifactIds: [], producedAt: "" as IsoTimestamp },
       ]
 
       const agg = mgr.aggregateResults(results)
@@ -107,8 +107,8 @@ describe("WorkerCoordinationManager", () => {
     it("aggregates all failures", () => {
       const mgr = new WorkerCoordinationManager()
       const results: NodeResult[] = [
-        { outcome: "failure", summary: "A", artifactIds: [], producedAt: "" as any },
-        { outcome: "failure", summary: "B", artifactIds: [], producedAt: "" as any },
+        { outcome: "failure", summary: "A", artifactIds: [], producedAt: "" as IsoTimestamp },
+        { outcome: "failure", summary: "B", artifactIds: [], producedAt: "" as IsoTimestamp },
       ]
 
       const agg = mgr.aggregateResults(results)
