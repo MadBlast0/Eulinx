@@ -64,6 +64,7 @@ export function NodeGraphProvider({ children }: { children: ReactNode }) {
     connections,
     selectNode,
     moveNode,
+    removeNode,
     addConnection,
   } = useWorkspace()
 
@@ -103,9 +104,12 @@ export function NodeGraphProvider({ children }: { children: ReactNode }) {
         if (change.type === "select" && change.selected) {
           selectNode(change.id)
         }
+        if (change.type === "remove") {
+          removeNode(change.id)
+        }
       }
     },
-    [onNodesChangeRaw, moveNode, selectNode],
+    [onNodesChangeRaw, moveNode, selectNode, removeNode],
   )
 
   // Persist new connections to workspace

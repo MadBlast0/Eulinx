@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { ChevronRight } from "lucide-react"
 import { AppIcon } from "./app-icon"
+import { useMenuKeyboard } from "./use-menu-keyboard"
 import type { EulinxNodeKind } from "./node-graph/node-types"
 
 // ---------------------------------------------------------------------------
@@ -45,6 +46,10 @@ export const NODE_SECTIONS = [
     ],
   },
 ] as const
+
+/** Flat list of all node kinds for keyboard indexing */
+interface FlatNodeItem { kind: EulinxNodeKind; label: string; icon: string }
+const ALL_NODE_ITEMS: FlatNodeItem[] = NODE_SECTIONS.flatMap((s) => s.items as readonly FlatNodeItem[])
 
 // ---------------------------------------------------------------------------
 // Smart positioning hook
@@ -152,6 +157,34 @@ export function NodeSubMenu({ open, onOpen, onClose, onPick, children, constrain
     return () => clearTimeout(closeTimer.current)
   }, [])
 
+  const handleSubExecute = useCallback(
+    (index: number) => {
+      const item = ALL_NODE_ITEMS[index]
+      if (item) {
+        onPick(item.kind)
+        onClose()
+      }
+    },
+    [onPick, onClose],
+  )
+
+  const { menuRef: subMenuRef, activeIndex, registerItem: registerSubItem, setHoverIndex: setSubHoverIndex, handleKeyDown: handleSubKeyDown } =
+    useMenuKeyboard({
+      open,
+      itemCount: ALL_NODE_ITEMS.length,
+      onClose,
+      onExecute: handleSubExecute,
+    })
+
+  // Merge the two refs (smart-position subRef + keyboard menuRef) into one callback ref
+  const mergedRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      ;(subRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+      ;(subMenuRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+    },
+    [subRef, subMenuRef],
+  )
+
   return (
     <div
       ref={triggerRef}
@@ -165,32 +198,53 @@ export function NodeSubMenu({ open, onOpen, onClose, onPick, children, constrain
       {/* Sub-dropdown */}
       {open && (
         <div
-          ref={subRef}
+          ref={mergedRef}
+          role="menu"
+          aria-label="Node types"
           className="fixed z-[calc(var(--Eulinx-z-dropdown)+1)] min-w-[180px] animate-[ctx-in_120ms_ease] rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] p-1 shadow-lg"
           style={{ left: pos.x, top: pos.y }}
           onMouseEnter={cancelClose}
           onMouseLeave={scheduleClose}
           onClick={(e) => e.stopPropagation()}
+          onKeyDown={handleSubKeyDown}
         >
-          {NODE_SECTIONS.map((section, si) => (
-            <div key={section.label}>
-              {si > 0 && <div className="my-1 h-px bg-[color:var(--Eulinx-color-border)]" />}
-              <div className="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-[color:var(--Eulinx-color-text-muted)]">
-                {section.label}
+          {NODE_SECTIONS.map((section, si) => {
+            // Compute global index offset for items in this section
+            let globalOffset = 0
+            for (let i = 0; i < si; i++) {
+              const sec = NODE_SECTIONS[i]
+              if (sec) globalOffset += sec.items.length
+            }
+            return (
+              <div key={section.label} role="group" aria-label={section.label}>
+                {si > 0 && <div className="my-1 h-px bg-[color:var(--Eulinx-color-border)]" role="separator" />}
+                <div className="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-[color:var(--Eulinx-color-text-muted)]" role="presentation">
+                  {section.label}
+                </div>
+                {section.items.map((opt, ii) => {
+                  const globalIndex = globalOffset + ii
+                  return (
+                    <button
+                      key={opt.kind}
+                      ref={(el) => registerSubItem(globalIndex, el)}
+                      type="button"
+                      role="menuitem"
+                      tabIndex={-1}
+                      data-active={activeIndex === globalIndex || undefined}
+                      className={`flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12.5px] text-[color:var(--Eulinx-color-text)] transition-colors duration-100 hover:bg-[color:var(--Eulinx-color-hover)] outline-none ${
+                        activeIndex === globalIndex ? "bg-[color:var(--Eulinx-color-hover)]" : ""
+                      }`}
+                      onMouseEnter={() => setSubHoverIndex(globalIndex)}
+                      onClick={() => { onPick(opt.kind); onClose() }}
+                    >
+                      <AppIcon name={opt.icon} className="h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2} />
+                      {opt.label}
+                    </button>
+                  )
+                })}
               </div>
-              {section.items.map((opt) => (
-                <button
-                  key={opt.kind}
-                  type="button"
-                  onClick={() => { onPick(opt.kind); onClose() }}
-                  className="flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12.5px] text-[color:var(--Eulinx-color-text)] transition-colors duration-100 hover:bg-[color:var(--Eulinx-color-hover)]"
-                >
-                  <AppIcon name={opt.icon} className="h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2} />
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
@@ -210,18 +264,47 @@ interface ContextMenuTriggerProps {
   label: string
   shortcut?: string
   constraint?: DOMRect | null
+  /** Index within the parent menu for keyboard navigation */
+  index?: number
+  /** Whether this item is the active (highlighted) one */
+  isActive?: boolean
+  /** Register this trigger's button element for keyboard focus */
+  registerItem?: (index: number, el: HTMLElement | null) => void
+  /** Called on hover to sync keyboard selection */
+  onHover?: () => void
 }
 
-export function ContextMenuTrigger({ open, onOpen, onClose, onPick, icon, label, shortcut, constraint }: ContextMenuTriggerProps) {
+export function ContextMenuTrigger({
+  open,
+  onOpen,
+  onClose,
+  onPick,
+  icon,
+  label,
+  shortcut,
+  constraint,
+  index,
+  isActive,
+  registerItem,
+  onHover,
+}: ContextMenuTriggerProps) {
   return (
     <NodeSubMenu open={open} onOpen={onOpen} onClose={onClose} onPick={onPick} constraint={constraint}>
       <button
+        ref={index !== undefined && registerItem ? (el) => registerItem(index, el) : undefined}
         type="button"
-        className="flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12.5px] text-[color:var(--Eulinx-color-text)] transition-colors duration-100 hover:bg-[color:var(--Eulinx-color-hover)]"
+        role="menuitem"
+        tabIndex={-1}
+        data-active={isActive || undefined}
+        className={`flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12.5px] text-[color:var(--Eulinx-color-text)] transition-colors duration-100 hover:bg-[color:var(--Eulinx-color-hover)] outline-none ${
+          isActive ? "bg-[color:var(--Eulinx-color-hover)]" : ""
+        }`}
+        onMouseEnter={onHover}
+        onClick={onOpen}
       >
         <span className="text-[color:var(--Eulinx-color-text-muted)]">{icon}</span>
         {label}
-        {shortcut && <kbd className="ml-auto text-[10px] text-[color:var(--Eulinx-color-text-muted)]">{shortcut}</kbd>}
+        {shortcut && <kbd className="text-[10px] text-[color:var(--Eulinx-color-text-muted)]">{shortcut}</kbd>}
         <ChevronRight className="ml-auto h-3 w-3 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2} />
       </button>
     </NodeSubMenu>
