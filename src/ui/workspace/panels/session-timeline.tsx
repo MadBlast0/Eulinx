@@ -395,9 +395,10 @@ function TimelineTrack({
   const trackRef = useRef<HTMLDivElement>(null)
   const visible = events.slice(0, visibleCount)
 
-  const timeMin = visible.length > 0 && visible[0] ? visible[0].emittedMs : 0
-  const timeMax =
-    visible.length > 0 && visible[visible.length - 1] ? visible[visible.length - 1]!.emittedMs : 1 // Safe: guarded by length and truthiness check
+  const firstVisible = visible.length > 0 ? visible[0] : null
+  const timeMin = firstVisible ? firstVisible.emittedMs : 0
+  const lastVisible = visible.length > 0 ? visible[visible.length - 1] : null
+  const timeMax = lastVisible ? lastVisible.emittedMs : 1
   const timeSpan = Math.max(timeMax - timeMin, 1)
 
   const branchAtSequences = useMemo(() => {

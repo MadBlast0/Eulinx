@@ -50,7 +50,8 @@ async function browserListDir(path: string): Promise<FileEntry[]> {
     if (key.startsWith(innerPath) && key !== innerPath) {
       const relative = key.slice(innerPath.length).replace(/^\/+/, "")
       if (!relative) continue
-      const name = relative.split("/")[0]!
+      const name = relative.split("/")[0]
+      if (!name) continue
       if (!entries.some((e) => e.name === name)) {
         const childKey = innerPath ? `${innerPath}/${name}` : name
         const child = virtualFs.get(childKey)

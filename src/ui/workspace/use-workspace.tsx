@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
   useCallback,
@@ -122,7 +123,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const undo = useCallback(() => {
     const snapshot = undoStack[0]
     if (!snapshot || !projects.graph) return
-    setRedoStack((prev) => [{ nodes: [...projects.graph!.nodes], edges: [...projects.graph!.edges] }, ...prev]) // Safe: guarded by null check above
+    const graph = projects.graph
+    setRedoStack((prev) => [{ nodes: [...graph.nodes], edges: [...graph.edges] }, ...prev])
     setUndoStack((prev) => prev.slice(1))
     projects.setGraphNodes(snapshot.nodes)
     projects.setGraphEdges(snapshot.edges)
@@ -131,7 +133,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const redo = useCallback(() => {
     const snapshot = redoStack[0]
     if (!snapshot || !projects.graph) return
-    setUndoStack((prev) => [{ nodes: [...projects.graph!.nodes], edges: [...projects.graph!.edges] }, ...prev]) // Safe: guarded by null check above
+    const graph = projects.graph
+    setUndoStack((prev) => [{ nodes: [...graph.nodes], edges: [...graph.edges] }, ...prev])
     setRedoStack((prev) => prev.slice(1))
     projects.setGraphNodes(snapshot.nodes)
     projects.setGraphEdges(snapshot.edges)

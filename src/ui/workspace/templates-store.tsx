@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react"
 import { ArtifactManager } from "@/artifact/artifact-manager"
 import type { WorkspaceId } from "@/core/types"

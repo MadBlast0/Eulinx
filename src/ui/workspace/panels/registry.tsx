@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import type { ComponentType } from "react"
 
 import LogsPanel from "./logs-panel"

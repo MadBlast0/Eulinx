@@ -92,11 +92,15 @@ class Parser {
   constructor(private readonly tokens: Token[]) {}
 
   private peek(): Token {
-    return this.tokens[this.pos]!
+    const tok = this.tokens[this.pos]
+    if (!tok) throw new Error("Unexpected end of input")
+    return tok
   }
 
   private next(): Token {
-    return this.tokens[this.pos++]!
+    const tok = this.tokens[this.pos++]
+    if (!tok) throw new Error("Unexpected end of input")
+    return tok
   }
 
   parse(): AstNode {

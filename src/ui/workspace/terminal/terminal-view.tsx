@@ -82,7 +82,7 @@ function TerminalXterm({
     const h = host ?? hostRef.current
     if (!t || !h) return false
     try {
-      const dims = (t as any)._core?._renderService?.dimensions
+      const dims = (t as unknown as { _core: { _renderService: { dimensions: { css: { cell: { width: number; height: number } } } } } })._core?._renderService?.dimensions
       if (!dims || dims.css.cell.width === 0 || dims.css.cell.height === 0) return false
       const style = getComputedStyle(h)
       const padX = parseInt(style.paddingLeft || "0") + parseInt(style.paddingRight || "0")
@@ -144,7 +144,7 @@ function TerminalXterm({
       fitRef.current = null
       searchRef.current = null
     }
-  }, [])
+  }, [fitTerm, pty, autoFocus, theme])
 
   // Re-theme when the active theme changes.
   useEffect(() => {
@@ -181,7 +181,7 @@ function TerminalXterm({
       dataSub.dispose()
       offExit()
     }
-  }, [pty])
+  }, [pty, autoFocus, fitTerm])
 
   // Resize PTY when container size changes.
   useEffect(() => {
@@ -208,7 +208,7 @@ function TerminalXterm({
       if (timer) clearTimeout(timer)
       cancelAnimationFrame(raf)
     }
-  }, [pty])
+  }, [pty, fitTerm])
 
   // Focus and re-fit when terminal becomes connected
   useEffect(() => {
@@ -218,8 +218,8 @@ function TerminalXterm({
     try {
       fitTerm(termRef.current, fitRef.current, hostRef.current, pty)
       term.focus()
-    } catch {}
-  }, [connectionState, pty])
+    } catch { void 0 }
+  }, [connectionState, pty, fitTerm])
 
   // Click anywhere in terminal area → focus
   const handleWrapperClick = useCallback(() => {

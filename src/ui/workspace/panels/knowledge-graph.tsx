@@ -265,19 +265,20 @@ function clusterLayout(
     const groups = byType.get(type) ?? []
     const colCenterX = padding + colWidth * colIdx + colWidth / 2
 
-    let totalNodes = 0
-    for (const g of groups) totalNodes += g.nodes.length
+
 
     // Distribute groups vertically within the column
     const groupSpacing = Math.min(200, (height - 2 * padding) / Math.max(groups.length, 1))
 
     for (let gIdx = 0; gIdx < groups.length; gIdx++) {
-      const group = groups[gIdx]!
+      const group = groups[gIdx]
+      if (!group) continue
       const clusterCenterY = padding + groupSpacing * gIdx + groupSpacing / 2
 
       // Arrange nodes in a small circle within the cluster
       for (let nIdx = 0; nIdx < group.nodes.length; nIdx++) {
-        const node = group.nodes[nIdx]!
+        const node = group.nodes[nIdx]
+        if (!node) continue
         const angle = (2 * Math.PI * nIdx) / group.nodes.length
         const clusterRadius = Math.min(30, 10 + group.nodes.length * 5)
 
@@ -316,10 +317,11 @@ function clusterLayout(
     // Repulsion between all nodes
     for (let i = 0; i < forceNodes.length; i++) {
       for (let j = i + 1; j < forceNodes.length; j++) {
-        const a = forceNodes[i]!
-        const b = forceNodes[j]!
-        let dx = b.x - a.x
-        let dy = b.y - a.y
+        const a = forceNodes[i]
+        const b = forceNodes[j]
+        if (!a || !b) continue
+        const dx = b.x - a.x
+        const dy = b.y - a.y
         const dist = Math.sqrt(dx * dx + dy * dy) || 1
         const minDist = 30
         if (dist < minDist * 4) {

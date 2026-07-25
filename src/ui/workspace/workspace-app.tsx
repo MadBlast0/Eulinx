@@ -190,14 +190,16 @@ function WorkspaceShell() {
   const REGION_ORDER: RegionId[] = ["sidebar", "canvas", "inspector", "panel"]
   useCommand("app.focusNext", () => {
     const idx = Math.max(0, REGION_ORDER.indexOf(focusedRegion))
-    const next = REGION_ORDER[(idx + 1) % REGION_ORDER.length]!
+    const next = REGION_ORDER[(idx + 1) % REGION_ORDER.length]
+    if (!next) return
     setFocusedRegion(next)
     const el = document.querySelector(`[data-region="${next}"]`)
     if (el instanceof HTMLElement) el.focus()
   })
   useCommand("app.focusPrevious", () => {
     const idx = Math.max(0, REGION_ORDER.indexOf(focusedRegion))
-    const prev = REGION_ORDER[(idx - 1 + REGION_ORDER.length) % REGION_ORDER.length]!
+    const prev = REGION_ORDER[(idx - 1 + REGION_ORDER.length) % REGION_ORDER.length]
+    if (!prev) return
     setFocusedRegion(prev)
     const el = document.querySelector(`[data-region="${prev}"]`)
     if (el instanceof HTMLElement) el.focus()

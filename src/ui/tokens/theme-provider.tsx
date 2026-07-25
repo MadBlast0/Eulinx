@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * P18-UI-DASH â€” Theme Provider (Themes-Part01 .. Part04)
  *

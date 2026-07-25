@@ -76,7 +76,8 @@ function buildTree(events: readonly PersistedEventEnvelope[]): readonly TraceNod
   }
 
   function buildNode(eventId: string, depth: number): TraceNode {
-    const event = byId.get(eventId)!
+    const event = byId.get(eventId)
+    if (!event) throw new Error(`Unknown event: ${eventId}`)
     const children = (childMap.get(eventId) ?? []).map((c) => buildNode(c.eventId, depth + 1))
     return { event, children, depth }
   }

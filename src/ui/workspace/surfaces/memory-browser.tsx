@@ -45,7 +45,7 @@ export default function MemoryBrowser() {
         e.tags.some((t) => t.toLowerCase().includes(q))
       )
     })
-  }, [query, filter])
+  }, [query, filter, entries])
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

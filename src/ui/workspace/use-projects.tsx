@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import {
   createContext,
   useCallback,
@@ -215,7 +216,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           const removed = p.views.find((v) => v.id === viewId)
           const views = p.views.filter((v) => v.id !== viewId)
           const graphs = { ...(p.graphs ?? {}) }
-          if (removed?.graphId) { const { [removed.graphId]: _, ...rest } = graphs; Object.assign(graphs, rest) }
+          if (removed?.graphId) { const { [removed.graphId]: _omit, ...cleaned } = graphs; Object.assign(graphs, cleaned); void _omit }
           const activeViewId =
             p.activeViewId === viewId ? views[0]?.id : p.activeViewId
           return { ...p, views, graphs, activeViewId }

@@ -14,9 +14,11 @@ const SCOPE_TONE: Record<Prompt["scope"], Tone> = {
 
 export default function PromptInspector() {
   const { prompts } = usePrompts()
-  const fallback = prompts[0]
-  const [activeId, setActiveId] = useState<string>(fallback?.id ?? "")
-  const active = prompts.find((p) => p.id === activeId) ?? fallback!
+  const [activeId, setActiveId] = useState<string>("")
+  const fallback: Prompt | undefined = prompts[0]
+  const active: Prompt | undefined = prompts.find((p) => p.id === activeId) ?? fallback
+
+  if (prompts.length === 0 || !active) return null
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

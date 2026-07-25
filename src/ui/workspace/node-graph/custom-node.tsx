@@ -69,7 +69,7 @@ function CustomNodeImpl({ id, data, selected, width, height }: NodeProps<CustomN
         return nodes.map((x) => (x.id === id ? { ...x, width: undefined, height: undefined } : x))
       })
     }
-  }, [expanded])
+  }, [expanded, id, rf])
 
   return (
     <div
