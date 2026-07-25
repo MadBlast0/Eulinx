@@ -41,56 +41,56 @@ const SwipeActions = React.forwardRef<HTMLDivElement, SwipeActionsProps>(
     const maxTranslateLeft = rightActionWidth
     const maxTranslateRight = -leftActionWidth
 
-    function handleTouchStart(e: TouchEvent) {
-      const touch = e.touches[0]
-      if (!touch) return
-      startXRef.current = touch.clientX
-      swipingRef.current = true
-    }
-
-    function handleTouchMove(e: TouchEvent) {
-      if (!swipingRef.current) return
-      const touch = e.touches[0]
-      if (!touch) return
-      const dx = touch.clientX - startXRef.current
-      const absDx = Math.abs(dx)
-      if (absDx < 10) return
-      e.preventDefault()
-
-      let newTranslate: number
-      if (isRevealed) {
-        newTranslate = translateX + dx * 0.5
-        if (translateX > 0) {
-          newTranslate = Math.min(maxTranslateLeft, Math.max(0, newTranslate))
-        } else {
-          newTranslate = Math.max(-maxTranslateRight, Math.min(0, newTranslate))
-        }
-      } else {
-        const rawDx = dx * 0.5
-        newTranslate =
-          rawDx > 0
-            ? Math.min(maxTranslateLeft, Math.max(0, rawDx))
-            : Math.max(-maxTranslateRight, Math.min(0, rawDx))
-      }
-      setTranslateX(newTranslate)
-      startXRef.current = touch.clientX
-    }
-
-    function handleTouchEnd() {
-      swipingRef.current = false
-      if (translateX > threshold) {
-        setTranslateX(maxTranslateLeft)
-        setIsRevealed(true)
-      } else if (translateX < -threshold) {
-        setTranslateX(-maxTranslateRight)
-        setIsRevealed(true)
-      } else {
-        setTranslateX(0)
-        setIsRevealed(false)
-      }
-    }
-
     React.useEffect(() => {
+      function handleTouchStart(e: TouchEvent) {
+        const touch = e.touches[0]
+        if (!touch) return
+        startXRef.current = touch.clientX
+        swipingRef.current = true
+      }
+
+      function handleTouchMove(e: TouchEvent) {
+        if (!swipingRef.current) return
+        const touch = e.touches[0]
+        if (!touch) return
+        const dx = touch.clientX - startXRef.current
+        const absDx = Math.abs(dx)
+        if (absDx < 10) return
+        e.preventDefault()
+
+        let newTranslate: number
+        if (isRevealed) {
+          newTranslate = translateX + dx * 0.5
+          if (translateX > 0) {
+            newTranslate = Math.min(maxTranslateLeft, Math.max(0, newTranslate))
+          } else {
+            newTranslate = Math.max(-maxTranslateRight, Math.min(0, newTranslate))
+          }
+        } else {
+          const rawDx = dx * 0.5
+          newTranslate =
+            rawDx > 0
+              ? Math.min(maxTranslateLeft, Math.max(0, rawDx))
+              : Math.max(-maxTranslateRight, Math.min(0, rawDx))
+        }
+        setTranslateX(newTranslate)
+        startXRef.current = touch.clientX
+      }
+
+      function handleTouchEnd() {
+        swipingRef.current = false
+        if (translateX > threshold) {
+          setTranslateX(maxTranslateLeft)
+          setIsRevealed(true)
+        } else if (translateX < -threshold) {
+          setTranslateX(-maxTranslateRight)
+          setIsRevealed(true)
+        } else {
+          setTranslateX(0)
+          setIsRevealed(false)
+        }
+      }
+
       const el = containerRef.current
       if (!el) return
       el.addEventListener("touchstart", handleTouchStart, { passive: true })

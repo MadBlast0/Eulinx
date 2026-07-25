@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import * as React from "react"
 import { ShortcutManager } from "@/utils/shortcut-manager"
 import type { ShortcutOptions } from "@/utils/shortcut-manager"

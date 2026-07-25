@@ -37,57 +37,57 @@ const PullToRefresh = React.forwardRef<HTMLDivElement, PullToRefreshProps>(
 
     const indicatorHeight = Math.min(pullDistance, threshold + 20)
 
-    function applyFriction(distance: number): number {
-      if (distance <= threshold) return distance
-      return threshold + (distance - threshold) * 0.3
-    }
-
-    function handleTouchStart(e: TouchEvent) {
-      if (refreshingRef.current) return
-      const scrollTop = containerRef.current?.scrollTop ?? 0
-      if (scrollTop > 0) return
-      const touch = e.touches[0]
-      if (!touch) return
-      startYRef.current = touch.clientY
-      pullingRef.current = true
-    }
-
-    function handleTouchMove(e: TouchEvent) {
-      if (!pullingRef.current || refreshingRef.current) return
-      const touch = e.touches[0]
-      if (!touch) return
-      const dy = touch.clientY - startYRef.current
-      if (dy <= 0) {
-        setPullDistance(0)
-        setPullState("idle")
-        return
+    React.useEffect(() => {
+      function applyFriction(distance: number): number {
+        if (distance <= threshold) return distance
+        return threshold + (distance - threshold) * 0.3
       }
-      e.preventDefault()
-      const distance = applyFriction(dy)
-      setPullDistance(distance)
-      setPullState(distance >= threshold ? "threshold" : "pulling")
-    }
 
-    async function handleTouchEnd() {
-      if (!pullingRef.current || refreshingRef.current) return
-      pullingRef.current = false
-      if (pullDistance >= threshold) {
-        setPullState("refreshing")
-        refreshingRef.current = true
-        try {
-          await onRefresh()
-        } finally {
-          refreshingRef.current = false
+      function handleTouchStart(e: TouchEvent) {
+        if (refreshingRef.current) return
+        const scrollTop = containerRef.current?.scrollTop ?? 0
+        if (scrollTop > 0) return
+        const touch = e.touches[0]
+        if (!touch) return
+        startYRef.current = touch.clientY
+        pullingRef.current = true
+      }
+
+      function handleTouchMove(e: TouchEvent) {
+        if (!pullingRef.current || refreshingRef.current) return
+        const touch = e.touches[0]
+        if (!touch) return
+        const dy = touch.clientY - startYRef.current
+        if (dy <= 0) {
+          setPullDistance(0)
+          setPullState("idle")
+          return
+        }
+        e.preventDefault()
+        const distance = applyFriction(dy)
+        setPullDistance(distance)
+        setPullState(distance >= threshold ? "threshold" : "pulling")
+      }
+
+      async function handleTouchEnd() {
+        if (!pullingRef.current || refreshingRef.current) return
+        pullingRef.current = false
+        if (pullDistance >= threshold) {
+          setPullState("refreshing")
+          refreshingRef.current = true
+          try {
+            await onRefresh()
+          } finally {
+            refreshingRef.current = false
+            setPullState("idle")
+            setPullDistance(0)
+          }
+        } else {
           setPullState("idle")
           setPullDistance(0)
         }
-      } else {
-        setPullState("idle")
-        setPullDistance(0)
       }
-    }
 
-    React.useEffect(() => {
       if (!isTouch) return
       const el = containerRef.current
       if (!el) return

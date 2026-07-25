@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import * as React from "react"
 import { cn } from "@/utils/cn"
 import { useReducedMotion as useReducedMotionHook } from "@/hooks/useReducedMotion"

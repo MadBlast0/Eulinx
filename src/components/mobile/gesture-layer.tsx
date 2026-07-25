@@ -42,85 +42,85 @@ const GestureLayer = React.forwardRef<HTMLDivElement, GestureLayerProps>(
 
     React.useImperativeHandle(ref, () => internalRef.current as HTMLDivElement, [])
 
-    function clearLongPress() {
-      if (longPressTimerRef.current !== undefined) {
-        clearTimeout(longPressTimerRef.current)
-        longPressTimerRef.current = undefined
+    React.useEffect(() => {
+      function clearLongPress() {
+        if (longPressTimerRef.current !== undefined) {
+          clearTimeout(longPressTimerRef.current)
+          longPressTimerRef.current = undefined
+        }
       }
-    }
 
-    function handleTouchStart(e: TouchEvent) {
-      if (disabled) return
-      const touch = e.touches[0]
-      if (!touch) return
-      startXRef.current = touch.clientX
-      startYRef.current = touch.clientY
-      movedRef.current = false
-      longPressFiredRef.current = false
-
-      if (onLongPress) {
-        clearLongPress()
-        longPressTimerRef.current = setTimeout(() => {
-          longPressFiredRef.current = true
-          onLongPress()
-        }, 500)
-      }
-    }
-
-    function handleTouchMove(e: TouchEvent) {
-      if (disabled || longPressFiredRef.current) return
-      const touch = e.touches[0]
-      if (!touch) return
-      const dx = touch.clientX - startXRef.current
-      const dy = touch.clientY - startYRef.current
-      if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-        movedRef.current = true
-        clearLongPress()
-      }
-    }
-
-    function handleTouchEnd(e: TouchEvent) {
-      if (disabled) return
-      clearLongPress()
-
-      if (longPressFiredRef.current) {
+      function handleTouchStart(e: TouchEvent) {
+        if (disabled) return
+        const touch = e.touches[0]
+        if (!touch) return
+        startXRef.current = touch.clientX
+        startYRef.current = touch.clientY
+        movedRef.current = false
         longPressFiredRef.current = false
-        return
+
+        if (onLongPress) {
+          clearLongPress()
+          longPressTimerRef.current = setTimeout(() => {
+            longPressFiredRef.current = true
+            onLongPress()
+          }, 500)
+        }
       }
 
-      if (movedRef.current) {
-        const touch = e.changedTouches[0]
+      function handleTouchMove(e: TouchEvent) {
+        if (disabled || longPressFiredRef.current) return
+        const touch = e.touches[0]
         if (!touch) return
         const dx = touch.clientX - startXRef.current
         const dy = touch.clientY - startYRef.current
-        const absDx = Math.abs(dx)
-        const absDy = Math.abs(dy)
+        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
+          movedRef.current = true
+          clearLongPress()
+        }
+      }
 
-        if (Math.max(absDx, absDy) < threshold) {
-          if (onTap) onTap()
+      function handleTouchEnd(e: TouchEvent) {
+        if (disabled) return
+        clearLongPress()
+
+        if (longPressFiredRef.current) {
+          longPressFiredRef.current = false
           return
         }
 
-        if (absDx > absDy) {
-          if (dx > 0) onSwipeRight?.()
-          else onSwipeLeft?.()
+        if (movedRef.current) {
+          const touch = e.changedTouches[0]
+          if (!touch) return
+          const dx = touch.clientX - startXRef.current
+          const dy = touch.clientY - startYRef.current
+          const absDx = Math.abs(dx)
+          const absDy = Math.abs(dy)
+
+          if (Math.max(absDx, absDy) < threshold) {
+            if (onTap) onTap()
+            return
+          }
+
+          if (absDx > absDy) {
+            if (dx > 0) onSwipeRight?.()
+            else onSwipeLeft?.()
+          } else {
+            if (dy > 0) onSwipeDown?.()
+            else onSwipeUp?.()
+          }
         } else {
-          if (dy > 0) onSwipeDown?.()
-          else onSwipeUp?.()
-        }
-      } else {
-        const now = Date.now()
-        if (onDoubleTap && now - lastTapRef.current < 300) {
-          onDoubleTap()
-          lastTapRef.current = 0
-        } else {
-          lastTapRef.current = now
-          if (onTap && !onDoubleTap) onTap()
+          const now = Date.now()
+          if (onDoubleTap && now - lastTapRef.current < 300) {
+            onDoubleTap()
+            lastTapRef.current = 0
+          } else {
+            lastTapRef.current = now
+            if (onTap && !onDoubleTap) onTap()
+          }
         }
       }
-    }
 
-    React.useEffect(() => {
       if (disabled) return
       const el = internalRef.current
       if (!el) return
