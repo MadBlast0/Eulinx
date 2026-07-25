@@ -123,7 +123,8 @@ export const useRuntimeStore = create<RuntimeState>((set) => ({
 
   applyWorkerRemoved: (workerId) =>
     set((state) => {
-      const { [workerId]: _, ...rest } = state.workers
+      const { [workerId]: _removed, ...rest } = state.workers
+      void _removed
       return { workers: rest }
     }),
 

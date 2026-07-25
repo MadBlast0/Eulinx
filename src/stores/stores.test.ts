@@ -40,7 +40,7 @@ describe("RuntimeStore", () => {
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     })
     store.applyWorkerStateChanged({ workerId: "w2", state: "working" })
-    expect(useRuntimeStore.getState().workers["w2"]!.state).toBe("working")
+    expect(useRuntimeStore.getState().workers["w2"]?.state).toBe("working")
   })
 
   it("applies worker removed", () => {
@@ -125,14 +125,18 @@ describe("LayoutStore", () => {
     const store = useLayoutStore.getState()
     store.resetLayout("ws1")
     store.updateRegion("sidebar", { size: 300 })
-    expect(useLayoutStore.getState().layout!.regions.sidebar.size).toBe(300)
+    const layout = useLayoutStore.getState().layout
+    if (!layout) throw new Error("expected layout to be set")
+    expect(layout.regions.sidebar.size).toBe(300)
   })
 
   it("collapses region", () => {
     const store = useLayoutStore.getState()
     store.resetLayout("ws1")
     store.collapseRegion("sidebar")
-    const sidebar = useLayoutStore.getState().layout!.regions.sidebar
+    const layout = useLayoutStore.getState().layout
+    if (!layout) throw new Error("expected layout to be set")
+    const sidebar = layout.regions.sidebar
     expect(sidebar.collapsed).toBe(true)
     expect(sidebar.size).toBe(REGION_CONSTRAINTS.sidebar.railSize)
   })
@@ -142,7 +146,9 @@ describe("LayoutStore", () => {
     store.resetLayout("ws1")
     store.collapseRegion("sidebar")
     store.expandRegion("sidebar")
-    const sidebar = useLayoutStore.getState().layout!.regions.sidebar
+    const layout = useLayoutStore.getState().layout
+    if (!layout) throw new Error("expected layout to be set")
+    const sidebar = layout.regions.sidebar
     expect(sidebar.collapsed).toBe(false)
     expect(sidebar.size).toBe(sidebar.restoreSize)
   })
@@ -150,7 +156,8 @@ describe("LayoutStore", () => {
   it("resets layout", () => {
     const store = useLayoutStore.getState()
     store.resetLayout("ws1")
-    const layout = useLayoutStore.getState().layout!
+    const layout = useLayoutStore.getState().layout
+    if (!layout) throw new Error("expected layout to be set")
     expect(layout.workspaceId).toBe("ws1")
     expect(layout.schemaVersion).toBe(1)
     expect(layout.regions.sidebar.size).toBe(260)

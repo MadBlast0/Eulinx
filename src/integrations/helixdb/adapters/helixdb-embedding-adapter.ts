@@ -402,7 +402,7 @@ export class HelixDBEmbeddingAdapter implements EmbeddingProvider {
     norm = Math.sqrt(norm)
     if (norm > 0) {
       for (let i = 0; i < result.length; i++) {
-        result[i] = result[i]! / norm
+        result[i] = (result[i] ?? 0) / norm
       }
     }
     return result

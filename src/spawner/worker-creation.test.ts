@@ -32,8 +32,8 @@ describe("Role Resolution", () => {
     const result = resolveRole("builder", roleRegistry)
     expect(result.ok).toBe(true)
     if (result.ok) {
-      const original = roleRegistry.get("builder")!
-      // Modifying the resolved role should not affect the registry
+      const original = roleRegistry.get("builder")
+      if (!original) throw new Error("expected builder role in registry")
       ;(result.role as { description: string }).description = "modified"
       expect(original.description).not.toBe("modified")
     }
@@ -49,7 +49,9 @@ describe("Role Resolution", () => {
 
   it("rejects deprecated role", () => {
     const deprecated = new Map(roleRegistry)
-    deprecated.set("old_role", { ...roleRegistry.get("builder")!, roleId: "old_role", deprecated: true })
+    const builderRole = roleRegistry.get("builder")
+    if (!builderRole) throw new Error("expected builder role in registry")
+    deprecated.set("old_role", { ...builderRole, roleId: "old_role", deprecated: true })
     const result = resolveRole("old_role", deprecated)
     expect(result.ok).toBe(false)
     if (!result.ok) {
@@ -58,7 +60,8 @@ describe("Role Resolution", () => {
   })
 
   it("rejects child role not in parent's allowedChildRoleIds", () => {
-    const parentRole = roleRegistry.get("reviewer")!
+    const parentRole = roleRegistry.get("reviewer")
+    if (!parentRole) throw new Error("expected reviewer role in registry")
     const result = resolveRole("builder", roleRegistry, parentRole)
     expect(result.ok).toBe(false)
     if (!result.ok) {
@@ -67,7 +70,8 @@ describe("Role Resolution", () => {
   })
 
   it("allows child role in parent's allowedChildRoleIds", () => {
-    const parentRole = roleRegistry.get("orchestrator")!
+    const parentRole = roleRegistry.get("orchestrator")
+    if (!parentRole) throw new Error("expected orchestrator role in registry")
     const result = resolveRole("builder", roleRegistry, parentRole)
     expect(result.ok).toBe(true)
   })

@@ -157,7 +157,7 @@ describe("BaseOrchestrator", () => {
     await orch.start()
     const events = orch.getEvents()
     expect(events.length).toBeGreaterThan(0)
-    expect(events[0]!.type).toBe("orchestrator.started")
+    expect(events[0]?.type).toBe("orchestrator.started")
   })
 
   it("returns correct snapshot", async () => {

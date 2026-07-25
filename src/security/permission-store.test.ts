@@ -19,22 +19,22 @@ describe("PermissionStore", () => {
   it("grants a permission via setGranted", () => {
     const store = usePermissionStore.getState()
     const toggled = PERMISSION_CATALOG.find((e) => !e.defaultOn)
-    expect(toggled).toBeDefined()
-    store.setGranted(toggled!.id, true)
-    expect(usePermissionStore.getState().isGranted(toggled!.id)).toBe(true)
+    if (!toggled) throw new Error("expected toggled to be defined")
+    store.setGranted(toggled.id, true)
+    expect(usePermissionStore.getState().isGranted(toggled.id)).toBe(true)
   })
 
   it("revokes a permission via setGranted", () => {
     const store = usePermissionStore.getState()
     const toggled = PERMISSION_CATALOG.find((e) => e.defaultOn)
-    expect(toggled).toBeDefined()
-    store.setGranted(toggled!.id, false)
-    expect(usePermissionStore.getState().isGranted(toggled!.id)).toBe(false)
+    if (!toggled) throw new Error("expected toggled to be defined")
+    store.setGranted(toggled.id, false)
+    expect(usePermissionStore.getState().isGranted(toggled.id)).toBe(false)
   })
 
   it("bumps version on grant/revoke", () => {
     const before = usePermissionStore.getState().version
-    usePermissionStore.getState().setGranted(PERMISSION_CATALOG[0]!.id, true)
+    usePermissionStore.getState().setGranted(PERMISSION_CATALOG[0]?.id ?? "", true)
     expect(usePermissionStore.getState().version).toBeGreaterThan(before)
   })
 

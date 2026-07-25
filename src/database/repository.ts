@@ -105,7 +105,7 @@ class LocalStorageAdapter implements StorageAdapter {
     if (index === -1) throw new DatabaseError('not_found', `Row not found in ${table}: ${id}`)
     store[index] = { ...store[index], ...data } as T
     this.setStore(table, store)
-    return store[index]!
+    return store[index] as T
   }
 
   async remove(table: string, id: IdType): Promise<void> {

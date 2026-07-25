@@ -57,7 +57,8 @@ describe("CoordinatorOrchestrator", () => {
   it("decomposes goal into phases", async () => {
     const coord = new CoordinatorOrchestrator(makeConfig(), makeGoal())
     await coord.start()
-    const plan = coord.currentPlan!
+    const plan = coord.currentPlan
+    if (!plan) throw new Error("expected currentPlan to be defined")
     const phases = Object.values(plan.nodes).filter(n => n.id.startsWith("phase-"))
     expect(phases.length).toBeGreaterThanOrEqual(1)
   })

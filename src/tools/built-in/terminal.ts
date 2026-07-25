@@ -55,7 +55,8 @@ export interface TerminalExecOptions {
   readonly spawn?: (shell?: string) => Pty
 }
 
-const ANSI = /\u001b\[[0-9;]*m/g
+const ESC = String.fromCharCode(27)
+const ANSI = new RegExp(ESC + "\\[[0-9;]*m", "g")
 
 function stripAnsi(text: string): string {
   return text.replace(ANSI, "")

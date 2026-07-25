@@ -242,7 +242,8 @@ export class EventRegistry {
       const parts = def.type.split(".")
       if (parts.length >= 2) {
         const family = parts[0] as EventFamily
-        const fact = parts[1]!
+        const fact = parts[1]
+        if (!fact) continue
         const uri = toEulinxUri(family, fact)
         this.schemas.set(uri, { ...def, type: uri })
       }
@@ -257,7 +258,8 @@ export class EventRegistry {
     const parts = schema.type.split(".")
     if (parts.length < 2) return this.register({ ...schema, type: schema.type })
     const family = parts[0] as EventFamily
-    const fact = parts[1]!
+    const fact = parts[1]
+    if (!fact) return false
     const uri = toEulinxUri(family, fact)
     const shortOk = this.register({ ...schema, type: schema.type })
     const uriOk = this.register({ ...schema, type: uri })
