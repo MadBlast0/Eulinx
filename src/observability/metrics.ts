@@ -5,6 +5,7 @@
  * From RuntimeManager-Part01 §Runtime Diagnostics.
  */
 
+import type { IsoTimestamp } from "@/core/types"
 import type { MetricDefinition, MetricSnapshot, MetricValue } from "./observability-types"
 
 // ---------------------------------------------------------------------------
@@ -91,17 +92,19 @@ export class MetricsCollector {
           value: this.gauges.get(key) ?? 0,
           labels: {},
         })
-      } else if (kind === "histogram" && values.length > 0) {
+} else if (kind === "histogram" && values.length > 0) {
         const nums = values.map((v) => v.value).sort((a, b) => a - b)
+        const last = nums[nums.length - 1] ?? 0
+        const first = nums[0] ?? 0
         snapshots.push({
           name,
           kind,
-          value: nums[nums.length - 1]!,
+          value: last,
           labels: {},
           count: nums.length,
           sum: nums.reduce((a, b) => a + b, 0),
-          min: nums[0],
-          max: nums[nums.length - 1],
+          min: first,
+          max: last,
           avg: nums.reduce((a, b) => a + b, 0) / nums.length,
         })
       }
@@ -128,7 +131,7 @@ export class MetricsCollector {
       name,
       value,
       labels,
-      timestamp: new Date().toISOString() as any,
+      timestamp: new Date().toISOString() as IsoTimestamp,
     })
   }
 

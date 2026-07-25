@@ -3,6 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest"
+import type { WorkspaceId, IsoTimestamp } from "@/core/types"
 import { MetricsCollector, DEFAULT_METRICS } from "./metrics"
 import { Tracer } from "./tracing"
 import { Profiler } from "./profiling"
@@ -65,8 +66,8 @@ describe("Tracer", () => {
     const { spanId } = tracer.startSpan("test", "service", "op")
     const span = tracer.finishSpan(spanId)
     expect(span).toBeDefined()
-    expect(span!.endTime).toBeDefined()
-    expect(span!.durationMs).toBeGreaterThanOrEqual(0)
+    expect(span?.endTime).toBeDefined()
+    expect(span?.durationMs).toBeGreaterThanOrEqual(0)
   })
 
   it("adds events to spans", () => {
@@ -74,7 +75,7 @@ describe("Tracer", () => {
     const { spanId } = tracer.startSpan("test", "service", "op")
     tracer.addEvent(spanId, "event1", { key: "value" })
     const span = tracer.getSpan(spanId)
-    expect(span!.events).toHaveLength(1)
+    expect(span?.events).toHaveLength(1)
   })
 
   it("tracks parent-child relationships", () => {
@@ -101,8 +102,8 @@ describe("Profiler", () => {
     profiler.recordEvent("memory", 50, { bytes: 1024 })
     const session = profiler.stopSession()
     expect(session).toBeDefined()
-    expect(session!.events).toHaveLength(2)
-    expect(session!.summary.totalDurationMs).toBe(150)
+    expect(session?.events).toHaveLength(2)
+    expect(session?.summary.totalDurationMs).toBe(150)
   })
 
   it("tracks GC events", () => {
@@ -111,8 +112,8 @@ describe("Profiler", () => {
     profiler.recordEvent("gc", 10)
     profiler.recordEvent("gc", 20)
     const session = profiler.stopSession()
-    expect(session!.summary.gcCount).toBe(2)
-    expect(session!.summary.gcPauseMs).toBe(30)
+    expect(session?.summary.gcCount).toBe(2)
+    expect(session?.summary.gcPauseMs).toBe(30)
   })
 
   it("clears sessions", () => {
@@ -132,7 +133,7 @@ describe("HealthMonitor", () => {
       status: "healthy",
       message: "ok",
       durationMs: 0,
-      checkedAt: new Date().toISOString() as any,
+      checkedAt: new Date().toISOString() as IsoTimestamp,
     }))
     const snapshot = await monitor.check()
     expect(snapshot.status).toBe("healthy")
@@ -146,7 +147,7 @@ describe("HealthMonitor", () => {
       status: "unhealthy",
       message: "fail",
       durationMs: 0,
-      checkedAt: new Date().toISOString() as any,
+      checkedAt: new Date().toISOString() as IsoTimestamp,
     }))
     const snapshot = await monitor.check()
     expect(snapshot.status).toBe("unhealthy")
@@ -156,7 +157,7 @@ describe("HealthMonitor", () => {
     const monitor = new HealthMonitor()
     monitor.register("error", () => { throw new Error("boom") })
     const snapshot = await monitor.check()
-    expect(snapshot.checks[0]!.status).toBe("unhealthy")
+    expect(snapshot.checks[0]?.status).toBe("unhealthy")
   })
 })
 
@@ -176,7 +177,7 @@ describe("AlertManager", () => {
     })
     const alert = manager.evaluate("cpu", 95)
     expect(alert).not.toBeNull()
-    expect(alert!.severity).toBe("warning")
+    expect(alert?.severity).toBe("warning")
   })
 
   it("does not trigger when condition not met", () => {
@@ -197,9 +198,11 @@ describe("AlertManager", () => {
       condition: "greater_than", threshold: 0, durationMs: 0,
       severity: "info", enabled: true,
     })
-    const alert = manager.evaluate("x", 1)!
+    const alert = manager.evaluate("x", 1)
+    if (!alert) throw new Error("expected alert")
     const ack = manager.acknowledge(alert.alertId)
-    expect(ack!.status).toBe("acknowledged")
+    if (!ack) throw new Error("expected ack")
+    expect(ack.status).toBe("acknowledged")
   })
 
   it("resolves alerts", () => {
@@ -209,32 +212,34 @@ describe("AlertManager", () => {
       condition: "greater_than", threshold: 0, durationMs: 0,
       severity: "info", enabled: true,
     })
-    const alert = manager.evaluate("x", 1)!
+    const alert = manager.evaluate("x", 1)
+    if (!alert) throw new Error("expected alert")
     const resolved = manager.resolve(alert.alertId)
-    expect(resolved!.status).toBe("resolved")
+    if (!resolved) throw new Error("expected resolved")
+    expect(resolved.status).toBe("resolved")
   })
 })
 
 describe("AnalyticsTracker", () => {
   it("tracks events", () => {
     const tracker = new AnalyticsTracker()
-    const event = tracker.track("worker_spawned", "ws1" as any)
+    const event = tracker.track("worker_spawned", "ws1" as WorkspaceId)
     expect(event.eventId).toBeDefined()
     expect(tracker.getTotalCount()).toBe(1)
   })
 
   it("filters by kind", () => {
     const tracker = new AnalyticsTracker()
-    tracker.track("worker_spawned", "ws1" as any)
-    tracker.track("worker_completed", "ws1" as any)
-    tracker.track("worker_spawned", "ws1" as any)
+    tracker.track("worker_spawned", "ws1" as WorkspaceId)
+    tracker.track("worker_completed", "ws1" as WorkspaceId)
+    tracker.track("worker_spawned", "ws1" as WorkspaceId)
     expect(tracker.getByKind("worker_spawned")).toHaveLength(2)
   })
 
   it("counts by kind", () => {
     const tracker = new AnalyticsTracker()
-    tracker.track("worker_spawned", "ws1" as any)
-    tracker.track("worker_completed", "ws1" as any)
+    tracker.track("worker_spawned", "ws1" as WorkspaceId)
+    tracker.track("worker_completed", "ws1" as WorkspaceId)
     const counts = tracker.getCountsByKind()
     expect(counts["worker_spawned"]).toBe(1)
     expect(counts["worker_completed"]).toBe(1)
@@ -247,7 +252,7 @@ describe("CostTracker", () => {
     tracker.record({
       provider: "openai", model: "gpt-4", inputTokens: 100, outputTokens: 50,
       cacheReadTokens: 0, cacheWriteTokens: 0, costUsd: 0.01, latencyMs: 200,
-      workspaceId: "ws1" as any, kind: "chat",
+      workspaceId: "ws1" as WorkspaceId, kind: "chat",
     })
     expect(tracker.getTotalCost()).toBe(0.01)
     expect(tracker.getTotalTokens()).toBe(150)
@@ -258,7 +263,7 @@ describe("CostTracker", () => {
     tracker.record({
       provider: "openai", model: "gpt-4", inputTokens: 100, outputTokens: 50,
       cacheReadTokens: 0, cacheWriteTokens: 0, costUsd: 0.01, latencyMs: 200,
-      workspaceId: "ws1" as any, kind: "chat",
+      workspaceId: "ws1" as WorkspaceId, kind: "chat",
     })
     const summary = tracker.getSummary("all")
     expect(summary.totalCostUsd).toBe(0.01)

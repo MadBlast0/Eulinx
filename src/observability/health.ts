@@ -5,6 +5,7 @@
  * From RuntimeManager-Part01 §Runtime Health.
  */
 
+import type { IsoTimestamp } from "@/core/types"
 import type { HealthCheckResult, HealthSnapshot, HealthStatus } from "./observability-types"
 
 // ---------------------------------------------------------------------------
@@ -55,7 +56,7 @@ export class HealthMonitor {
           status: "unhealthy",
           message: error instanceof Error ? error.message : String(error),
           durationMs: Date.now() - start,
-          checkedAt: new Date().toISOString() as any,
+          checkedAt: new Date().toISOString() as IsoTimestamp,
         }
         results.push(errorResult)
         this.recordHistory(check.name, errorResult)
@@ -78,7 +79,7 @@ export class HealthMonitor {
         rssBytes: mem.rss,
         externalBytes: mem.external,
       },
-      timestamp: new Date().toISOString() as any,
+      timestamp: new Date().toISOString() as IsoTimestamp,
     }
   }
 
@@ -119,7 +120,7 @@ export function createMemoryCheck(thresholdPercent: number = 80): HealthCheckFn 
       status,
       message: `Heap usage: ${percent.toFixed(1)}%`,
       durationMs: 0,
-      checkedAt: new Date().toISOString() as any,
+      checkedAt: new Date().toISOString() as IsoTimestamp,
       details: { heapUsed: mem.heapUsed, heapTotal: mem.heapTotal, percent },
     }
   }
@@ -131,6 +132,6 @@ export function createUptimeCheck(): HealthCheckFn {
     status: "healthy",
     message: `Uptime: ${Math.round(process.uptime())}s`,
     durationMs: 0,
-    checkedAt: new Date().toISOString() as any,
+    checkedAt: new Date().toISOString() as IsoTimestamp,
   })
 }

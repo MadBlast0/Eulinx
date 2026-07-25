@@ -5,6 +5,7 @@
  * From RuntimeManager-Part01 §Runtime Diagnostics.
  */
 
+import type { IsoTimestamp } from "@/core/types"
 import type { ProfileEvent, ProfileSession, ProfileSummary, ProfileEventType } from "./observability-types"
 
 // ---------------------------------------------------------------------------
@@ -22,7 +23,7 @@ export class Profiler {
     const profileId = `prof_${Date.now().toString(36)}`
     const session: ProfileSession = {
       profileId,
-      startTime: new Date().toISOString() as any,
+      startTime: new Date().toISOString() as IsoTimestamp,
       events: [],
       summary: {
         totalDurationMs: 0,
@@ -48,12 +49,11 @@ export class Profiler {
 
     const event: ProfileEvent = {
       type,
-      timestamp: new Date().toISOString() as any,
+      timestamp: new Date().toISOString() as IsoTimestamp,
       durationMs,
       details,
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(session as any).events.push(event)
+    ;(session as ProfileSession).events.push(event)
     this.updateSummary(session)
   }
 
@@ -67,7 +67,7 @@ export class Profiler {
 
     const stopped = {
       ...session,
-      endTime: new Date().toISOString() as any,
+      endTime: new Date().toISOString() as IsoTimestamp,
     }
     this.sessions.set(this.currentSessionId, stopped)
     this.currentSessionId = null

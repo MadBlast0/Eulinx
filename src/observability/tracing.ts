@@ -5,6 +5,7 @@
  * From RuntimeManager-Part01 §Runtime Diagnostics.
  */
 
+import type { IsoTimestamp } from "@/core/types"
 import type { TraceSpan, TraceSpanStatus, TraceEvent } from "./observability-types"
 
 // ---------------------------------------------------------------------------
@@ -37,7 +38,7 @@ export class Tracer {
       name,
       service,
       operation,
-      startTime: new Date().toISOString() as any,
+      startTime: new Date().toISOString() as IsoTimestamp,
       status: "ok",
       attributes,
       events: [],
@@ -56,11 +57,10 @@ export class Tracer {
     if (!span) return
     const event: TraceEvent = {
       name,
-      timestamp: new Date().toISOString() as any,
+      timestamp: new Date().toISOString() as IsoTimestamp,
       attributes,
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(span as any).events.push(event)
+    ;(span as TraceSpan).events.push(event)
   }
 
   /**
@@ -72,7 +72,7 @@ export class Tracer {
 
     const finished = {
       ...span,
-      endTime: new Date().toISOString() as any,
+      endTime: new Date().toISOString() as IsoTimestamp,
       durationMs: Date.now() - new Date(span.startTime).getTime(),
       status,
     }

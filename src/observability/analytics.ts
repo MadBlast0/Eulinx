@@ -5,6 +5,7 @@
  * From CostOptimization-Part01 through Part05.
  */
 
+import type { IsoTimestamp } from "@/core/types"
 import type { UsageEvent, UsageEventKind } from "./observability-types"
 import type { WorkspaceId } from "@/core/types"
 
@@ -23,7 +24,7 @@ export class AnalyticsTracker {
     const event: UsageEvent = {
       eventId: `evt_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
       kind,
-      timestamp: new Date().toISOString() as any,
+      timestamp: new Date().toISOString() as IsoTimestamp,
       workspaceId,
       metadata,
     }

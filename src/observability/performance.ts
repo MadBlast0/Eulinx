@@ -5,6 +5,7 @@
  * From RuntimeManager-Part01 §Runtime Diagnostics.
  */
 
+import type { IsoTimestamp } from "@/core/types"
 import type { PerformanceMetrics } from "./observability-types"
 
 // ---------------------------------------------------------------------------
@@ -78,13 +79,13 @@ export class PerformanceMonitor {
       cpuUsagePercent: this.getCpuUsage(),
       memoryUsageMb: Math.round(mem.heapUsed / 1024 / 1024),
       eventLoopLagMs: 0,
-      activeHandles: (process as any)._getActiveHandles?.()?.length ?? 0,
-      activeRequests: (process as any)._getActiveRequests?.()?.length ?? 0,
+      activeHandles: (process as unknown as { _getActiveHandles?: () => { length: number } })._getActiveHandles?.()?.length ?? 0,
+      activeRequests: (process as unknown as { _getActiveRequests?: () => { length: number } })._getActiveRequests?.()?.length ?? 0,
       gcPauseMs: 0,
       heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
       heapTotalMb: Math.round(mem.heapTotal / 1024 / 1024),
       rssMb: Math.round(mem.rss / 1024 / 1024),
-      timestamp: new Date().toISOString() as any,
+      timestamp: new Date().toISOString() as IsoTimestamp,
     }
     this.history.push(metrics)
     if (this.history.length > this.maxHistory) {

@@ -5,6 +5,7 @@
  * From RuntimeManager-Part01 §Runtime Diagnostics.
  */
 
+import type { IsoTimestamp } from "@/core/types"
 import type { Alert, AlertCondition, AlertRule, AlertStatus } from "./observability-types"
 
 // ---------------------------------------------------------------------------
@@ -52,7 +53,7 @@ export class AlertManager {
     const updated = {
       ...alert,
       status: "acknowledged" as AlertStatus,
-      acknowledgedAt: new Date().toISOString() as any,
+      acknowledgedAt: new Date().toISOString() as IsoTimestamp,
     }
     this.alerts.set(alertId, updated)
     return updated
@@ -67,7 +68,7 @@ export class AlertManager {
     const updated = {
       ...alert,
       status: "resolved" as AlertStatus,
-      resolvedAt: new Date().toISOString() as any,
+      resolvedAt: new Date().toISOString() as IsoTimestamp,
     }
     this.alerts.set(alertId, updated)
     return updated
@@ -112,7 +113,7 @@ export class AlertManager {
       message: `${rule.name}: ${value} ${rule.condition} ${rule.threshold}`,
       value,
       threshold: rule.threshold,
-      triggeredAt: new Date().toISOString() as any,
+      triggeredAt: new Date().toISOString() as IsoTimestamp,
     }
     this.alerts.set(alert.alertId, alert)
     this.history.push(alert)

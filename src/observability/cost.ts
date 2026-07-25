@@ -5,6 +5,7 @@
  * From CostOptimization-Part01 through Part05.
  */
 
+import type { IsoTimestamp } from "@/core/types"
 import type { CostEntry, CostPeriod, CostSummary } from "./observability-types"
 import type { WorkspaceId } from "@/core/types"
 
@@ -40,7 +41,7 @@ export class CostTracker {
     const full: CostEntry = {
       ...entry,
       entryId: `cost_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 6)}`,
-      timestamp: new Date().toISOString() as any,
+      timestamp: new Date().toISOString() as IsoTimestamp,
     }
     this.entries.push(full)
     if (this.entries.length > this.maxEntries) {
@@ -68,7 +69,8 @@ export class CostTracker {
       if (!byProvider[entry.provider]) {
         byProvider[entry.provider] = { provider: entry.provider, costUsd: 0, tokens: 0, calls: 0 }
       }
-      const pSum = byProvider[entry.provider]!
+      const pSum = byProvider[entry.provider]
+      if (!pSum) continue
       pSum.costUsd += entry.costUsd
       pSum.tokens += entry.inputTokens + entry.outputTokens
       pSum.calls++
@@ -85,7 +87,8 @@ export class CostTracker {
           avgLatencyMs: 0,
         }
       }
-      const mSum = byModel[modelKey]!
+      const mSum = byModel[modelKey]
+      if (!mSum) continue
       mSum.costUsd += entry.costUsd
       mSum.tokens += entry.inputTokens + entry.outputTokens
       mSum.calls++
