@@ -185,8 +185,8 @@ export class ArtifactHistory {
    * Get the highest sequence number.
    */
   maxSequence(): number {
-    return this.records.length > 0
-      ? this.records[this.records.length - 1]!.sequence // Safe: length > 0 guaranteed by guard
-      : 0
+    const records = this.records
+    const last = records.length > 0 ? records[records.length - 1] : undefined
+    return last?.sequence ?? 0
   }
 }

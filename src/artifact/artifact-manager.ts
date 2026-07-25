@@ -680,8 +680,8 @@ export class ArtifactManager {
       pendingMerge,
       lastCreatedAt: all.length > 0
         ? all.reduce((latest, a) =>
-            a.createdAt > latest ? a.createdAt : latest, all[0]!.createdAt
-          )
+            a.createdAt > latest ? a.createdAt : latest, "" as IsoTimestamp
+          ) as IsoTimestamp
         : undefined,
     }
   }

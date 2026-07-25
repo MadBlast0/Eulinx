@@ -10,12 +10,11 @@
  * Uses FNV-1a algorithm — fast, non-cryptographic, sufficient for content addressing.
  */
 function fnv1aHash(data: Uint8Array): string {
-  let hash = 0x811c9dc5 // FNV offset basis
+  let hash = 0x811c9dc5
   for (let i = 0; i < data.length; i++) {
-    hash ^= data[i]!
-    hash = (hash * 0x01000193) >>> 0 // FNV prime, keep as u32
+    hash ^= data[i] ?? 0
+    hash = (hash * 0x01000193) >>> 0
   }
-  // Convert to hex string with leading zeros
   return hash.toString(16).padStart(8, "0")
 }
 import type { ArtifactId } from "@/core/types"
@@ -59,7 +58,7 @@ interface SerializableArtifact {
 
 function serialize(store: Map<string, StoredArtifact>): string {
   const entries: SerializableArtifact[] = []
-  for (const [_id, stored] of store) {
+  for (const [, stored] of store) {
     const content = typeof stored.content === "string"
       ? stored.content
       : new TextDecoder("utf-8", { fatal: false }).decode(stored.content)

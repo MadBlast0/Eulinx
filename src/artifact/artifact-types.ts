@@ -127,7 +127,7 @@ export interface ArtifactMeta {
 // Artifact Record (full, with mutable tracking)
 // ---------------------------------------------------------------------------
 
-export interface Artifact extends ArtifactMeta {}
+export type Artifact = ArtifactMeta
 
 // ---------------------------------------------------------------------------
 // Artifact Create Request (ArtifactManager-Part03 §ArtifactCreateRequest)

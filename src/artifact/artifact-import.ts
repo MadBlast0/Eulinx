@@ -14,6 +14,7 @@ import type {
   ArtifactExportBundle,
   Sensitivity,
 } from "./artifact-types"
+import { createHash } from "node:crypto"
 
 // ---------------------------------------------------------------------------
 // Import Source
@@ -217,7 +218,6 @@ export class ArtifactImport {
 
   /** Compute content hash. */
   private computeHash(content: string | Uint8Array): string {
-    const { createHash } = require("node:crypto")
     const hasher = createHash("sha256")
     if (typeof content === "string") {
       hasher.update(content, "utf-8")
