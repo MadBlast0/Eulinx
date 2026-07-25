@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest"
-import type { SessionId, WorkerId } from "@/core/types"
+import type { SessionId, WorkerId, WorkspaceId, IsoTimestamp } from "@/core/types"
 import type { PersistedSessionState } from "@/state/session-state"
 import { SessionSnapshotManager, validateSnapshotRestore } from "./session-snapshot"
 import type { SessionSnapshot } from "./session-types"
@@ -15,7 +15,7 @@ function mockSessionState(overrides?: Partial<PersistedSessionState>): Persisted
   const now = new Date().toISOString()
   return {
     id: sid("ses_1"),
-    workspaceId: "ws_1" as any,
+    workspaceId: "ws_1" as WorkspaceId,
     runtimeId: "rt_1",
     kind: "chat",
     state: "running",
@@ -32,11 +32,11 @@ function mockSessionState(overrides?: Partial<PersistedSessionState>): Persisted
       totalDurationMs: 30000,
       errorCount: 0,
     },
-    startedAt: now as any,
-    lastPersistedAt: now as any,
+    startedAt: now as IsoTimestamp,
+    lastPersistedAt: now as IsoTimestamp,
     metadata: {
-      createdAt: now as any,
-      updatedAt: now as any,
+      createdAt: now as IsoTimestamp,
+      updatedAt: now as IsoTimestamp,
       version: 5,
       checksum: "",
     },
@@ -89,8 +89,8 @@ describe("SessionSnapshotManager", () => {
 
       const all = mgr.getSessionSnapshots(sid("ses_1"))
       expect(all.length).toBe(2)
-      expect(all[0]!.label).toBe("Snap 1")
-      expect(all[1]!.label).toBe("Snap 2")
+      expect(all[0]?.label).toBe("Snap 1")
+      expect(all[1]?.label).toBe("Snap 2")
     })
 
     it("getLatestSnapshot returns last snapshot", () => {
@@ -101,15 +101,15 @@ describe("SessionSnapshotManager", () => {
       const second = mgr.createSnapshot({ sessionId: sid("ses_1"), label: "Second" }, state)
 
       const latest = mgr.getLatestSnapshot(sid("ses_1"))
-      expect(latest!.snapshotId).toBe(second.snapshotId)
+      expect(latest?.snapshotId).toBe(second.snapshotId)
     })
 
     it("getSnapshotsBefore filters by event seq", () => {
       const mgr = new SessionSnapshotManager()
 
-      mgr.createSnapshot({ sessionId: sid("ses_1"), label: "At 3" }, mockSessionState({ seq: 3 } as any))
-      mgr.createSnapshot({ sessionId: sid("ses_1"), label: "At 5" }, mockSessionState({ seq: 5 } as any))
-      mgr.createSnapshot({ sessionId: sid("ses_1"), label: "At 8" }, mockSessionState({ seq: 8 } as any))
+      mgr.createSnapshot({ sessionId: sid("ses_1"), label: "At 3" }, mockSessionState({ seq: 3 } as Partial<PersistedSessionState>))
+      mgr.createSnapshot({ sessionId: sid("ses_1"), label: "At 5" }, mockSessionState({ seq: 5 } as Partial<PersistedSessionState>))
+      mgr.createSnapshot({ sessionId: sid("ses_1"), label: "At 8" }, mockSessionState({ seq: 8 } as Partial<PersistedSessionState>))
 
       const before = mgr.getSnapshotsBefore(sid("ses_1"), 5)
       expect(before.length).toBe(2)
@@ -154,7 +154,7 @@ describe("validateSnapshotRestore", () => {
       activeTaskIds: [],
       artifactIds: [],
       metrics: {},
-      createdAt: new Date().toISOString() as any,
+      createdAt: new Date().toISOString() as IsoTimestamp,
     }
 
     expect(validateSnapshotRestore(snap, sid("ses_1"))).toEqual([])
@@ -171,7 +171,7 @@ describe("validateSnapshotRestore", () => {
       activeTaskIds: [],
       artifactIds: [],
       metrics: {},
-      createdAt: new Date().toISOString() as any,
+      createdAt: new Date().toISOString() as IsoTimestamp,
     }
 
     const errors = validateSnapshotRestore(snap, sid("ses_2"))

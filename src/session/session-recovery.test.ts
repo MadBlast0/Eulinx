@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest"
-import type { SessionId, WorkspaceId } from "@/core/types"
+import type { SessionId, WorkspaceId, IsoTimestamp } from "@/core/types"
 import type { PersistedSessionState } from "@/state/session-state"
 import {
   determineSessionRecovery,
@@ -40,11 +40,11 @@ function mockRecoveryInput(
         totalDurationMs: 0,
         errorCount: 0,
       },
-      startedAt: now as any,
-      lastPersistedAt: now as any,
+      startedAt: now as IsoTimestamp,
+      lastPersistedAt: now as IsoTimestamp,
       metadata: {
-        createdAt: now as any,
-        updatedAt: now as any,
+        createdAt: now as IsoTimestamp,
+        updatedAt: now as IsoTimestamp,
         version: 1,
         checksum: "",
       },
@@ -101,7 +101,7 @@ describe("determineSessionRecovery", () => {
       activeTaskIds: [],
       artifactIds: [],
       metrics: {},
-      createdAt: new Date().toISOString() as any,
+      createdAt: new Date().toISOString() as IsoTimestamp,
     }
 
     const output = determineSessionRecovery(

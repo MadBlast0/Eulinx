@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest"
-import type { SessionId, WorkerId } from "@/core/types"
+import type { SessionId, WorkerId, WorkspaceId, IsoTimestamp } from "@/core/types"
 import type { PersistedSessionState } from "@/state/session-state"
 import {
   buildSessionCleanupPlan,
@@ -18,7 +18,7 @@ function mockState(overrides?: Partial<PersistedSessionState>): PersistedSession
   const now = new Date().toISOString()
   return {
     id: sid("ses_1"),
-    workspaceId: "ws_1" as any,
+    workspaceId: "ws_1" as WorkspaceId,
     runtimeId: "rt_1",
     kind: "chat",
     state: "completed",
@@ -35,12 +35,12 @@ function mockState(overrides?: Partial<PersistedSessionState>): PersistedSession
       totalDurationMs: 0,
       errorCount: 0,
     },
-    startedAt: now as any,
-    endedAt: now as any,
-    lastPersistedAt: now as any,
+    startedAt: now as IsoTimestamp,
+    endedAt: now as IsoTimestamp,
+    lastPersistedAt: now as IsoTimestamp,
     metadata: {
-      createdAt: now as any,
-      updatedAt: now as any,
+      createdAt: now as IsoTimestamp,
+      updatedAt: now as IsoTimestamp,
       version: 1,
       checksum: "",
     },
@@ -111,7 +111,7 @@ describe("isSessionCleanedUp", () => {
   })
 
   it("returns false for non-terminal state", () => {
-    const state = mockState({ state: "running" as any, activeWorkerIds: [] })
+    const state = mockState({ state: "running" as PersistedSessionState["state"], activeWorkerIds: [] })
     expect(isSessionCleanedUp(state)).toBe(false)
   })
 })

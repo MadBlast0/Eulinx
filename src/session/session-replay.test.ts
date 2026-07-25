@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from "vitest"
-import type { SessionId } from "@/core/types"
+import type { SessionId, WorkspaceId, IsoTimestamp } from "@/core/types"
 import { SessionReplayEngine } from "./session-replay"
 import type { SessionEvent } from "./session-types"
 
@@ -14,9 +14,9 @@ function mockEvents(count: number): SessionEvent[] {
   return Array.from({ length: count }, (_, i) => ({
     kind: "session.started" as const,
     sessionId: sid("ses_1"),
-    workspaceId: "ws_1" as any,
+    workspaceId: "ws_1" as WorkspaceId,
     eventSeq: i + 1,
-    timestamp: now as any,
+    timestamp: now as IsoTimestamp,
     actor: "system",
     detail: `Event ${i + 1}`,
   }))
@@ -77,13 +77,13 @@ describe("SessionReplayEngine", () => {
 
       const e1 = engine.step()
       expect(e1).not.toBeNull()
-      expect(e1!.eventSeq).toBe(1)
+      expect(e1?.eventSeq).toBe(1)
 
       const e2 = engine.step()
-      expect(e2!.eventSeq).toBe(2)
+      expect(e2?.eventSeq).toBe(2)
 
       const e3 = engine.step()
-      expect(e3!.eventSeq).toBe(3)
+      expect(e3?.eventSeq).toBe(3)
 
       // End of replay
       const e4 = engine.step()
@@ -105,7 +105,7 @@ describe("SessionReplayEngine", () => {
 
       engine.seekTo(5)
       const entry = engine.step()
-      expect(entry!.eventSeq).toBe(5)
+      expect(entry?.eventSeq).toBe(5)
     })
   })
 
@@ -113,9 +113,9 @@ describe("SessionReplayEngine", () => {
     it("filters events by type", () => {
       const engine = new SessionReplayEngine()
       const events: SessionEvent[] = [
-        { kind: "session.started", sessionId: sid("ses_1"), workspaceId: "ws_1" as any, eventSeq: 1, timestamp: "" as any, actor: "system" },
-        { kind: "session.paused", sessionId: sid("ses_1"), workspaceId: "ws_1" as any, eventSeq: 2, timestamp: "" as any, actor: "system" },
-        { kind: "session.started", sessionId: sid("ses_1"), workspaceId: "ws_1" as any, eventSeq: 3, timestamp: "" as any, actor: "system" },
+        { kind: "session.started", sessionId: sid("ses_1"), workspaceId: "ws_1" as WorkspaceId, eventSeq: 1, timestamp: "" as IsoTimestamp, actor: "system" },
+        { kind: "session.paused", sessionId: sid("ses_1"), workspaceId: "ws_1" as WorkspaceId, eventSeq: 2, timestamp: "" as IsoTimestamp, actor: "system" },
+        { kind: "session.started", sessionId: sid("ses_1"), workspaceId: "ws_1" as WorkspaceId, eventSeq: 3, timestamp: "" as IsoTimestamp, actor: "system" },
       ]
 
       engine.prepare(sid("ses_1"), events, { filter: { eventTypes: ["session.started"] } })

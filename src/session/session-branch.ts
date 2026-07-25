@@ -9,7 +9,7 @@
 import type { Result } from "@/core/result"
 import { ok, err } from "@/core/result"
 import type { CoreError } from "@/core/error"
-import type { SessionId, IsoTimestamp } from "@/core/types"
+import type { SessionId, IsoTimestamp, WorkspaceId } from "@/core/types"
 import type { HelixDBClient, TenantScopedClient } from "@/integrations/helixdb/helixdb-client"
 import { LABEL_SESSION, EDGE_BRANCHED_FROM, EDGE_HAS_EVENT } from "@/integrations/helixdb/helixdb-types"
 import type { PersistedEventEnvelope } from "@/event-bus/event-history"
@@ -65,7 +65,7 @@ export class SessionBranchManager {
     kind: SessionKind = "chat",
   ): SessionCreateRequest {
     return {
-      workspaceId: "" as any, // Caller must fill in workspaceId
+      workspaceId: "" as WorkspaceId, // Caller must fill in workspaceId
       runtimeId,
       kind,
       parentSessionId: branch.sourceSessionId,

@@ -255,7 +255,7 @@ export class SessionManager {
    */
   async recoverSession(sessionId: SessionId): Promise<PersistedSessionState | null> {
     if (!getConfig().helixdb.enabled || !this.helixdbClient) return null
-    if (this.sessions.has(sessionId)) return this.sessions.get(sessionId)!
+    if (this.sessions.has(sessionId)) return this.sessions.get(sessionId) ?? null
 
     const result = await this.helixdbClient.query({
       query: `nWithLabelWhere("${LABEL_SESSION}", eq("id", "${sessionId}"))`,

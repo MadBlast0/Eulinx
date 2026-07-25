@@ -185,10 +185,12 @@ export class SessionReplayEngine {
 
     // Apply range
     if (this.currentConfig?.startEventSeq !== undefined) {
-      filtered = filtered.filter(e => e.eventSeq >= this.currentConfig!.startEventSeq!) // Safe: guarded by undefined check above
+      const start = this.currentConfig.startEventSeq
+      filtered = filtered.filter(e => e.eventSeq >= start)
     }
     if (this.currentConfig?.endEventSeq !== undefined) {
-      filtered = filtered.filter(e => e.eventSeq <= this.currentConfig!.endEventSeq!) // Safe: guarded by undefined check above
+      const end = this.currentConfig.endEventSeq
+      filtered = filtered.filter(e => e.eventSeq <= end)
     }
 
     // Convert to timeline entries

@@ -32,9 +32,9 @@ describe("SessionManager", () => {
 
       const state = mgr.getSession(handle.sessionId)
       expect(state).toBeDefined()
-      expect(state!.state).toBe("created")
-      expect(state!.seq).toBe(1)
-      expect(state!.kind).toBe("chat")
+      expect(state?.state).toBe("created")
+      expect(state?.seq).toBe(1)
+      expect(state?.kind).toBe("chat")
     })
 
     it("stores metadata", async () => {
@@ -43,8 +43,8 @@ describe("SessionManager", () => {
 
       const meta = mgr.getMetadata(handle.sessionId)
       expect(meta).toBeDefined()
-      expect(meta!.kind).toBe("terminal")
-      expect(meta!.runtimeId).toBe("rt_1")
+      expect(meta?.kind).toBe("terminal")
+      expect(meta?.runtimeId).toBe("rt_1")
     })
 
     it("emits session.created event", async () => {
@@ -72,7 +72,8 @@ describe("SessionManager", () => {
       await mgr.initializeSession(handle.sessionId)
 
       const state = mgr.getSession(handle.sessionId)
-      expect(state!.state).toBe("running")
+      if (!state) throw new Error("expected session to exist")
+      expect(state.state).toBe("running")
     })
 
     it("emits all lifecycle events", async () => {
@@ -97,10 +98,10 @@ describe("SessionManager", () => {
       await mgr.initializeSession(handle.sessionId)
 
       mgr.pauseSession(handle.sessionId, "User requested")
-      expect(mgr.getSession(handle.sessionId)!.state).toBe("paused")
+      expect(mgr.getSession(handle.sessionId)?.state).toBe("paused")
 
       mgr.resumeSession(handle.sessionId, "User resumed")
-      expect(mgr.getSession(handle.sessionId)!.state).toBe("running")
+      expect(mgr.getSession(handle.sessionId)?.state).toBe("running")
     })
   })
 
@@ -111,7 +112,7 @@ describe("SessionManager", () => {
       await mgr.initializeSession(handle.sessionId)
 
       mgr.completeSession(handle.sessionId)
-      expect(mgr.getSession(handle.sessionId)!.state).toBe("completed")
+      expect(mgr.getSession(handle.sessionId)?.state).toBe("completed")
       expect(mgr.getActiveSessionId()).toBeNull()
     })
 
@@ -122,7 +123,7 @@ describe("SessionManager", () => {
       mgr.completeSession(handle.sessionId)
 
       mgr.archiveSession(handle.sessionId)
-      expect(mgr.getSession(handle.sessionId)!.state).toBe("archived")
+      expect(mgr.getSession(handle.sessionId)?.state).toBe("archived")
     })
   })
 
@@ -133,8 +134,8 @@ describe("SessionManager", () => {
       await mgr.initializeSession(handle.sessionId)
 
       mgr.failSession(handle.sessionId, "Error occurred")
-      expect(mgr.getSession(handle.sessionId)!.state).toBe("failed")
-      expect(mgr.getSession(handle.sessionId)!.endedAt).toBeTruthy()
+      expect(mgr.getSession(handle.sessionId)?.state).toBe("failed")
+      expect(mgr.getSession(handle.sessionId)?.endedAt).toBeTruthy()
     })
 
     it("cancels a session", async () => {
@@ -142,7 +143,7 @@ describe("SessionManager", () => {
       const handle = await mgr.createSession(baseRequest())
 
       mgr.cancelSession(handle.sessionId, "User cancelled")
-      expect(mgr.getSession(handle.sessionId)!.state).toBe("cancelled")
+      expect(mgr.getSession(handle.sessionId)?.state).toBe("cancelled")
     })
   })
 
@@ -154,11 +155,12 @@ describe("SessionManager", () => {
       mgr.addWorker(handle.sessionId, wid("w_1"))
       mgr.addWorker(handle.sessionId, wid("w_2"))
 
-      const state = mgr.getSession(handle.sessionId)!
+      const state = mgr.getSession(handle.sessionId)
+      if (!state) throw new Error("expected session to exist")
       expect(state.activeWorkerIds).toEqual(["w_1", "w_2"])
 
       mgr.removeWorker(handle.sessionId, wid("w_1"))
-      expect(mgr.getSession(handle.sessionId)!.activeWorkerIds).toEqual(["w_2"])
+      expect(mgr.getSession(handle.sessionId)?.activeWorkerIds).toEqual(["w_2"])
     })
 
     it("respects maxWorkersPerSession limit", async () => {
@@ -178,10 +180,10 @@ describe("SessionManager", () => {
       const handle = await mgr.createSession(baseRequest())
 
       mgr.addTask(handle.sessionId, "t_1")
-      expect(mgr.getSession(handle.sessionId)!.activeTaskIds).toContain("t_1")
+      expect(mgr.getSession(handle.sessionId)?.activeTaskIds).toContain("t_1")
 
       mgr.removeTask(handle.sessionId, "t_1")
-      expect(mgr.getSession(handle.sessionId)!.activeTaskIds).not.toContain("t_1")
+      expect(mgr.getSession(handle.sessionId)?.activeTaskIds).not.toContain("t_1")
     })
 
     it("deduplicates tasks", async () => {
@@ -190,7 +192,7 @@ describe("SessionManager", () => {
 
       mgr.addTask(handle.sessionId, "t_1")
       mgr.addTask(handle.sessionId, "t_1")
-      expect(mgr.getSession(handle.sessionId)!.activeTaskIds).toEqual(["t_1"])
+      expect(mgr.getSession(handle.sessionId)?.activeTaskIds).toEqual(["t_1"])
     })
   })
 
@@ -202,7 +204,8 @@ describe("SessionManager", () => {
       mgr.addArtifact(handle.sessionId, "art_1")
       mgr.addArtifact(handle.sessionId, "art_2")
 
-      const state = mgr.getSession(handle.sessionId)!
+      const state = mgr.getSession(handle.sessionId)
+      if (!state) throw new Error("expected session to exist")
       expect(state.artifactIds).toEqual(["art_1", "art_2"])
       expect(state.metrics.totalArtifactsCreated).toBe(2)
     })
@@ -219,9 +222,9 @@ describe("SessionManager", () => {
 
       const ctx = mgr.buildContext(handle.sessionId)
       expect(ctx).not.toBeNull()
-      expect(ctx!.sessionId).toBe(handle.sessionId)
-      expect(ctx!.activeWorkerIds).toEqual(["w_1"])
-      expect(ctx!.activeTaskIds).toEqual(["t_1"])
+      expect(ctx?.sessionId).toBe(handle.sessionId)
+      expect(ctx?.activeWorkerIds).toEqual(["w_1"])
+      expect(ctx?.activeTaskIds).toEqual(["t_1"])
     })
 
     it("returns null for unknown session", () => {
@@ -238,7 +241,7 @@ describe("SessionManager", () => {
 
       const history = mgr.getHistory(handle.sessionId)
       expect(history.length).toBeGreaterThan(0)
-      expect(history[0]!.eventType).toBe("session.created")
+      expect(history[0]?.eventType).toBe("session.created")
     })
   })
 
