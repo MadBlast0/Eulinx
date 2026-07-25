@@ -4,6 +4,10 @@ import "@xterm/xterm/css/xterm.css"
 import { FitAddon } from "@xterm/addon-fit"
 import { WebLinksAddon } from "@xterm/addon-web-links"
 import { SearchAddon } from "@xterm/addon-search"
+import { WebglAddon } from "@xterm/addon-webgl"
+import { ImageAddon } from "@xterm/addon-image"
+import { UnicodeGraphemesAddon } from "@xterm/addon-unicode-graphemes"
+import { Unicode11Addon } from "@xterm/addon-unicode11"
 import { useTheme } from "@/ui/tokens/theme-provider"
 import { CheckCircle2, XCircle, MoreHorizontal, Loader2, WifiOff, TerminalSquare } from "lucide-react"
 import { cn } from "@/utils/cn"
@@ -51,6 +55,17 @@ const MENU_ITEMS = [
   { key: "new", label: "New terminal", icon: <span className="text-[11px]">⊞</span> },
 ] as const
 
+function fitPty(term: XTerm | null, fit: FitAddon | null, ptyInstance: Pty | null): boolean {
+  if (!term || !fit) return false
+  try {
+    fit.fit()
+    if (ptyInstance?.resize) {
+      ptyInstance.resize(term.cols, term.rows)
+    }
+    return true
+  } catch { return false }
+}
+
 function TerminalXterm({
   ptyId,
   onNew,
@@ -77,28 +92,6 @@ function TerminalXterm({
 
   const { pty, clear: ptyClear, exitCode, connectionState } = useTerminal(ptyId, shell)
 
-  const fitTerm = useCallback((term?: XTerm | null, _fit?: FitAddon | null, host?: HTMLDivElement | null, ptyInstance?: Pty | null): boolean => {
-    const t = term ?? termRef.current
-    const h = host ?? hostRef.current
-    if (!t || !h) return false
-    try {
-      const dims = (t as unknown as { _core: { _renderService: { dimensions: { css: { cell: { width: number; height: number } } } } } })._core?._renderService?.dimensions
-      if (!dims || dims.css.cell.width === 0 || dims.css.cell.height === 0) return false
-      const style = getComputedStyle(h)
-      const padX = parseInt(style.paddingLeft || "0") + parseInt(style.paddingRight || "0")
-      const padY = parseInt(style.paddingTop || "0") + parseInt(style.paddingBottom || "0")
-      const cols = Math.max(2, Math.floor((h.clientWidth - padX) / dims.css.cell.width))
-      const rows = Math.max(1, Math.floor((h.clientHeight - padY) / dims.css.cell.height))
-      if (t.rows !== rows || t.cols !== cols) {
-        t.resize(cols, rows)
-      }
-      if (ptyInstance?.resize) {
-        ptyInstance.resize(cols, rows)
-      }
-      return true
-    } catch { return false }
-  }, [])
-
   // Create terminal + addons once.
   useEffect(() => {
     const host = hostRef.current
@@ -106,9 +99,11 @@ function TerminalXterm({
 
     const term = new XTerm({
       fontFamily:
-        'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
-      fontSize: 12,
-      lineHeight: 1.4,
+        '"JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+      fontSize: 13,
+      lineHeight: 1.55,
+      fontWeight: 400,
+      letterSpacing: 0,
       cursorBlink: true,
       cursorStyle: "bar",
       scrollback: 2000,
@@ -120,22 +115,38 @@ function TerminalXterm({
     term.loadAddon(fit)
     term.loadAddon(webLinks)
     term.loadAddon(search)
+
+    let webgl: WebglAddon | null = null
+    try {
+      webgl = new WebglAddon()
+      term.loadAddon(webgl)
+      webgl.onContextLoss(() => {
+        // WebGL context lost, fall back to canvas
+      })
+    } catch {
+      // WebGL not available
+    }
+    const image = new ImageAddon({ sixelSupport: true, iipSupport: true })
+    term.loadAddon(image)
+    term.loadAddon(new Unicode11Addon())
+    term.loadAddon(new UnicodeGraphemesAddon())
+    term.unicode.activeVersion = "11"
+
     term.open(host)
+
+    const viewport = host.querySelector(".xterm-viewport") as HTMLElement | null
+    if (viewport) {
+      viewport.style.backgroundColor = "transparent"
+    }
 
     termRef.current = term
     fitRef.current = fit
     searchRef.current = search
 
-    let retries = 0
-    const fitLoop = () => {
-      if (fitTerm(term, fit, host, pty)) {
-        if (autoFocus) term.focus()
-      } else if (retries < 60) {
-        retries++
-        requestAnimationFrame(fitLoop)
-      }
-    }
-    const raf = requestAnimationFrame(fitLoop)
+    const raf = requestAnimationFrame(() => {
+      fitPty(term, fit, pty)
+      if (autoFocus) term.focus()
+    })
 
     return () => {
       cancelAnimationFrame(raf)
@@ -144,7 +155,7 @@ function TerminalXterm({
       fitRef.current = null
       searchRef.current = null
     }
-  }, [fitTerm, pty, autoFocus, theme])
+  }, [pty, autoFocus, theme])
 
   // Re-theme when the active theme changes.
   useEffect(() => {
@@ -173,7 +184,7 @@ function TerminalXterm({
       term.write("\r\n\x1b[2m[session terminated]\x1b[0m\r\n")
     })
 
-    fitTerm(term, fitRef.current, hostRef.current, pty)
+    fitPty(term, fitRef.current, pty)
     if (autoFocus) term.focus()
 
     return () => {
@@ -181,7 +192,7 @@ function TerminalXterm({
       dataSub.dispose()
       offExit()
     }
-  }, [pty, autoFocus, fitTerm])
+  }, [pty, autoFocus])
 
   // Resize PTY when container size changes.
   useEffect(() => {
@@ -195,12 +206,12 @@ function TerminalXterm({
         cancelAnimationFrame(raf)
         raf = requestAnimationFrame(() => {
           try {
-            fitTerm(termRef.current, fitRef.current, hostRef.current, pty)
+            fitPty(termRef.current, fitRef.current, pty)
           } catch {
             // ignore transient measure failures
           }
         })
-      }, 120)
+      }, 50)
     })
     ro.observe(host)
     return () => {
@@ -208,7 +219,7 @@ function TerminalXterm({
       if (timer) clearTimeout(timer)
       cancelAnimationFrame(raf)
     }
-  }, [pty, fitTerm])
+  }, [pty])
 
   // Focus and re-fit when terminal becomes connected
   useEffect(() => {
@@ -216,10 +227,10 @@ function TerminalXterm({
     const term = termRef.current
     if (!term) return
     try {
-      fitTerm(termRef.current, fitRef.current, hostRef.current, pty)
+      fitPty(termRef.current, fitRef.current, pty)
       term.focus()
     } catch { void 0 }
-  }, [connectionState, pty, fitTerm])
+  }, [connectionState, pty])
 
   // Click anywhere in terminal area → focus
   const handleWrapperClick = useCallback(() => {

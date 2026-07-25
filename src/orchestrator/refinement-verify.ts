@@ -154,7 +154,7 @@ export class RefinementVerifier {
   }
 
   private checkSize(_artifactId: ArtifactId, content: string): VerificationCheck {
-    const bytes = Buffer.byteLength(content, "utf-8")
+    const bytes = new TextEncoder().encode(content).byteLength
     const passed = bytes <= this.maxSizeBytes
     return {
       name: "size_limit",

@@ -585,7 +585,7 @@ export class ArtifactManager {
   // -------------------------------------------------------------------------
 
   /** Import an artifact from a source. */
-  importArtifact(
+  async importArtifact(
     source: Parameters<ArtifactImport["import"]>[0],
     options?: Parameters<ArtifactImport["import"]>[2]
   ) {

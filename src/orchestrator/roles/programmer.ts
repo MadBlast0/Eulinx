@@ -152,6 +152,6 @@ export class ProgrammerOrchestrator extends BaseOrchestrator {
   }
 
   validateArtifactSize(content: string): boolean {
-    return Buffer.byteLength(content, "utf-8") <= this.programmerConfig.maxArtifactSizeBytes
+    return new TextEncoder().encode(content).byteLength <= this.programmerConfig.maxArtifactSizeBytes
   }
 }

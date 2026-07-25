@@ -77,8 +77,8 @@ export function useTerminal(
   }, [pty])
 
   const clear = useCallback(() => {
-    // No-op — xterm handles clear via its own API
-  }, [])
+    write("\u001b[H\u001b[2J\u001b[3J")
+  }, [write])
 
   const fit = useCallback(() => {
     // Geometry changes are owned by the xterm view via ResizeObserver

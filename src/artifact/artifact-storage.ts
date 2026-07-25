@@ -140,7 +140,7 @@ export class ArtifactStorage {
   /** Compute content size. */
   computeSize(content: string | Uint8Array): number {
     return typeof content === "string"
-      ? Buffer.byteLength(content, "utf-8")
+      ? new TextEncoder().encode(content).byteLength
       : content.length
   }
 

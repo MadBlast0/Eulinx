@@ -14,7 +14,6 @@ import type {
   ArtifactExportBundle,
   Sensitivity,
 } from "./artifact-types"
-import { createHash } from "node:crypto"
 
 // ---------------------------------------------------------------------------
 // Import Source
@@ -49,7 +48,7 @@ export class ArtifactImport {
    * Import an artifact from a source.
    * Validates the content, assigns metadata, and stores it.
    */
-  import(
+  async import(
     source: ImportSource,
     workspaceId: WorkspaceId,
     options?: {
@@ -59,7 +58,7 @@ export class ArtifactImport {
       workerId?: WorkerId
       tags?: readonly string[]
     }
-  ): ImportResult {
+  ): Promise<ImportResult> {
     const warnings: string[] = []
     const now = new Date().toISOString() as IsoTimestamp
 
@@ -78,7 +77,7 @@ export class ArtifactImport {
     const contentType = this.detectContentType(source, artifactKind)
 
     // Compute content hash
-    const contentHash = this.computeHash(source.content)
+    const contentHash = await this.computeHash(source.content)
 
     // Create artifact record
     const id = brand<ArtifactId>(generateId())
@@ -113,14 +112,14 @@ export class ArtifactImport {
    * Import an artifact from an export bundle.
    * From MergeFlow-Part06 Â§GitIntegration.
    */
-  importFromBundle(
+  async importFromBundle(
     bundle: ArtifactExportBundle,
     targetWorkspaceId: WorkspaceId
-  ): readonly ImportResult[] {
+  ): Promise<readonly ImportResult[]> {
     const results: ImportResult[] = []
 
     for (const entry of bundle.artifacts) {
-      const result = this.import(
+      const result = await this.import(
         {
           type: "workspace",
           content: entry.content,
@@ -216,21 +215,20 @@ export class ArtifactImport {
     return typeMap[kind] ?? "text/plain"
   }
 
-  /** Compute content hash. */
-  private computeHash(content: string | Uint8Array): string {
-    const hasher = createHash("sha256")
-    if (typeof content === "string") {
-      hasher.update(content, "utf-8")
-    } else {
-      hasher.update(content)
-    }
-    return hasher.digest("hex")
+  /** Compute content hash using browser-compatible Web Crypto API. */
+  private async computeHash(content: string | Uint8Array): Promise<string> {
+    const data = typeof content === "string"
+      ? new TextEncoder().encode(content)
+      : content
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data.buffer as ArrayBuffer)
+    const hashArray = new Uint8Array(hashBuffer)
+    return Array.from(hashArray).map(b => b.toString(16).padStart(2, "0")).join("")
   }
 
   /** Compute content size. */
   private computeSize(content: string | Uint8Array): number {
     return typeof content === "string"
-      ? Buffer.byteLength(content, "utf-8")
+      ? new TextEncoder().encode(content).byteLength
       : content.length
   }
 }

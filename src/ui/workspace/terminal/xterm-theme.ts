@@ -6,6 +6,14 @@
 import type { ITheme } from "@xterm/xterm"
 import type { Theme } from "@/ui/tokens/theme-provider"
 
+function alphaBlend(hexColor: string, alpha: number): string {
+  const hex = hexColor.replace("#", "")
+  const r = parseInt(hex.slice(0, 2), 16)
+  const g = parseInt(hex.slice(2, 4), 16)
+  const b = parseInt(hex.slice(4, 6), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
+
 function hex(theme: Theme, role: keyof Theme["colors"]): string {
   return theme.colors[role]
 }
@@ -34,9 +42,9 @@ export function buildXtermTheme(theme: Theme): ITheme {
     foreground: text,
     cursor: hex(theme, "accent"),
     cursorAccent: surface,
-    selectionBackground: `color-mix(in srgb, ${hex(theme, "accent")} 32%, transparent)`,
+    selectionBackground: alphaBlend(hex(theme, "accent"), 0.32),
     selectionForeground: text,
-    selectionInactiveBackground: `color-mix(in srgb, ${textMuted} 22%, transparent)`,
+    selectionInactiveBackground: alphaBlend(textMuted, 0.22),
 
     black: surface,
     red: hex(theme, "danger"),
@@ -57,9 +65,9 @@ export function buildXtermTheme(theme: Theme): ITheme {
     brightWhite: text,
 
     // surface raised used for the scrollbar so it reads on the terminal bg.
-    scrollbarSliderBackground: `color-mix(in srgb, ${textMuted} 38%, transparent)`,
-    scrollbarSliderHoverBackground: `color-mix(in srgb, ${text} 55%, transparent)`,
-    scrollbarSliderActiveBackground: `color-mix(in srgb, ${hex(theme, "accent")} 60%, transparent)`,
+    scrollbarSliderBackground: alphaBlend(textMuted, 0.38),
+    scrollbarSliderHoverBackground: alphaBlend(text, 0.55),
+    scrollbarSliderActiveBackground: alphaBlend(hex(theme, "accent"), 0.6),
 
     overviewRulerBorder: border,
   } satisfies ITheme
