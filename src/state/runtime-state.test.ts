@@ -1,4 +1,3 @@
-/* eslint-disable no-non-null-assertion */
 /**
  * P04-STATE-RUNTIME — Runtime State Tests
  */

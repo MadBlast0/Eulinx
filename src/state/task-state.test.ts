@@ -1,4 +1,3 @@
-/* eslint-disable no-non-null-assertion */
 /**
  * P04-STATE-TASK — Task State Tests
  */

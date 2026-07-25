@@ -1,4 +1,4 @@
-/* eslint-disable no-non-null-assertion */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /**
  * P04-STATE-PERSIST — Persistence Layer Tests
  */

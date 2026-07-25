@@ -110,6 +110,6 @@ describe("RecoveryPlan", () => {
       ],
     }
     expect(plan.steps).toHaveLength(2)
-    expect(plan.steps[0]!.action).toBe("restore_snapshot")
+    expect(plan.steps[0]?.action).toBe("restore_snapshot")
   })
 })
