@@ -29,7 +29,7 @@ export const workerService = {
   },
 
   resizeTerminal(ptyId: string, cols: number, rows: number): Promise<void> {
-    return call<void>("pty_resize", { id: ptyId, cols, rows })
+    return call<never>("pty_resize", { id: ptyId, cols, rows }) as unknown as Promise<void>
   },
 } as const
 

@@ -29,7 +29,7 @@ export const fsService = {
   },
 
   writeText(path: string, contents: string): Promise<void> {
-    return call<void>("fs_write_text", { path, contents })
+    return call<never>("fs_write_text", { path, contents }) as unknown as Promise<void>
   },
 
   exists(path: string): Promise<boolean> {
@@ -48,7 +48,7 @@ export const fsService = {
   },
 
   createDir(path: string): Promise<void> {
-    return call<void>("fs_create_dir", { path })
+    return call<never>("fs_create_dir", { path }) as unknown as Promise<void>
   },
 
   pickFolder(): Promise<string | null> {

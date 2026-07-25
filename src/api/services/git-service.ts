@@ -37,7 +37,7 @@ export const gitService = {
   },
 
   stageAll(repo: string): Promise<void> {
-    return call<void>("git_stage_all", { repo })
+    return call<never>("git_stage_all", { repo }) as unknown as Promise<void>
   },
 
   commit(repo: string, message: string): Promise<string> {

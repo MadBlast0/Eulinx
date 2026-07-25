@@ -6,15 +6,15 @@ export const ptyService = {
   },
 
   write(id: string, data: string): Promise<void> {
-    return call<void>("pty_write", { id, data })
+    return call<never>("pty_write", { id, data }) as unknown as Promise<void>
   },
 
   resize(id: string, cols: number, rows: number): Promise<void> {
-    return call<void>("pty_resize", { id, cols, rows })
+    return call<never>("pty_resize", { id, cols, rows }) as unknown as Promise<void>
   },
 
   kill(id: string): Promise<void> {
-    return call<void>("pty_kill", { id })
+    return call<never>("pty_kill", { id }) as unknown as Promise<void>
   },
 } as const
 

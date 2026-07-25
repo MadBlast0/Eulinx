@@ -61,8 +61,9 @@ describe("FrontendAPI gateway", () => {
     mockedInvoke.mockResolvedValue(undefined)
     await settingService.save({ theme: "Dark" })
     expect(mockedInvoke).toHaveBeenCalled()
-    const arg = mockedInvoke.mock.calls[0]![1] as Record<string, unknown>
-    expect(arg.contents).toBe(JSON.stringify({ theme: "Dark" }))
+    const args = mockedInvoke.mock.calls[0]?.[1] as Record<string, unknown> | undefined
+    expect(args).toBeDefined()
+    expect(args?.contents).toBe(JSON.stringify({ theme: "Dark" }))
   })
 })
 
