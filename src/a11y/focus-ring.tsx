@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * Accessibility — Focus Ring, Focus Trap, and Focus Restoration.
  *

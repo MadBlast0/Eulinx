@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * Accessibility — Off-Screen DOM Mirror of the Node Graph.
  *

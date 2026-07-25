@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 /**
  * Accessibility — Live Region Announcer & Coalescer.
  *
