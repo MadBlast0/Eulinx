@@ -42,13 +42,15 @@ function saveConfig(config: Record<string, unknown>): void {
 function setNested(obj: Record<string, unknown>, keys: readonly string[], value: unknown): void {
   let current = obj
   for (let i = 0; i < keys.length - 1; i++) {
-    const key = keys[i]!
+    const key = keys[i]
+    if (!key) continue
     if (!(key in current) || typeof current[key] !== "object") {
       current[key] = {}
     }
     current = current[key] as Record<string, unknown>
   }
-  const lastKey = keys[keys.length - 1]!
+  const lastKey = keys[keys.length - 1]
+  if (!lastKey) return
   const num = Number(value)
   current[lastKey] = String(value) === "true" ? true : String(value) === "false" ? false : !isNaN(num) && String(value).trim() !== "" ? num : value
 }

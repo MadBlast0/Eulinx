@@ -155,7 +155,8 @@ export async function exportWorkspace(
 
   const nodes: ExportedNode[] = []
   for (let i = 0; i < ALL_NODE_LABELS.length; i++) {
-    const label = ALL_NODE_LABELS[i]!
+    const label = ALL_NODE_LABELS[i]
+    if (!label) continue
     const response = nodeBatch.value.results[i]
     if (!response || response.error) continue
 
@@ -177,7 +178,9 @@ export async function exportWorkspace(
 
   const edges: ExportedEdge[] = []
   for (let i = 0; i < EDGE_SOURCE_LABELS.length; i++) {
-    const [edgeLabel] = EDGE_SOURCE_LABELS[i]!
+    const entry = EDGE_SOURCE_LABELS[i]
+    if (!entry) continue
+    const [edgeLabel] = entry
     const response = edgeBatch.value.results[i]
     if (!response || response.error) continue
 

@@ -22,7 +22,7 @@ function ensureLogs(workerId: string): LogEntry[] {
       { time: new Date().toISOString(), level: "info", message: `Worker ${workerId} created` },
     ])
   }
-  return workerLogs.get(workerId)!
+  return workerLogs.get(workerId) ?? []
 }
 
 async function handler(args: { positional: string[]; flags: Record<string, unknown> }, _config: CliConfig): Promise<CliResult> {

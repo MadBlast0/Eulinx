@@ -18,7 +18,8 @@ export function parseArgs(argv: readonly string[], options: readonly CliOption[]
 
   let i = 0
   while (i < args.length) {
-    const arg = args[i]!
+    const arg = args[i]
+    if (!arg) continue
 
     if (arg === "--") {
       // Everything after -- is positional

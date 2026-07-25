@@ -82,13 +82,13 @@ function printTable(table: CliTableData, config: CliConfig): void {
   })
 
   // Header
-  const header = table.headers.map((h, i) => h.padEnd(colWidths[i]!)).join("  ")
+  const header = table.headers.map((h, i) => h.padEnd(colWidths[i] ?? 0)).join("  ")
   console.log(`${colors.bold}${header}${colors.reset}`)
   console.log(colors.dim + colWidths.map((w) => "─".repeat(w)).join("  ") + colors.reset)
 
   // Rows
   for (const row of table.rows) {
-    const line = row.map((cell, i) => (cell ?? "").padEnd(colWidths[i]!)).join("  ")
+    const line = row.map((cell, i) => (cell ?? "").padEnd(colWidths[i] ?? 0)).join("  ")
     console.log(line)
   }
 
