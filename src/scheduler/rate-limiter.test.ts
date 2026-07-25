@@ -154,7 +154,7 @@ describe("RateLimiter", () => {
     limiter.isAllowed("g1")
     const state = limiter.getGroupState("g1")
     expect(state).toBeDefined()
-    expect(state!.tokens).toBe(2)
+    expect(state?.tokens).toBe(2)
   })
 
   it("getGroupState returns undefined for unknown group", () => {

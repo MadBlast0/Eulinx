@@ -66,9 +66,9 @@ describe("MinHeap", () => {
     heap.insert(critical, 1)
     heap.insert(high, 2)
 
-    expect(heap.extractMin()!.id).toBe("critical")
-    expect(heap.extractMin()!.id).toBe("high")
-    expect(heap.extractMin()!.id).toBe("normal")
+    expect(heap.extractMin()?.id).toBe("critical")
+    expect(heap.extractMin()?.id).toBe("high")
+    expect(heap.extractMin()?.id).toBe("normal")
   })
 
   it("orders same priority by FIFO insertion order", () => {
@@ -81,9 +81,9 @@ describe("MinHeap", () => {
     heap.insert(second, 1)
     heap.insert(third, 2)
 
-    expect(heap.extractMin()!.id).toBe("first")
-    expect(heap.extractMin()!.id).toBe("second")
-    expect(heap.extractMin()!.id).toBe("third")
+    expect(heap.extractMin()?.id).toBe("first")
+    expect(heap.extractMin()?.id).toBe("second")
+    expect(heap.extractMin()?.id).toBe("third")
   })
 
   it("handles reverse insertion order", () => {
@@ -92,9 +92,9 @@ describe("MinHeap", () => {
     heap.insert(makeUnit("b", "high"), 1)
     heap.insert(makeUnit("a", "normal"), 2)
 
-    expect(heap.extractMin()!.id).toBe("c")
-    expect(heap.extractMin()!.id).toBe("b")
-    expect(heap.extractMin()!.id).toBe("a")
+    expect(heap.extractMin()?.id).toBe("c")
+    expect(heap.extractMin()?.id).toBe("b")
+    expect(heap.extractMin()?.id).toBe("a")
   })
 
   it("remove removes a specific element", () => {
@@ -104,7 +104,7 @@ describe("MinHeap", () => {
     heap.insert(makeUnit("c", "normal"), 2)
 
     const removed = heap.remove("b")
-    expect(removed!.id).toBe("b")
+    expect(removed?.id).toBe("b")
     expect(heap.size).toBe(2)
 
     const remaining = heap.toArray()
@@ -140,9 +140,9 @@ describe("MinHeap", () => {
   it("handles interleaved insert and extractMin", () => {
     const heap = new MinHeap()
     heap.insert(makeUnit("a", "normal"), 0)
-    expect(heap.extractMin()!.id).toBe("a")
+    expect(heap.extractMin()?.id).toBe("a")
     heap.insert(makeUnit("b", "high"), 1)
-    expect(heap.extractMin()!.id).toBe("b")
+    expect(heap.extractMin()?.id).toBe("b")
     expect(heap.isEmpty).toBe(true)
   })
 })
@@ -162,7 +162,7 @@ describe("JobQueue", () => {
     const q = new JobQueue()
     q.enqueue(makeUnit("u1"))
     expect(q.size).toBe(1)
-    expect(q.dequeue()!.id).toBe("u1")
+    expect(q.dequeue()?.id).toBe("u1")
     expect(q.size).toBe(0)
   })
 
@@ -173,10 +173,10 @@ describe("JobQueue", () => {
     q.enqueue(makeUnit("low", "low"))
     q.enqueue(makeUnit("high", "high"))
 
-    expect(q.dequeue()!.id).toBe("critical")
-    expect(q.dequeue()!.id).toBe("high")
-    expect(q.dequeue()!.id).toBe("normal")
-    expect(q.dequeue()!.id).toBe("low")
+    expect(q.dequeue()?.id).toBe("critical")
+    expect(q.dequeue()?.id).toBe("high")
+    expect(q.dequeue()?.id).toBe("normal")
+    expect(q.dequeue()?.id).toBe("low")
   })
 
   it("dequeues same priority in FIFO order", () => {
@@ -185,9 +185,9 @@ describe("JobQueue", () => {
     q.enqueue(makeUnit("second", "normal"))
     q.enqueue(makeUnit("third", "normal"))
 
-    expect(q.dequeue()!.id).toBe("first")
-    expect(q.dequeue()!.id).toBe("second")
-    expect(q.dequeue()!.id).toBe("third")
+    expect(q.dequeue()?.id).toBe("first")
+    expect(q.dequeue()?.id).toBe("second")
+    expect(q.dequeue()?.id).toBe("third")
   })
 
   it("remove removes by id", () => {
@@ -197,7 +197,7 @@ describe("JobQueue", () => {
     q.enqueue(makeUnit("c"))
 
     const removed = q.remove("b")
-    expect(removed!.id).toBe("b")
+    expect(removed?.id).toBe("b")
     expect(q.size).toBe(2)
     expect(q.toArray().map((u) => u.id)).toEqual(["a", "c"])
   })
@@ -238,7 +238,7 @@ describe("JobQueue", () => {
     q.enqueue(makeUnit("critical", "critical"))
     q.enqueue(makeUnit("normal", "normal"))
 
-    expect(q.findHighestPriority()!.id).toBe("critical")
+    expect(q.findHighestPriority()?.id).toBe("critical")
   })
 
   it("findHighestPriority returns undefined when empty", () => {
@@ -249,7 +249,7 @@ describe("JobQueue", () => {
   it("peek does not remove", () => {
     const q = new JobQueue()
     q.enqueue(makeUnit("a"))
-    expect(q.peek()!.id).toBe("a")
+    expect(q.peek()?.id).toBe("a")
     expect(q.size).toBe(1)
   })
 

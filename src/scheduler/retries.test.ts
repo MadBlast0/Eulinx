@@ -32,8 +32,8 @@ describe("RetryQueue", () => {
       "timeout",
     )
     expect(entry).toBeDefined()
-    expect(entry!.unitId).toBe("u1")
-    expect(entry!.attempt).toBe(2)
+    expect(entry?.unitId).toBe("u1")
+    expect(entry?.attempt).toBe(2)
   })
 
   it("rejects non-retryable category", () => {
@@ -86,7 +86,8 @@ describe("RetryQueue", () => {
     const queue = new RetryQueue(makePolicy({ delayMs: 1000 }))
     queue.scheduleRetry("u1", 1, "error", "timeout")
 
-    const entry = queue.getEntry("u1")!
+    const entry = queue.getEntry("u1")
+    if (!entry) throw new Error("expected entry for u1")
     // nextEligibleAt = Date.now() + 1000
     // Not eligible before that time
     expect(queue.isEligible("u1", entry.nextEligibleAt - 1)).toBe(false)
@@ -149,7 +150,7 @@ describe("RetryQueue", () => {
 
     const entry = queue.getEntry("u1")
     expect(entry).toBeDefined()
-    expect(entry!.unitId).toBe("u1")
+    expect(entry?.unitId).toBe("u1")
   })
 
   it("getEntry returns undefined for unknown unit", () => {

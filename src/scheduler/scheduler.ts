@@ -336,16 +336,16 @@ export class Scheduler {
     const now = new Date().toISOString() as IsoTimestamp
 
     // Build readiness context from the injected provider
-    const providerCtx = this.readinessContextProvider?.() ?? {}
+    const providerCtx = (this.readinessContextProvider?.() ?? {}) as Record<string, unknown>
     const ctx: ReadinessContext = {
-      runtimeReady: (providerCtx as any).runtimeReady ?? true,
-      completedUnitIds: (providerCtx as any).completedUnitIds ?? new Set(),
-      heldLockIds: (providerCtx as any).heldLockIds ?? new Set(),
-      approvedPermissions: (providerCtx as any).approvedPermissions ?? new Set(),
-      approvedUnitIds: (providerCtx as any).approvedUnitIds ?? new Set(),
+      runtimeReady: (providerCtx.runtimeReady as boolean) ?? true,
+      completedUnitIds: (providerCtx.completedUnitIds as Set<string>) ?? new Set(),
+      heldLockIds: (providerCtx.heldLockIds as Set<string>) ?? new Set(),
+      approvedPermissions: (providerCtx.approvedPermissions as Set<string>) ?? new Set(),
+      approvedUnitIds: (providerCtx.approvedUnitIds as Set<string>) ?? new Set(),
       runningCount: this.runningIds.size,
       maxConcurrency: this.config.maxConcurrency,
-      totalBudgetCostMicroUsd: (providerCtx as any).totalBudgetCostMicroUsd ?? 0,
+      totalBudgetCostMicroUsd: (providerCtx.totalBudgetCostMicroUsd as number) ?? 0,
       maxBudgetCostMicroUsd: this.config.budget.maxCostMicroUsd,
     }
 
@@ -695,9 +695,10 @@ export class Scheduler {
   private async setupListeners(): Promise<void> {
     const tauriEvents = Object.keys(TAURI_TO_TS_EVENT)
     for (const tauriEvent of tauriEvents) {
-      const tsEvent = TAURI_TO_TS_EVENT[tauriEvent]!
+      const tsEvent = TAURI_TO_TS_EVENT[tauriEvent as keyof typeof TAURI_TO_TS_EVENT]
+      if (!tsEvent) continue
       this.unlistenFns.push(
-        await listen<any>(tauriEvent, (event) => {
+        await listen<unknown>(tauriEvent, (event) => {
           this.handlePayload(tsEvent, event.payload)
         }),
       )
@@ -726,7 +727,7 @@ export class Scheduler {
     )
   }
 
-  private handlePayload(tsEvent: SchedulerEventType, payload: any): void {
+  private handlePayload(tsEvent: SchedulerEventType, payload: unknown): void {
     switch (tsEvent) {
       case "scheduler.started":
         this.lifecycleState = "running"
@@ -746,22 +747,31 @@ export class Scheduler {
       case "scheduler.unit.blocked":
       case "scheduler.unit.unblocked":
       case "scheduler.unit.scheduled":
-        if (payload?.unitId && payload?.state) {
-          this.updateUnitState(payload.unitId, payload.state)
+        {
+          const p = payload as { unitId?: string; state?: string } | undefined
+          if (p?.unitId && p?.state) {
+            this.updateUnitState(p.unitId, p.state as SchedulingState)
+          }
         }
         break
       case "scheduler.unit.running":
-        if (payload?.unitId) {
-          this.updateUnitState(payload.unitId, "running")
-          this.runningIds.add(payload.unitId)
+        {
+          const p = payload as { unitId?: string } | undefined
+          if (p?.unitId) {
+            this.updateUnitState(p.unitId, "running")
+            this.runningIds.add(p.unitId)
+          }
         }
         break
       case "scheduler.unit.completed":
       case "scheduler.unit.failed":
       case "scheduler.unit.cancelled":
-        if (payload?.unitId) {
-          this.updateUnitState(payload.unitId, tsEvent === "scheduler.unit.completed" ? "completed" : tsEvent === "scheduler.unit.failed" ? "failed" : "cancelled")
-          this.runningIds.delete(payload.unitId)
+        {
+          const p = payload as { unitId?: string } | undefined
+          if (p?.unitId) {
+            this.updateUnitState(p.unitId, tsEvent === "scheduler.unit.completed" ? "completed" : tsEvent === "scheduler.unit.failed" ? "failed" : "cancelled")
+            this.runningIds.delete(p.unitId)
+          }
         }
         break
     }

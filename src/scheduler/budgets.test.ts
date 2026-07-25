@@ -85,7 +85,7 @@ describe("BudgetPool", () => {
     })
     const reservation = pool.reserve("u1", estimate)
     expect(reservation).toBeDefined()
-    expect(reservation!.unitId).toBe("u1")
+    expect(reservation?.unitId).toBe("u1")
 
     const consumption = pool.getConsumption()
     expect(consumption.costMicroUsd).toBe(300)

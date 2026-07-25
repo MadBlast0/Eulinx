@@ -61,9 +61,9 @@ describe("DeadQueue", () => {
 
     const all = queue.getAll()
     expect(all).toHaveLength(3)
-    expect(all[0]!.unitId).toBe("u1")
-    expect(all[1]!.unitId).toBe("u3")
-    expect(all[2]!.unitId).toBe("u2")
+    expect(all[0]?.unitId).toBe("u1")
+    expect(all[1]?.unitId).toBe("u3")
+    expect(all[2]?.unitId).toBe("u2")
   })
 
   it("getByCategory filters correctly", () => {
@@ -102,6 +102,6 @@ describe("DeadQueue", () => {
     queue.add(makeDeadEntry("u1", { lastError: "first error" }))
     queue.add(makeDeadEntry("u1", { lastError: "second error" }))
     expect(queue.size).toBe(1)
-    expect(queue.get("u1")!.lastError).toBe("second error")
+    expect(queue.get("u1")?.lastError).toBe("second error")
   })
 })

@@ -61,8 +61,8 @@ describe("Runtime Gate", () => {
     const result = evaluateReadiness(unit, ctx)
     expect(result.ready).toBe(false)
     expect(result.blockers).toHaveLength(1)
-    expect(result.blockers[0]!.kind).toBe("runtime_state")
-    expect(result.blockers[0]!.recoverable).toBe(true)
+    expect(result.blockers[0]?.kind).toBe("runtime_state")
+    expect(result.blockers[0]?.recoverable).toBe(true)
   })
 })
 
@@ -87,8 +87,8 @@ describe("Dependency Gate", () => {
     })
     const result = evaluateReadiness(unit, ctx)
     expect(result.ready).toBe(false)
-    expect(result.blockers[0]!.kind).toBe("dependency")
-    expect(result.blockers[0]!.blockingObjectId).toBe("dep-2")
+    expect(result.blockers[0]?.kind).toBe("dependency")
+    expect(result.blockers[0]?.blockingObjectId).toBe("dep-2")
   })
 
   it("passes with no dependencies", () => {
@@ -120,8 +120,8 @@ describe("Permission Gate", () => {
     })
     const result = evaluateReadiness(unit, ctx)
     expect(result.ready).toBe(false)
-    expect(result.blockers[0]!.kind).toBe("permission")
-    expect(result.blockers[0]!.blockingObjectId).toBe("git.push")
+    expect(result.blockers[0]?.kind).toBe("permission")
+    expect(result.blockers[0]?.blockingObjectId).toBe("git.push")
   })
 
   it("passes with no required permissions", () => {
@@ -153,8 +153,8 @@ describe("Lock Gate", () => {
     })
     const result = evaluateReadiness(unit, ctx)
     expect(result.ready).toBe(false)
-    expect(result.blockers[0]!.kind).toBe("lock")
-    expect(result.blockers[0]!.blockingObjectId).toBe("lock-1")
+    expect(result.blockers[0]?.kind).toBe("lock")
+    expect(result.blockers[0]?.blockingObjectId).toBe("lock-1")
   })
 })
 
@@ -185,7 +185,7 @@ describe("Budget Gate", () => {
     })
     const result = evaluateReadiness(unit, ctx)
     expect(result.ready).toBe(false)
-    expect(result.blockers[0]!.kind).toBe("budget")
+    expect(result.blockers[0]?.kind).toBe("budget")
   })
 
   it("passes with no budget estimate", () => {
@@ -234,7 +234,7 @@ describe("Resource Gate", () => {
     })
     const result = evaluateReadiness(unit, ctx)
     expect(result.ready).toBe(false)
-    expect(result.blockers[0]!.kind).toBe("resource")
+    expect(result.blockers[0]?.kind).toBe("resource")
   })
 
   it("passes with unlimited concurrency", () => {
@@ -281,7 +281,7 @@ describe("All gates combined", () => {
     const result = evaluateReadiness(unit, ctx)
     expect(result.ready).toBe(false)
     expect(result.blockers).toHaveLength(1)
-    expect(result.blockers[0]!.kind).toBe("runtime_state")
+    expect(result.blockers[0]?.kind).toBe("runtime_state")
   })
 })
 
@@ -300,7 +300,7 @@ describe("partitionByReadiness", () => {
 
     expect(result.ready).toHaveLength(2)
     expect(result.blocked).toHaveLength(1)
-    expect(result.blocked[0]!.unit.id).toBe("blocked-1")
+    expect(result.blocked[0]?.unit.id).toBe("blocked-1")
   })
 
   it("returns all ready when all pass", () => {
