@@ -190,9 +190,10 @@ pub fn run() {
             commands::scheduler_cmd::scheduler_group_distributor_active_groups,
             commands::scheduler_cmd::scheduler_group_distributor_count,
             commands::scheduler_cmd::scheduler_group_distributor_next,
-            commands::scheduler_cmd::scheduler_group_distributor_active_groups,
-            commands::scheduler_cmd::scheduler_group_distributor_count,
-            commands::scheduler_cmd::scheduler_group_distributor_next,
+            // Scheduler batch queries
+            commands::scheduler_cmd::scheduler_get_overview,
+            commands::scheduler_cmd::scheduler_get_dead_queue_state,
+            commands::scheduler_cmd::scheduler_get_diagnostics,
             // Workflow
             commands::workflow_cmd::workflow_init,
             commands::workflow_cmd::workflow_create_run,

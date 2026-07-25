@@ -39,32 +39,45 @@ export function StateBridge() {
       setWorkers(workerList)
     }
 
+    let prevWorkers = state.workers
     const unsubWorkers = useRuntimeStore.subscribe((s) => {
-      const list = Object.values(s.workers).map(mapZustandWorkerToContext)
-      setWorkers(list)
+      if (s.workers !== prevWorkers) {
+        prevWorkers = s.workers
+        setWorkers(Object.values(s.workers).map(mapZustandWorkerToContext))
+      }
     })
 
+    let prevSessions = state.sessions
     const unsubSessions = useRuntimeStore.subscribe((s) => {
-      const sessionList = Object.values(s.sessions).map((zs) => ({
-        id: zs.id,
-        title: `${zs.kind} session`,
-        kind: zs.kind === "chat" ? "synthetic" as const : zs.kind === "terminal" ? "live" as const : "archived" as const,
-        messages: zs.messageCount,
-        updated: zs.createdAt,
-        log: [] as const,
-      }))
-      setSessions(sessionList)
+      if (s.sessions !== prevSessions) {
+        prevSessions = s.sessions
+        setSessions(
+          Object.values(s.sessions).map((zs) => ({
+            id: zs.id,
+            title: `${zs.kind} session`,
+            kind: zs.kind === "chat" ? "synthetic" as const : zs.kind === "terminal" ? "live" as const : "archived" as const,
+            messages: zs.messageCount,
+            updated: zs.createdAt,
+            log: [] as const,
+          })),
+        )
+      }
     })
 
+    let prevArtifacts = state.artifacts
     const unsubArtifacts = useRuntimeStore.subscribe((s) => {
-      const artifactList = Object.values(s.artifacts).map((za) => ({
-        id: za.id,
-        title: `${za.kind} artifact`,
-        kind: "code" as const,
-        body: "",
-        updatedAt: new Date(za.createdAt).getTime(),
-      }))
-      setArtifacts(artifactList)
+      if (s.artifacts !== prevArtifacts) {
+        prevArtifacts = s.artifacts
+        setArtifacts(
+          Object.values(s.artifacts).map((za) => ({
+            id: za.id,
+            title: `${za.kind} artifact`,
+            kind: "code" as const,
+            body: "",
+            updatedAt: new Date(za.createdAt).getTime(),
+          })),
+        )
+      }
     })
 
     return () => {

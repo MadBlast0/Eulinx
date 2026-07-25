@@ -80,7 +80,6 @@
     "eslint": "^9.0.0",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.0",
-    "geist": "^1.7.2",
     "jsdom": "^29.1.1",
     "postcss": "^8.4.0",
     "prettier": "^3.4.0",

@@ -98,6 +98,7 @@ function TerminalXterm({
     if (!host) return
 
     const term = new XTerm({
+      allowProposedApi: true,
       fontFamily:
         '"JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
       fontSize: 13,

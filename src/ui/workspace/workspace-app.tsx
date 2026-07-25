@@ -1,58 +1,47 @@
-import { useCallback, useEffect, useRef, useState, type ComponentType } from "react"
+import React, { useCallback, useEffect, useRef, useState } from "react"
 import { ArrowLeft } from "lucide-react"
 import "./workspace.css"
 import { cn } from "@/utils/cn"
-import { WorkspaceProvider, useWorkspace } from "./use-workspace"
+import { useWorkspace } from "./use-workspace"
 import { ProjectsProvider, useProjects } from "./use-projects"
-import { MemoryProvider } from "./memory-store"
-import { RuntimeProvider } from "./runtime-store"
-import { SessionsProvider } from "./sessions-store"
-import { PromptsProvider } from "./prompts-store"
-import { SettingsProvider } from "./settings-store"
-import { WorkersProvider } from "./workers-store"
-import { TasksProvider } from "./tasks-store"
-import { TemplatesProvider } from "./templates-store"
-import { CostProvider } from "./cost-store"
-import { ArtifactsProvider } from "./artifacts-store"
+import { GlobalProviders, ProjectDataProviders } from "./merged-providers"
 import { TopBar } from "./top-bar"
 import { Toolbar } from "./workspace-toolbar"
 import { LeftSidebar } from "./left-sidebar"
 import { Canvas } from "./canvas"
 import { BottomPanel } from "./bottom-panel"
 import { RightSidebar } from "./right-sidebar"
-import { KnowledgeWorkspace } from "./knowledge-workspace"
+const KnowledgeWorkspace = React.lazy(() =>
+  import("./knowledge-workspace").then((m) => ({ default: m.KnowledgeWorkspace })),
+)
 import { StatusBar } from "./status-bar"
 import { Overlays } from "./overlays"
-import {
-  Dashboard,
-  Settings,
-  MemoryBrowser,
-  WorkerExplorer,
-  SessionViewer,
-  RuntimeMonitor,
-  CostDashboard,
-  Metrics,
-  PromptInspector,
-  PluginManager,
-  TaskBoard,
-  TemplateGallery,
-} from "./surfaces"
-import {
-  UnifiedSearch,
-  WorkspaceDashboard,
-  MemoryGraph,
-  KnowledgeGraph,
-  CausalTrace,
-  SessionTimeline,
-  VectorExplorer,
-  QueryPlayground,
-} from "./canvas-views"
+const Dashboard = React.lazy(() => import("./surfaces/dashboard"))
+const Settings = React.lazy(() => import("./surfaces/settings"))
+const MemoryBrowser = React.lazy(() => import("./surfaces/memory-browser"))
+const WorkerExplorer = React.lazy(() => import("./surfaces/worker-explorer"))
+const SessionViewer = React.lazy(() => import("./surfaces/session-viewer"))
+const RuntimeMonitor = React.lazy(() => import("./surfaces/runtime-monitor"))
+const CostDashboard = React.lazy(() => import("./surfaces/cost-dashboard"))
+const Metrics = React.lazy(() => import("./surfaces/metrics"))
+const PromptInspector = React.lazy(() => import("./surfaces/prompt-inspector"))
+const PluginManager = React.lazy(() => import("./surfaces/plugin-manager"))
+const TaskBoard = React.lazy(() => import("./surfaces/task-board"))
+const TemplateGallery = React.lazy(() => import("./surfaces/template-gallery"))
 
-import { KeymapProvider, useCommand } from "./keyboard/use-keyboard"
-import { PluginsProvider } from "./plugins-store"
+const UnifiedSearch = React.lazy(() => import("./canvas-views/panels/unified-search"))
+const WorkspaceDashboard = React.lazy(() => import("./canvas-views/panels/workspace-dashboard"))
+const MemoryGraph = React.lazy(() => import("./canvas-views/panels/memory-graph"))
+const KnowledgeGraph = React.lazy(() => import("./canvas-views/panels/knowledge-graph"))
+const CausalTrace = React.lazy(() => import("./canvas-views/panels/causal-trace"))
+const SessionTimeline = React.lazy(() => import("./canvas-views/panels/session-timeline"))
+const VectorExplorer = React.lazy(() => import("./canvas-views/panels/vector-explorer"))
+const QueryPlayground = React.lazy(() => import("./canvas-views/panels/query-playground"))
+
+import { useCommand } from "./keyboard/use-keyboard"
 import { EventBridge } from "./event-bridge"
 import { StateBridge } from "./state-bridge"
-import { LayoutProvider, useLayout, type RegionId } from "./layout-state"
+import { useLayout, type RegionId } from "./layout-state"
 import { PaneDivider } from "./pane-divider"
 
 import { saveLayout, loadLayout } from "./layout-persistence"
@@ -80,7 +69,7 @@ export type SurfaceKey =
   | "helix-query-playground"
   | "knowledge"
 
-const SURFACES: Record<SurfaceKey, ComponentType> = {
+const SURFACES: Record<SurfaceKey, React.LazyExoticComponent<React.ComponentType>> = {
   dashboard: Dashboard,
   settings: Settings,
   memory: MemoryBrowser,
@@ -394,7 +383,9 @@ function WorkspaceShell() {
               </button>
             </div>
             <div className="flex-1 overflow-auto pl-[90px]">
-              <ActiveSurface />
+              <React.Suspense fallback={null}>
+                <ActiveSurface />
+              </React.Suspense>
             </div>
           </div>
         ) : (
@@ -472,39 +463,13 @@ function ProjectScope({ children }: { children: React.ReactNode }) {
 export function WorkspaceApp() {
   return (
     <ProjectsProvider>
-      {/* Global providers — survive project switches */}
-      <SettingsProvider>
-        <PluginsProvider>
-          <KeymapProvider>
-            <TemplatesProvider>
-              {/* Project-scoped providers — remount on project switch */}
-              <ProjectScope>
-                <MemoryProvider>
-                  <RuntimeProvider>
-                    <SessionsProvider>
-                      <PromptsProvider>
-                        <WorkspaceProvider>
-                          <WorkersProvider>
-                            <TasksProvider>
-                              <CostProvider>
-                                <ArtifactsProvider>
-                                  <LayoutProvider>
-                                    <WorkspaceShell />
-                                  </LayoutProvider>
-                                </ArtifactsProvider>
-                              </CostProvider>
-                            </TasksProvider>
-                          </WorkersProvider>
-                        </WorkspaceProvider>
-                      </PromptsProvider>
-                    </SessionsProvider>
-                  </RuntimeProvider>
-                </MemoryProvider>
-              </ProjectScope>
-            </TemplatesProvider>
-          </KeymapProvider>
-        </PluginsProvider>
-      </SettingsProvider>
+      <GlobalProviders>
+        <ProjectScope>
+          <ProjectDataProviders>
+            <WorkspaceShell />
+          </ProjectDataProviders>
+        </ProjectScope>
+      </GlobalProviders>
     </ProjectsProvider>
   )
 }

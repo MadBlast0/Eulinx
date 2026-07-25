@@ -6,36 +6,7 @@
 
 @layer base {
   :root {
-    /* ── User's color scheme — light ── */
-    --background: #f9f9f9;
-    --foreground: #3a3a3a;
-    --card: #ffffff;
-    --card-foreground: #3a3a3a;
-    --popover: #ffffff;
-    --popover-foreground: #3a3a3a;
-    --primary: #606060;
-    --primary-foreground: #f0f0f0;
-    --secondary: #dedede;
-    --secondary-foreground: #3a3a3a;
-    --muted: #e3e3e3;
-    --muted-foreground: #505050;
-    --accent: #f3eac8;
-    --accent-foreground: #5d4037;
-    --destructive: #c87a7a;
-    --destructive-foreground: #ffffff;
-    --border: #747272;
-    --input: #ffffff;
-    --ring: #a0a0a0;
-    --sidebar: #f0f0f0;
-    --sidebar-foreground: #3a3a3a;
-    --sidebar-primary: #606060;
-    --sidebar-primary-foreground: #f0f0f0;
-    --sidebar-accent: #f3eac8;
-    --sidebar-accent-foreground: #5d4037;
-    --sidebar-border: #c0c0c0;
-    --sidebar-ring: #a0a0a0;
-
-    /* ── Eulinx color tokens ── */
+    /* ── Eulinx color tokens (source of truth) ── */
     --Eulinx-color-background: #f9f9f9;
     --Eulinx-color-surface: #ffffff;
     --Eulinx-color-surface-alt: #e3e3e3;
@@ -63,6 +34,35 @@
     --Eulinx-color-node-map: #F59E0B;
     --Eulinx-color-node-worker: #606060;
     --Eulinx-color-node-graph-edge: #a0a0a0;
+
+    /* ── shadcn aliases (map to Eulinx tokens) ── */
+    --background: var(--Eulinx-color-background);
+    --foreground: var(--Eulinx-color-text);
+    --card: var(--Eulinx-color-surface);
+    --card-foreground: var(--Eulinx-color-text);
+    --popover: var(--Eulinx-color-surface);
+    --popover-foreground: var(--Eulinx-color-text);
+    --primary: var(--Eulinx-color-primary);
+    --primary-foreground: var(--Eulinx-color-surface-elevated);
+    --secondary: var(--Eulinx-color-surface-alt);
+    --secondary-foreground: var(--Eulinx-color-text);
+    --muted: var(--Eulinx-color-surface-alt);
+    --muted-foreground: var(--Eulinx-color-text-secondary);
+    --accent: var(--Eulinx-color-accent);
+    --accent-foreground: #5d4037;
+    --destructive: var(--Eulinx-color-error);
+    --destructive-foreground: var(--Eulinx-color-surface);
+    --border: var(--Eulinx-color-border);
+    --input: var(--Eulinx-color-surface);
+    --ring: var(--Eulinx-color-ring);
+    --sidebar: var(--Eulinx-color-sidebar);
+    --sidebar-foreground: var(--Eulinx-color-text);
+    --sidebar-primary: var(--Eulinx-color-primary);
+    --sidebar-primary-foreground: var(--Eulinx-color-surface-elevated);
+    --sidebar-accent: var(--Eulinx-color-accent);
+    --sidebar-accent-foreground: #5d4037;
+    --sidebar-border: var(--Eulinx-color-border);
+    --sidebar-ring: var(--Eulinx-color-ring);
 
     /* ── Spacing ── */
     --Eulinx-space-0: 0px;
@@ -213,36 +213,7 @@
   }
 
   .dark {
-    /* ── User's color scheme — dark ── */
-    --background: #2b2b2b;
-    --foreground: #dcdcdc;
-    --card: #333333;
-    --card-foreground: #dcdcdc;
-    --popover: #333333;
-    --popover-foreground: #dcdcdc;
-    --primary: #b0b0b0;
-    --primary-foreground: #2b2b2b;
-    --secondary: #5a5a5a;
-    --secondary-foreground: #c0c0c0;
-    --muted: #454545;
-    --muted-foreground: #a0a0a0;
-    --accent: #e0e0e0;
-    --accent-foreground: #333333;
-    --destructive: #d9afaf;
-    --destructive-foreground: #2b2b2b;
-    --border: #4f4f4f;
-    --input: #333333;
-    --ring: #c0c0c0;
-    --sidebar: #212121;
-    --sidebar-foreground: #dcdcdc;
-    --sidebar-primary: #b0b0b0;
-    --sidebar-primary-foreground: #212121;
-    --sidebar-accent: #e0e0e0;
-    --sidebar-accent-foreground: #333333;
-    --sidebar-border: #4f4f4f;
-    --sidebar-ring: #c0c0c0;
-
-    /* ── Eulinx color tokens — dark ── */
+    /* ── Eulinx color tokens — dark (source of truth) ── */
     --Eulinx-color-background: #2b2b2b;
     --Eulinx-color-surface: #333333;
     --Eulinx-color-surface-alt: #454545;
@@ -270,6 +241,35 @@
     --Eulinx-color-node-map: #F59E0B;
     --Eulinx-color-node-worker: #b0b0b0;
     --Eulinx-color-node-graph-edge: #a0a0a0;
+
+    /* ── shadcn aliases — dark ── */
+    --background: var(--Eulinx-color-background);
+    --foreground: var(--Eulinx-color-text);
+    --card: var(--Eulinx-color-surface);
+    --card-foreground: var(--Eulinx-color-text);
+    --popover: var(--Eulinx-color-surface);
+    --popover-foreground: var(--Eulinx-color-text);
+    --primary: var(--Eulinx-color-primary);
+    --primary-foreground: var(--Eulinx-color-surface-elevated);
+    --secondary: var(--Eulinx-color-surface-alt);
+    --secondary-foreground: var(--Eulinx-color-text-secondary);
+    --muted: var(--Eulinx-color-surface-alt);
+    --muted-foreground: var(--Eulinx-color-text-muted);
+    --accent: var(--Eulinx-color-accent);
+    --accent-foreground: #333333;
+    --destructive: var(--Eulinx-color-error);
+    --destructive-foreground: var(--Eulinx-color-background);
+    --border: var(--Eulinx-color-border);
+    --input: var(--Eulinx-color-surface);
+    --ring: var(--Eulinx-color-ring);
+    --sidebar: var(--Eulinx-color-sidebar);
+    --sidebar-foreground: var(--Eulinx-color-text);
+    --sidebar-primary: var(--Eulinx-color-primary);
+    --sidebar-primary-foreground: var(--Eulinx-color-sidebar);
+    --sidebar-accent: var(--Eulinx-color-accent);
+    --sidebar-accent-foreground: var(--Eulinx-color-surface);
+    --sidebar-border: var(--Eulinx-color-border);
+    --sidebar-ring: var(--Eulinx-color-ring);
   }
 }
 

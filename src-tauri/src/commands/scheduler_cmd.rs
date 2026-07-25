@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use tauri::State;
 
 use crate::managers::scheduler_manager::{BudgetInfo, ConcurrencyInfo, SchedulerManager};
@@ -412,6 +414,85 @@ pub fn scheduler_group_distributor_next(
     manager: State<'_, SchedulerManager>,
 ) -> Result<Option<String>, String> {
     manager.group_distributor_next().map_err(|e| e.to_string())
+}
+
+// --- Batch query commands ---
+
+#[derive(serde::Serialize)]
+pub struct SchedulerOverview {
+    pub state: SchedulerLifecycleState,
+    pub metrics: SchedulerMetrics,
+    pub queue_snapshot: SchedulerQueueSnapshot,
+    pub running_count: usize,
+    pub dead_queue_len: usize,
+}
+
+#[tauri::command]
+pub fn scheduler_get_overview(
+    manager: State<'_, SchedulerManager>,
+) -> Result<SchedulerOverview, String> {
+    Ok(SchedulerOverview {
+        state: manager.state().map_err(|e| e.to_string())?,
+        metrics: manager.get_metrics().map_err(|e| e.to_string())?,
+        queue_snapshot: manager.get_queue_snapshot().map_err(|e| e.to_string())?,
+        running_count: manager
+            .concurrency_running_count_direct()
+            .map_err(|e| e.to_string())?,
+        dead_queue_len: manager.dead_queue_len().map_err(|e| e.to_string())?,
+    })
+}
+
+#[derive(serde::Serialize)]
+pub struct DeadQueueState {
+    pub length: usize,
+    pub entries: Vec<DeadEntry>,
+    pub by_category: HashMap<FailureCategory, Vec<DeadEntry>>,
+}
+
+#[tauri::command]
+pub fn scheduler_get_dead_queue_state(
+    manager: State<'_, SchedulerManager>,
+) -> Result<DeadQueueState, String> {
+    let length = manager.dead_queue_len().map_err(|e| e.to_string())?;
+    let entries = manager.get_dead_queue().map_err(|e| e.to_string())?;
+
+    let mut by_category: HashMap<FailureCategory, Vec<DeadEntry>> = HashMap::new();
+    for entry in &entries {
+        by_category
+            .entry(entry.failure_category.clone())
+            .or_default()
+            .push(entry.clone());
+    }
+
+    Ok(DeadQueueState {
+        length,
+        entries,
+        by_category,
+    })
+}
+
+#[derive(serde::Serialize)]
+pub struct SchedulerDiagnostics {
+    pub rate_limit_state: (TokenBucketState, Option<TokenBucketState>),
+    pub budget_info: BudgetInfo,
+    pub concurrency_info: ConcurrencyInfo,
+    pub retry_len: usize,
+}
+
+#[tauri::command]
+pub fn scheduler_get_diagnostics(
+    manager: State<'_, SchedulerManager>,
+) -> Result<SchedulerDiagnostics, String> {
+    Ok(SchedulerDiagnostics {
+        rate_limit_state: manager
+            .get_rate_limit_state()
+            .map_err(|e| e.to_string())?,
+        budget_info: manager.get_budget_info().map_err(|e| e.to_string())?,
+        concurrency_info: manager
+            .get_concurrency_info()
+            .map_err(|e| e.to_string())?,
+        retry_len: manager.retry_len().map_err(|e| e.to_string())?,
+    })
 }
 
 #[cfg(test)]
