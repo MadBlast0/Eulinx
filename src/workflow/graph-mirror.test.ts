@@ -20,6 +20,7 @@ import type {
   GraphSnapshot,
   NodeRuntimeState,
   SnapshotId,
+  WorkflowRunId,
 } from "./workflow-types"
 
 // ---------------------------------------------------------------------------
@@ -252,8 +253,8 @@ describe("updateNodeState", () => {
       [makeEdge("e1", "A", "B")],
     )
     const states: NodeRuntimeState[] = [
-      { runId: "run1" as any, nodeId: nid("A"), iterationIndex: 0, state: "pending", remainingDeps: 0, attempt: 0 },
-      { runId: "run1" as any, nodeId: nid("B"), iterationIndex: 0, state: "pending", remainingDeps: 1, attempt: 0 },
+      { runId: "run1" as WorkflowRunId, nodeId: nid("A"), iterationIndex: 0, state: "pending", remainingDeps: 0, attempt: 0 },
+      { runId: "run1" as WorkflowRunId, nodeId: nid("B"), iterationIndex: 0, state: "pending", remainingDeps: 1, attempt: 0 },
     ]
     return buildMirror(snapshot, states)
   }
@@ -262,7 +263,7 @@ describe("updateNodeState", () => {
     const mirror = makeMirror()
     const result = updateNodeState(mirror, nid("A"), 0, "ready")
     expect(result).toBe(true)
-    expect(mirror.states.get(stateKey(nid("A"), 0))!.state).toBe("ready")
+    expect(mirror.states.get(stateKey(nid("A"), 0))?.state).toBe("ready")
     expect(mirror.readySet.has(stateKey(nid("A"), 0))).toBe(true)
   })
 
@@ -271,7 +272,7 @@ describe("updateNodeState", () => {
     updateNodeState(mirror, nid("A"), 0, "ready")
     const result = updateNodeState(mirror, nid("A"), 0, "running")
     expect(result).toBe(true)
-    expect(mirror.states.get(stateKey(nid("A"), 0))!.state).toBe("running")
+    expect(mirror.states.get(stateKey(nid("A"), 0))?.state).toBe("running")
     expect(mirror.readySet.has(stateKey(nid("A"), 0))).toBe(false)
     expect(mirror.runningSet.has(stateKey(nid("A"), 0))).toBe(true)
   })
@@ -294,9 +295,9 @@ describe("buildMirror", () => {
       [makeEdge("e1", "A", "B"), makeEdge("e2", "B", "C")],
     )
     const states: NodeRuntimeState[] = [
-      { runId: "run1" as any, nodeId: nid("A"), iterationIndex: 0, state: "pending", remainingDeps: 0, attempt: 0 },
-      { runId: "run1" as any, nodeId: nid("B"), iterationIndex: 0, state: "pending", remainingDeps: 1, attempt: 0 },
-      { runId: "run1" as any, nodeId: nid("C"), iterationIndex: 0, state: "pending", remainingDeps: 1, attempt: 0 },
+      { runId: "run1" as WorkflowRunId, nodeId: nid("A"), iterationIndex: 0, state: "pending", remainingDeps: 0, attempt: 0 },
+      { runId: "run1" as WorkflowRunId, nodeId: nid("B"), iterationIndex: 0, state: "pending", remainingDeps: 1, attempt: 0 },
+      { runId: "run1" as WorkflowRunId, nodeId: nid("C"), iterationIndex: 0, state: "pending", remainingDeps: 1, attempt: 0 },
     ]
 
     const mirror = buildMirror(snapshot, states)
@@ -318,9 +319,9 @@ describe("buildMirror", () => {
 
     const mirror = buildMirror(snapshot, states)
 
-    expect(mirror.states.get(stateKey(nid("A"), 0))!.remainingDeps).toBe(0)
-    expect(mirror.states.get(stateKey(nid("B"), 0))!.remainingDeps).toBe(0)
-    expect(mirror.states.get(stateKey(nid("C"), 0))!.remainingDeps).toBe(2)
+    expect(mirror.states.get(stateKey(nid("A"), 0))?.remainingDeps).toBe(0)
+    expect(mirror.states.get(stateKey(nid("B"), 0))?.remainingDeps).toBe(0)
+    expect(mirror.states.get(stateKey(nid("C"), 0))?.remainingDeps).toBe(2)
   })
 
   it("populates readySet for nodes with 0 deps in pending state", () => {
@@ -335,6 +336,6 @@ describe("buildMirror", () => {
     // A has 0 deps and is pending -> should be in readySet after build
     // Actually, buildMirror inserts as "pending", not "ready"
     // The engine's tick logic transitions pending with 0 deps to ready
-    expect(mirror.states.get(stateKey(nid("A"), 0))!.remainingDeps).toBe(0)
+    expect(mirror.states.get(stateKey(nid("A"), 0))?.remainingDeps).toBe(0)
   })
 })

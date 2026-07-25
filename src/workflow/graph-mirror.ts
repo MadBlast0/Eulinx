@@ -16,6 +16,7 @@ import type {
   NodeRuntimeState,
   NodeState,
   SnapshotId,
+  WorkflowRunId,
 } from "./workflow-types"
 
 // ---------------------------------------------------------------------------
@@ -87,7 +88,8 @@ export function computeTopologicalOrder(
 
   const result: NodeId[] = []
   while (queue.length > 0) {
-    const nodeId = queue.shift()!
+    const nodeId = queue.shift()
+    if (nodeId === undefined) break
     result.push(nodeId)
     for (const neighbor of adj.get(nodeId) ?? []) {
       const newDegree = (inDegree.get(neighbor) ?? 1) - 1
@@ -205,7 +207,7 @@ export function buildMirror(
     const key = stateKey(nodeId, 0)
     if (!states.has(key)) {
       states.set(key, {
-        runId: persistedStates[0]?.runId ?? ("" as any),
+        runId: persistedStates[0]?.runId ?? ("" as WorkflowRunId),
         nodeId,
         iterationIndex: 0,
         state: "pending",

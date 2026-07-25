@@ -21,6 +21,7 @@ import type {
   WorkflowEngineConfig,
   WorkflowError,
   SnapshotId,
+  WorkspaceId,
 } from "./workflow-types"
 import type { WorkflowTriggerConfig } from "./triggers/types"
 import {
@@ -128,7 +129,7 @@ export class WorkflowManager {
       definition.version,
       snapshot,
       trigger,
-      (options?.workspaceId ?? "default") as any,
+      (options?.workspaceId ?? "default") as WorkspaceId,
       options?.projectId ?? "default",
       options?.sessionId ?? "default",
       options?.mode ?? "normal",

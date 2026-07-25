@@ -25,7 +25,7 @@ describe("RunContext", () => {
 
     const value = ctx.readOutput("A" as NodeId, "out", 0)
     expect(value).toBeDefined()
-    expect(value!.value).toEqual({ greeting: "hello" })
+    expect(value?.value).toEqual({ greeting: "hello" })
   })
 
   it("rejects duplicate writes (write-once)", () => {
@@ -86,8 +86,8 @@ describe("RunContext", () => {
     ctx.writeOutput("B" as NodeId, "out", 0, "val2", "e2" as EdgeId, 4)
     const log = ctx.getWriteLog()
     expect(log).toHaveLength(2)
-    expect(log[0]!.edgeId).toBe("e1")
-    expect(log[1]!.edgeId).toBe("e2")
+    expect(log[0]?.edgeId).toBe("e1")
+    expect(log[1]?.edgeId).toBe("e2")
   })
 
   it("increments version on each write", () => {

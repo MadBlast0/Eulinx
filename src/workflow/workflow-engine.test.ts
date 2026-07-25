@@ -12,6 +12,8 @@ import type {
 } from "./workflow-engine"
 import type {
   WorkflowRunId,
+  WorkflowRun,
+  NodeRuntimeState,
   NodeId,
   EdgeId,
   GraphSnapshot,
@@ -21,6 +23,7 @@ import type {
   AdmissionResponse,
   SnapshotId,
 } from "./workflow-types"
+import type { GraphMirror } from "./graph-mirror"
 
 // ---------------------------------------------------------------------------
 // Mock helpers
@@ -102,8 +105,8 @@ function createMockExecutor(): ExecutionEngineAdapter {
 }
 
 function createMockPersistence(): PersistenceAdapter {
-  const runs = new Map<string, any>()
-  const nodeStates = new Map<string, any>()
+  const runs = new Map<string, WorkflowRun>()
+  const nodeStates = new Map<string, NodeRuntimeState>()
 
   return {
     saveRun: vi.fn().mockImplementation(async (run) => {
@@ -120,7 +123,7 @@ function createMockPersistence(): PersistenceAdapter {
       return { ok: true, value: undefined }
     }),
     loadNodeStates: vi.fn().mockImplementation(async (runId) => {
-      const states = [...nodeStates.values()].filter((s: any) => s.runId === runId)
+      const states = [...nodeStates.values()].filter((s) => s.runId === runId)
       return { ok: true, value: states }
     }),
     saveRunContext: vi.fn().mockResolvedValue({ ok: true, value: undefined }),
@@ -172,7 +175,7 @@ describe("WorkflowEngine", () => {
         1,
         snapshot,
         trigger,
-        "ws_test" as any,
+        "ws_test",
         "proj_test",
         "sess_test",
       )
@@ -203,7 +206,7 @@ describe("WorkflowEngine", () => {
         1,
         snapshot,
         trigger,
-        "ws_test" as any,
+        "ws_test",
         "proj_test",
         "sess_test",
       )
@@ -221,15 +224,15 @@ describe("WorkflowEngine", () => {
         runId: "run1" as WorkflowRunId,
         state: "created" as const,
         runSeq: 0,
-      } as any
+      } as unknown as WorkflowRun
       const mirror = engine.getMirror("run1" as WorkflowRunId) ?? {
         readySet: new Set(["A#0"]),
         runningSet: new Set(),
         topoOrder: ["A" as NodeId],
-      }
+      } as unknown as GraphMirror
 
       // The engine's computeReadySet checks run.state
-      const result = engine.computeReadySet(mirror as any, run)
+      const result = engine.computeReadySet(mirror, run)
       expect(result).toEqual([])
     })
   })

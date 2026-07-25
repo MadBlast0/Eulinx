@@ -143,8 +143,8 @@ function tokenize(input: string): Token[] {
     if (ch && /[a-zA-Z_]/.test(ch)) {
       let j = i
       let ident = ""
-      while (j < input.length && input[j] && /[a-zA-Z0-9_.]/.test(input[j]!)) {
-        ident += input[j]!
+      while (j < input.length && input[j] && /[a-zA-Z0-9_.]/.test(input[j] ?? "")) {
+        ident += input[j]
         j++
       }
       if (ident === "true") tokens.push({ kind: "bool", value: true })

@@ -14,7 +14,7 @@ import type {
   JsonValue,
 } from "@/core/types"
 
-export type { JsonValue } from "@/core/types"
+export type { JsonValue, WorkspaceId } from "@/core/types"
 
 // ---------------------------------------------------------------------------
 // Branded IDs
