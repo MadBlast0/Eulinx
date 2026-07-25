@@ -76,7 +76,7 @@ export class MemoryManager {
     this.semantic = new SemanticMemoryStore()
     this.working = new WorkingMemoryStore()
     this.vector = new VectorMemoryStore()
-    this.search = new MemorySearchEngine(this.vector)
+    this.search = new MemorySearchEngine()
     this.knowledgeBase = new KnowledgeBase(this.vector)
   }
 

@@ -31,8 +31,8 @@ export const DEFAULT_MEMORY_POLICY: MemoryPolicy = {
 const SECRET_PATTERNS: readonly RegExp[] = [
   /(?:api[_-]?key|apikey)\s*[=:]\s*['"]?[A-Za-z0-9\-_]{20,}['"]?/gi,
   /(?:secret|password|passwd|pwd)\s*[=:]\s*['"]?[^\s'"]{8,}['"]?/gi,
-  /(?:token|access[_-]?token)\s*[=:]\s*['"]?[A-Za-z0-9\-_\.]{20,}['"]?/gi,
-  /(?:private[_-]?key)\s*[=:]\s*['"]?[A-Za-z0-9\-_\/+]{40,}['"]?/gi,
+  /(?:token|access[_-]?token)\s*[=:]\s*['"]?[A-Za-z0-9\-_.]{20,}['"]?/gi,
+  /(?:private[_-]?key)\s*[=:]\s*['"]?[A-Za-z0-9\-_/+]{40,}['"]?/gi,
   /-----BEGIN\s+(?:RSA\s+)?PRIVATE\s+KEY-----/g,
   /(?:sk|pk)[-_][A-Za-z0-9]{20,}/g,
 ]

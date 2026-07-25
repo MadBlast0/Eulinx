@@ -197,7 +197,8 @@ export class VectorMemoryStore {
 export class MemorySearchEngine {
   private readonly allRecords: Map<string, MemoryRecord> = new Map()
 
-  constructor(_vectorStore: VectorMemoryStore) {}
+  // eslint-disable-next-line @typescript-eslint/no-useless-constructor
+  constructor() {}
 
   /**
    * Register a memory record for searching.

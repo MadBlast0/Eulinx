@@ -47,7 +47,7 @@ describe("LongTermMemoryStore", () => {
       expect(record.reviewStatus).toBe("pending")
 
       store.review(record.id, "approved")
-      expect(store.read(record.id)!.reviewStatus).toBe("approved")
+      expect(store.read(record.id)?.reviewStatus).toBe("approved")
     })
   })
 
@@ -99,8 +99,8 @@ describe("EpisodicMemoryStore", () => {
   describe("getForSession", () => {
     it("filters by session", () => {
       const store = new EpisodicMemoryStore()
-      store.record({ content: "A", workspaceId: ws("ws_1"), eventType: "test", eventTimestamp: "" as any, participant: "p1", sessionId: sid("s_1") })
-      store.record({ content: "B", workspaceId: ws("ws_1"), eventType: "test", eventTimestamp: "" as any, participant: "p1", sessionId: sid("s_2") })
+      store.record({ content: "A", workspaceId: ws("ws_1"), eventType: "test", eventTimestamp: "" as IsoTimestamp, participant: "p1", sessionId: sid("s_1") })
+      store.record({ content: "B", workspaceId: ws("ws_1"), eventType: "test", eventTimestamp: "" as IsoTimestamp, participant: "p1", sessionId: sid("s_2") })
 
       expect(store.getForSession(sid("s_1")).length).toBe(1)
     })
