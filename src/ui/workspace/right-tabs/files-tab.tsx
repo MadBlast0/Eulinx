@@ -229,6 +229,8 @@ export function FilesTab() {
       {/* Search + mode toggle */}
       <div className="flex items-center gap-2 px-3 pb-2">
         <SearchField
+          id="file-search"
+          name="fileSearch"
           value={query}
           onChange={setQuery}
           placeholder="Find files"

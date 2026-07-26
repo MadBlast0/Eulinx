@@ -53,7 +53,7 @@ export function SessionsTab() {
           ]}
           onChange={setFilter}
         />
-        <SearchField value={query} onChange={setQuery} placeholder="Search sessions" />
+        <SearchField id="session-search" name="sessionSearch" value={query} onChange={setQuery} placeholder="Search sessions" />
       </div>
 
       {/* ── Session list ── */}

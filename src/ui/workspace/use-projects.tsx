@@ -47,8 +47,7 @@ export function createProjectDoc(name: string, path: string): ProjectDoc {
 }
 
 export function DEFAULT_SEEDED_WORKSPACE(): WorkspaceDoc {
-  const project = createProjectDoc("Eulinx", "")
-  return { version: 1, projects: [project], activeProjectId: project.id }
+  return { version: 1, projects: [], activeProjectId: undefined }
 }
 
 interface ProjectsContextValue {

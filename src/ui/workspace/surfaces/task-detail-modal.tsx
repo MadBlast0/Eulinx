@@ -196,6 +196,8 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
           <div>
             <label className="mb-1 block text-[11px] font-medium text-[color:var(--Eulinx-color-text-muted)]">Title</label>
             <Input
+              id="detail-title"
+              name="taskTitle"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               onBlur={handleSaveTitle}
@@ -208,6 +210,8 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
           <div>
             <label className="mb-1 block text-[11px] font-medium text-[color:var(--Eulinx-color-text-muted)]">Description</label>
             <Textarea
+              id="detail-description"
+              name="taskDescription"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               onBlur={handleSaveDescription}
@@ -269,6 +273,8 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                 <Calendar className="mr-1 inline h-3 w-3" strokeWidth={1.5} />Due Date
               </label>
               <Input
+                id="detail-due-date"
+                name="taskDueDate"
                 type="date"
                 value={dueDate}
                 onChange={(e) => handleDueDateChange(e.target.value)}
@@ -285,6 +291,8 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
                 <div className="h-full rounded-full bg-[color:var(--Eulinx-color-info)] transition-all" style={{ width: `${progress}%` }} />
               </div>
               <Input
+                id="detail-progress"
+                name="taskProgress"
                 type="number" min={0} max={100}
                 value={progressPct}
                 onChange={(e) => setProgressPct(e.target.value)}
@@ -317,7 +325,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
               </div>
             )}
             <div className="flex gap-2">
-              <Input value={newDepId} onChange={(e) => setNewDepId(e.target.value)} placeholder="Task ID..." className="h-7 flex-1 bg-[color:var(--Eulinx-color-surface-sunken)] text-xs" onKeyDown={(e) => { if (e.key === "Enter") handleAddDependency() }} />
+              <Input id="detail-dep-id" name="dependencyId" value={newDepId} onChange={(e) => setNewDepId(e.target.value)} placeholder="Task ID..." className="h-7 flex-1 bg-[color:var(--Eulinx-color-surface-sunken)] text-xs" onKeyDown={(e) => { if (e.key === "Enter") handleAddDependency() }} />
               <Button size="sm" variant="outline" className="h-7" onClick={handleAddDependency} disabled={!newDepId}><Plus className="h-3 w-3" /></Button>
             </div>
           </div>
@@ -339,7 +347,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
               </div>
             )}
             <div className="flex gap-2">
-              <Input value={newSubtaskTitle} onChange={(e) => setNewSubtaskTitle(e.target.value)} placeholder="New subtask..." className="h-7 flex-1 bg-[color:var(--Eulinx-color-surface-sunken)] text-xs" onKeyDown={(e) => { if (e.key === "Enter") handleAddSubtask() }} />
+              <Input id="detail-subtask" name="subtaskTitle" value={newSubtaskTitle} onChange={(e) => setNewSubtaskTitle(e.target.value)} placeholder="New subtask..." className="h-7 flex-1 bg-[color:var(--Eulinx-color-surface-sunken)] text-xs" onKeyDown={(e) => { if (e.key === "Enter") handleAddSubtask() }} />
               <Button size="sm" variant="outline" className="h-7" onClick={handleAddSubtask} disabled={!newSubtaskTitle.trim()}><Plus className="h-3 w-3" /></Button>
             </div>
           </div>
@@ -357,7 +365,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
               </div>
             )}
             <div className="flex gap-2">
-              <Input value={newArtifact} onChange={(e) => setNewArtifact(e.target.value)} placeholder="Artifact name..." className="h-7 flex-1 bg-[color:var(--Eulinx-color-surface-sunken)] text-xs" onKeyDown={(e) => { if (e.key === "Enter") handleAddArtifact() }} />
+              <Input id="detail-artifact" name="artifactName" value={newArtifact} onChange={(e) => setNewArtifact(e.target.value)} placeholder="Artifact name..." className="h-7 flex-1 bg-[color:var(--Eulinx-color-surface-sunken)] text-xs" onKeyDown={(e) => { if (e.key === "Enter") handleAddArtifact() }} />
               <Button size="sm" variant="outline" className="h-7" onClick={handleAddArtifact} disabled={!newArtifact.trim()}><Plus className="h-3 w-3" /></Button>
             </div>
           </div>
@@ -370,7 +378,7 @@ export function TaskDetailPanel({ task, onClose }: TaskDetailPanelProps) {
               {task.verificationStatus === "failed" && <Badge className="text-[10px]" style={{ color: "var(--Eulinx-color-error)", background: "color-mix(in srgb, var(--Eulinx-color-error) 14%, transparent)" }}><XCircle className="mr-0.5 h-2.5 w-2.5" /> Failed</Badge>}
               {task.verificationStatus === "pending" && <Badge className="text-[10px]" style={{ color: "var(--Eulinx-color-text-muted)", background: "color-mix(in srgb, var(--Eulinx-color-text-muted) 14%, transparent)" }}>Pending</Badge>}
             </div>
-            <Input value={verifyRecord} onChange={(e) => setVerifyRecord(e.target.value)} placeholder="Verification record..." className="mb-2 h-7 bg-[color:var(--Eulinx-color-surface-sunken)] text-xs" />
+            <Input id="detail-verify-record" name="verificationRecord" value={verifyRecord} onChange={(e) => setVerifyRecord(e.target.value)} placeholder="Verification record..." className="mb-2 h-7 bg-[color:var(--Eulinx-color-surface-sunken)] text-xs" />
             <div className="flex gap-2">
               <Button size="sm" variant="outline" className="h-7 text-[color:var(--Eulinx-color-success)]" onClick={() => handleVerify(true)}><CheckCircle2 className="mr-1 h-3 w-3" /> Pass</Button>
               <Button size="sm" variant="outline" className="h-7 text-[color:var(--Eulinx-color-error)]" onClick={() => handleVerify(false)}><XCircle className="mr-1 h-3 w-3" /> Fail</Button>
