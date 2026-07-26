@@ -6,20 +6,16 @@
  */
 
 import type { AuditEvent } from "./security-types"
-import { createLogger } from "@/core/logger"
-import type { Logger } from "@/core/logger"
 
 // ---------------------------------------------------------------------------
 // Audit Log
 // ---------------------------------------------------------------------------
 
 export class AuditLog {
-  private readonly logger: Logger
   private readonly events: AuditEvent[] = []
   private readonly maxEvents: number
 
   constructor(maxEvents = 10000) {
-    this.logger = createLogger("AuditLog")
     this.maxEvents = maxEvents
   }
 
@@ -31,8 +27,6 @@ export class AuditLog {
     if (this.events.length > this.maxEvents) {
       this.events.shift()
     }
-
-    this.logger.info(`Audit: ${event.type} - ${event.decision}`)
   }
 
   /** Get events */
@@ -69,7 +63,6 @@ export class AuditLog {
   /** Clear audit log */
   clear(): void {
     this.events.length = 0
-    this.logger.info("Audit log cleared")
   }
 
   /** Get event count */
