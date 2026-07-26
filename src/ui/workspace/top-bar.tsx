@@ -72,7 +72,7 @@ export function TopBar() {
         style={{ cursor: "default" }}
       >
         <div
-          className="pointer-events-auto flex h-6 w-full max-w-[320px] items-center gap-1.5 border-b border-[color:var(--Eulinx-color-border)] pl-1 pr-0.5 text-[10px] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:border-[color:var(--Eulinx-color-border-strong)]"
+          className="pointer-events-auto flex h-6 w-full max-w-[320px] cursor-pointer items-center gap-1.5 border-b border-[color:var(--Eulinx-color-border)] pl-1 pr-0.5 text-[10px] text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:border-[color:var(--Eulinx-color-border-strong)]"
           onPointerDown={(e) => e.stopPropagation()}
           onClick={() => setOverlay("cmd")}
         >

@@ -62,12 +62,31 @@
   color: inherit;
   cursor: pointer;
 }
+.wsx button:disabled {
+  cursor: not-allowed;
+}
 .wsx input {
   font: inherit;
   border: none;
   background: none;
   color: inherit;
   outline: none;
+  cursor: text;
+}
+.wsx input:disabled {
+  cursor: not-allowed;
+}
+.wsx textarea {
+  cursor: text;
+}
+.wsx textarea:disabled {
+  cursor: not-allowed;
+}
+.wsx select {
+  cursor: pointer;
+}
+.wsx select:disabled {
+  cursor: not-allowed;
 }
 
 /* Grid canvas backdrop */

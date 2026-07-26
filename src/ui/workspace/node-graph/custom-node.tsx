@@ -112,7 +112,7 @@ function CustomNodeImpl({ id, data, selected, width, height }: NodeProps<CustomN
             type="button"
             aria-label={expanded ? "Collapse terminal" : "Expand terminal"}
             onClick={(e) => { e.stopPropagation(); rf.setNodes((nodes) => nodes.map((n) => (n.id === id ? { ...n, data: { ...n.data, expanded: !expanded } } : n))) }}
-            className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:text-[color:var(--Eulinx-color-text)]"
+            className="flex h-3.5 w-3.5 shrink-0 cursor-pointer items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:text-[color:var(--Eulinx-color-text)]"
           >
             {expanded
               ? <ChevronDown className="h-3 w-3" strokeWidth={2.5} />
@@ -370,7 +370,7 @@ function HumanApprovalBody({ data }: { data: CustomNodeData }) {
     <div className="mx-3 mt-1 mb-2 flex gap-1.5">
       <button
         type="button"
-        className="flex items-center gap-1 rounded-full border border-[color:var(--Eulinx-color-success)]/30 bg-[color:var(--Eulinx-color-success)]/10 px-2 py-0.5 text-[10px] font-medium text-[color:var(--Eulinx-color-success)] transition-colors hover:bg-[color:var(--Eulinx-color-success)]/20"
+        className="flex cursor-pointer items-center gap-1 rounded-full border border-[color:var(--Eulinx-color-success)]/30 bg-[color:var(--Eulinx-color-success)]/10 px-2 py-0.5 text-[10px] font-medium text-[color:var(--Eulinx-color-success)] transition-colors hover:bg-[color:var(--Eulinx-color-success)]/20"
         onPointerDown={(e) => e.stopPropagation()}
       >
         <Check className="h-2.5 w-2.5" strokeWidth={2.5} />
@@ -378,7 +378,7 @@ function HumanApprovalBody({ data }: { data: CustomNodeData }) {
       </button>
       <button
         type="button"
-        className="flex items-center gap-1 rounded-full border border-[color:var(--Eulinx-color-error)]/30 bg-[color:var(--Eulinx-color-error)]/10 px-2 py-0.5 text-[10px] font-medium text-[color:var(--Eulinx-color-error)] transition-colors hover:bg-[color:var(--Eulinx-color-error)]/20"
+        className="flex cursor-pointer items-center gap-1 rounded-full border border-[color:var(--Eulinx-color-error)]/30 bg-[color:var(--Eulinx-color-error)]/10 px-2 py-0.5 text-[10px] font-medium text-[color:var(--Eulinx-color-error)] transition-colors hover:bg-[color:var(--Eulinx-color-error)]/20"
         onPointerDown={(e) => e.stopPropagation()}
       >
         <X className="h-2.5 w-2.5" strokeWidth={2.5} />

@@ -57,7 +57,7 @@ function TaskCard({
       onDragStart={() => onDragStart(task.id)}
       onClick={() => onOpenDetail(task.id)}
       className={cn(
-        "group cursor-pointer rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-3 text-left transition-colors",
+        "group cursor-pointer select-none rounded-[var(--Eulinx-radius-sm)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-3 text-left transition-colors",
         "hover:border-[color:var(--Eulinx-color-accent)] hover:bg-[color:var(--Eulinx-color-hover)]",
         "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
       )}

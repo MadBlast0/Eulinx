@@ -394,7 +394,7 @@ function GitFileRow({ file }: { file: ChangeEntry }) {
 
 function CommitItem({ commit }: { commit: CommitEntry }) {
   return (
-    <div className="border-b border-[color:var(--Eulinx-color-border)]/50 transition-colors hover:bg-[color:var(--Eulinx-color-hover)]/30">
+    <div className="cursor-default border-b border-[color:var(--Eulinx-color-border)]/50 transition-colors hover:bg-[color:var(--Eulinx-color-hover)]/30">
       <div className="flex items-start gap-2 px-3 py-1.5 text-left">
         <span className="mt-[5px]"><Dot tone="info" /></span>
         <span className="min-w-0 flex-1">

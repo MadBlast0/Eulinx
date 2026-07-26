@@ -336,6 +336,28 @@
   button { cursor: pointer; }
   button:disabled { cursor: not-allowed; }
 
+  /* Cursor rules for form elements */
+  input:not([type="button"]):not([type="submit"]):not([type="reset"]):not(:disabled) { cursor: text; }
+  textarea:not(:disabled) { cursor: text; }
+  select:not(:disabled) { cursor: pointer; }
+
+  /* Cursor rules for interactive elements */
+  a { cursor: pointer; }
+  [role="button"] { cursor: pointer; }
+  [role="button"]:disabled, [aria-disabled="true"] { cursor: not-allowed; }
+
+  /* Cursor rules for draggable elements */
+  [draggable="true"] { cursor: grab; }
+  [draggable="true"]:active { cursor: grabbing; }
+
+  /* Cursor rules for resizable elements */
+  [data-resize="horizontal"] { cursor: col-resize; }
+  [data-resize="vertical"] { cursor: row-resize; }
+  [data-resize="corner"] { cursor: nwse-resize; }
+
+  /* Prevent text selection on interactive elements during drag */
+  .user-select-none { user-select: none; -webkit-user-select: none; }
+
   :focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 2px;

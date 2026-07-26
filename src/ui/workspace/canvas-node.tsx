@@ -117,7 +117,7 @@ export function CanvasNodeCard({
             <button
               type="button"
               aria-label="Minimize node"
-              className="flex h-5 w-5 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
+              className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
               onMouseDown={(e) => e.stopPropagation()}
             >
               <Minus className="h-3 w-3" strokeWidth={2.25} />
@@ -126,7 +126,7 @@ export function CanvasNodeCard({
               <button
                 type="button"
                 aria-label="Remove node"
-                className="flex h-5 w-5 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
+                className="flex h-5 w-5 cursor-pointer items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
                 onMouseDown={(e) => {
                   e.stopPropagation()
                   onRemove()
