@@ -8,6 +8,7 @@ export interface Worker {
   readonly id: string
   readonly name: string
   readonly status: WorkerStatus
+  readonly model?: string
   readonly desc: string
   readonly utilization: number
   readonly meta: readonly string[]

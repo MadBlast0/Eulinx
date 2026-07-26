@@ -564,6 +564,8 @@ export function UnifiedSearch({ open, onClose }: UnifiedSearchProps) {
           />
           <input
             ref={inputRef}
+            id="unified-search"
+            name="unifiedSearch"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)

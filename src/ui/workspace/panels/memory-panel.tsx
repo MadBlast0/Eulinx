@@ -33,6 +33,8 @@ export default function MemoryPanel() {
       title="Memory"
       actions={
         <Input
+          id="memory-panel-search"
+          name="memoryPanelSearch"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search memory..."

@@ -17,6 +17,7 @@ import {
   type Edge,
   type NodeTypes,
   type NodeMouseHandler,
+  type OnNodesChange,
   Handle,
   Position,
 } from "@xyflow/react"
@@ -669,6 +670,8 @@ function FilterPanel({
                 Session
               </div>
               <select
+                id="memory-session-filter"
+                name="memorySessionFilter"
                 value={filters.sessionId}
                 onChange={(e) =>
                   onChange({ ...filters, sessionId: e.target.value })
@@ -693,6 +696,8 @@ function FilterPanel({
             <div className="flex items-center gap-1">
               <input
                 type="date"
+                id="memory-date-from"
+                name="memoryDateFrom"
                 value={filters.dateFrom}
                 onChange={(e) =>
                   onChange({ ...filters, dateFrom: e.target.value })
@@ -702,6 +707,8 @@ function FilterPanel({
               <span className="text-[11px] text-[color:var(--Eulinx-color-text-muted)]">to</span>
               <input
                 type="date"
+                id="memory-date-to"
+                name="memoryDateTo"
                 value={filters.dateTo}
                 onChange={(e) =>
                   onChange({ ...filters, dateTo: e.target.value })
@@ -830,7 +837,21 @@ function MemoryGraphInner({
   }, [filteredNodes, searchQuery])
 
   // React Flow nodes
-  const [nodes, setNodes, onNodesChange] = useNodesState<MemoryFlowNode>([])
+  const [nodes, setNodes, onNodesChangeRaw] = useNodesState<MemoryFlowNode>([])
+
+  // Guard against stale drag gestures after node sync
+  const nodeIdsRef = useRef(new Set<string>())
+  nodeIdsRef.current = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes])
+
+  const onNodesChange = useCallback<OnNodesChange<MemoryFlowNode>>(
+    (changes) => {
+      const valid = changes.filter(
+        (c) => c.type !== "position" || nodeIdsRef.current.has(c.id),
+      )
+      if (valid.length > 0) onNodesChangeRaw(valid)
+    },
+    [onNodesChangeRaw],
+  )
 
   const computedNodes: MemoryFlowNode[] = useMemo(() => {
     return filteredNodes.map((n) => {
@@ -974,6 +995,8 @@ export function MemoryGraph({ workspaceId }: MemoryGraphProps) {
             strokeWidth={1.5}
           />
           <Input
+            id="memory-graph-search"
+            name="memoryGraphSearch"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Highlight nodes..."

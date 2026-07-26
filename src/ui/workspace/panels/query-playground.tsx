@@ -502,6 +502,8 @@ export function QueryPlayground({ workspaceId }: QueryPlaygroundProps) {
               </span>
             </div>
             <Textarea
+              id="query-editor"
+              name="queryEditor"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}

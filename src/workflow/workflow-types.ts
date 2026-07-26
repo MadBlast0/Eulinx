@@ -47,6 +47,11 @@ export type NodeKind =
   | "output"
   | "delay"
   | "human_approval"
+  | "switch"
+  | "filter"
+  | "set"
+  | "code"
+  | "threshold"
 
 // ---------------------------------------------------------------------------
 // Node State (NodeArchitecture-Part03 §Node States)

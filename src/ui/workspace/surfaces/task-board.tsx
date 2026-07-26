@@ -325,6 +325,8 @@ export default function TaskBoard() {
         <div className="border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-6 py-4">
           <div className="mx-auto max-w-2xl space-y-3">
             <Input
+              id="task-title"
+              name="taskTitle"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
               placeholder="Task title"
@@ -334,6 +336,8 @@ export default function TaskBoard() {
               }}
             />
             <Textarea
+              id="task-description"
+              name="taskDescription"
               value={newDesc}
               onChange={(e) => setNewDesc(e.target.value)}
               placeholder="Description (optional)"

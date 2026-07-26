@@ -28,6 +28,8 @@ export default function QueryPlayground() {
       <div className="flex h-full flex-col">
         <div className="border-b border-[color:var(--Eulinx-color-border)] p-2">
           <Textarea
+            id="cv-query-input"
+            name="cvQueryInput"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Enter a HelixDB query..."

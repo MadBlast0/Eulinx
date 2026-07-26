@@ -65,6 +65,8 @@ function ArtifactsInner() {
         <div className="relative flex-1">
           <AppIcon name="search" className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
           <input
+            id="artifact-search"
+            name="artifactSearch"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search artifacts…"

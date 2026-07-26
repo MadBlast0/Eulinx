@@ -31,11 +31,15 @@ import type {
   WorkflowEngineConfig,
   WorkflowError,
   WorkflowRunState,
+  EdgeDefinition,
 } from "./workflow-types"
 import type { WorkspaceId } from "@/core/types"
 import type { RunContext } from "./run-context"
+import { stateKey, parseStateKey, updateNodeState } from "./graph-mirror"
 import type { GraphMirror } from "./graph-mirror"
 import type { NodeExecutorRegistry } from "./node-executors"
+import { resolveInputs, storeOutputs } from "./port-resolver"
+import { isNodeTerminal, isRunTerminal } from "./workflow-types"
 
 // ---------------------------------------------------------------------------
 // Event Emitter Interface (for EventBus integration)
@@ -87,6 +91,17 @@ export interface PersistenceAdapter {
 }
 
 // ---------------------------------------------------------------------------
+// Tick Result
+// ---------------------------------------------------------------------------
+
+export interface TickResult {
+  readonly dispatched: number
+  readonly completed: number
+  readonly failed: number
+  readonly isComplete: boolean
+}
+
+// ---------------------------------------------------------------------------
 // Workflow Engine
 // ---------------------------------------------------------------------------
 
@@ -97,17 +112,23 @@ export class WorkflowEngine {
 
   private readonly runs = new Map<string, WorkflowRun>()
   private readonly mirrors = new Map<string, GraphMirror>()
+  private readonly contexts = new Map<string, RunContext>()
+
+  private readonly executor: ExecutionEngineAdapter
+  private readonly registry?: NodeExecutorRegistry
 
   constructor(
     _scheduler: SchedulerAdapter,
-    _executor: ExecutionEngineAdapter,
+    executor: ExecutionEngineAdapter,
     _persistence: PersistenceAdapter,
     emitter: WorkflowEventEmitter,
     _config?: Partial<WorkflowEngineConfig>,
-    _registry?: NodeExecutorRegistry,
+    registry?: NodeExecutorRegistry,
   ) {
     this.logger = createLogger("WorkflowEngine")
     this.emitter = emitter
+    this.executor = executor
+    this.registry = registry
     void this.setupListeners()
   }
 
@@ -384,15 +405,326 @@ export class WorkflowEngine {
   }
 
   getContext(runId: WorkflowRunId): RunContext | undefined {
-    const run = this.runs.get(runId)
-    if (!run) return undefined
-    return undefined // Context loaded lazily from persistence
+    return this.contexts.get(runId)
   }
 
-  computeReadySet(mirror: GraphMirror, run: WorkflowRun): readonly NodeId[] {
-    void mirror
+  setContext(runId: WorkflowRunId, context: RunContext): void {
+    this.contexts.set(runId, context)
+  }
+
+  // ---------------------------------------------------------------------------
+  // Ready Set Computation
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Compute the set of node state keys that are ready to run.
+   * A node is ready when:
+   *   1. Its state is "pending"
+   *   2. Its remainingDeps is 0 (all upstream deps satisfied)
+   *
+   * Uses the mirror's states and graph structure — no I/O.
+   */
+  computeReadySet(mirror: GraphMirror, run: WorkflowRun): readonly string[] {
     void run
-    return []
+    const ready: string[] = []
+
+    for (const [key, state] of mirror.states) {
+      if (state.state === "pending" && state.remainingDeps <= 0) {
+        ready.push(key)
+      }
+    }
+
+    return ready
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tick Loop (Pure TypeScript Execution Engine)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Execute a single tick cycle for a run. This is the core execution loop:
+   *
+   * 1. Find all ready nodes (pending + all deps satisfied)
+   * 2. Transition them to "running" and dispatch to executors
+   * 3. Handle results — transition to succeeded/failed
+   * 4. Decrement downstream deps and promote newly-ready nodes
+   * 5. Return whether the run has reached a terminal state
+   *
+   * This runs entirely in TypeScript (no Rust invoke) — suitable for
+   * local execution, testing, and the pure-TS execution path.
+   */
+  async tickLocal(runId: WorkflowRunId): Promise<Result<TickResult, WorkflowError>> {
+    const run = this.runs.get(runId)
+    if (!run) {
+      return err({ kind: "run_not_found", runId })
+    }
+
+    const mirror = this.mirrors.get(runId)
+    if (!mirror) {
+      return err({ kind: "snapshot_missing", snapshotId: run.graphSnapshotId })
+    }
+
+    const context = this.contexts.get(runId)
+    if (!context) {
+      return err({ kind: "persistence_failed", message: "RunContext not found for run" })
+    }
+
+    if (isRunTerminal(run.state)) {
+      return ok({ dispatched: 0, completed: 0, failed: 0, isComplete: true })
+    }
+
+    // Phase 1: Collect ready nodes
+    const readyKeys = this.computeReadySet(mirror, run)
+    if (readyKeys.length === 0) {
+      // No ready nodes — check if run is complete
+      const isComplete = this.isRunComplete(mirror)
+      return ok({ dispatched: 0, completed: 0, failed: 0, isComplete })
+    }
+
+    let dispatched = 0
+    let completed = 0
+    let failed = 0
+
+    // Phase 2: Transition ready nodes to running and dispatch
+    for (const key of readyKeys) {
+      const parsed = parseStateKey(key)
+      const nodeId = parsed.nodeId
+      const iterationIndex = parsed.iterationIndex
+
+      const nodeDef = mirror.nodes.get(nodeId)
+      if (!nodeDef) continue
+
+      // Transition: pending → running
+      const transitioned = updateNodeState(mirror, nodeId, iterationIndex, "running")
+      if (!transitioned) continue
+
+      // Resolve inputs from upstream outputs
+      const incomingEdgeIds = mirror.incoming.get(nodeId) ?? []
+      const incomingEdges = incomingEdgeIds
+        .map((eid) => mirror.edges.get(eid))
+        .filter((e): e is EdgeDefinition => e !== undefined)
+
+      const resolved = resolveInputs(nodeId, iterationIndex, nodeDef, incomingEdges, context)
+
+      // Check for unsatisfied required ports
+      if (resolved.unsatisfied.length > 0) {
+        // Transition back to failed — port_unsatisfied
+        updateNodeState(mirror, nodeId, iterationIndex, "failed", {
+          failure: {
+            kind: "port_unsatisfied",
+            message: `Unsatisfied required ports: ${resolved.unsatisfied.join(", ")}`,
+            retriable: false,
+            at: new Date().toISOString(),
+          },
+        })
+        failed++
+        this.emitNodeState(runId, nodeId, iterationIndex, "failed")
+        this.propagateFailureDeps(mirror, nodeId, run)
+        continue
+      }
+
+      dispatched++
+      this.emitNodeState(runId, nodeId, iterationIndex, "running")
+
+      // Build execution request
+      const executionId = `exec-${runId}-${nodeId}-${iterationIndex}-${Date.now()}`
+      const request: ExecutionRequest = {
+        executionId,
+        runId,
+        nodeId,
+        iterationIndex,
+        attempt: 1,
+        kind: nodeDef.kind,
+        config: nodeDef.config,
+        inputs: resolved.values,
+        workspaceId: run.workspaceId,
+        projectId: run.projectId,
+        sessionId: run.sessionId,
+        ownerRef: { kind: "workflow_node", runId, nodeId },
+        timeoutMs: nodeDef.timeoutMs,
+        deterministicSeed: run.determinismSeed,
+        mode: run.mode,
+      }
+
+      // Dispatch to executor
+      try {
+        const result = this.registry
+          ? await this.registry.dispatch(request, context)
+          : await this.executor.execute(request)
+
+        if (result.ok) {
+          // Store outputs in the run context
+          const outgoingEdgeIds = mirror.outgoing.get(nodeId) ?? []
+          const outgoingEdges = outgoingEdgeIds
+            .map((eid) => mirror.edges.get(eid))
+            .filter((e): e is EdgeDefinition => e !== undefined)
+
+          storeOutputs(nodeId, iterationIndex, result.outputs, outgoingEdges, context)
+
+          // Transition: running → succeeded
+          updateNodeState(mirror, nodeId, iterationIndex, "succeeded")
+          completed++
+          run.completedNodeCount++
+          this.emitNodeState(runId, nodeId, iterationIndex, "succeeded")
+
+          // Decrement downstream deps
+          this.decrementDownstreamDeps(mirror, nodeId, run)
+        } else {
+          // Transition: running → failed
+          updateNodeState(mirror, nodeId, iterationIndex, "failed", {
+            failure: result.failure,
+          })
+          failed++
+          run.failedNodeCount++
+          this.emitNodeState(runId, nodeId, iterationIndex, "failed")
+
+          // Propagate failure to downstream nodes
+          this.propagateFailureDeps(mirror, nodeId, run)
+        }
+      } catch (error) {
+        // Transition: running → failed (executor threw)
+        updateNodeState(mirror, nodeId, iterationIndex, "failed", {
+          failure: {
+            kind: "executor_error",
+            message: error instanceof Error ? error.message : String(error),
+            retriable: true,
+            at: new Date().toISOString(),
+          },
+        })
+        failed++
+        run.failedNodeCount++
+        this.emitNodeState(runId, nodeId, iterationIndex, "failed")
+        this.propagateFailureDeps(mirror, nodeId, run)
+      }
+    }
+
+    // Phase 3: Check if run is complete
+    const isComplete = this.isRunComplete(mirror)
+    if (isComplete) {
+      run.state = failed > 0 ? "failed" : "succeeded"
+      run.endedAt = new Date().toISOString()
+    }
+
+    return ok({ dispatched, completed, failed, isComplete })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Run Completion Check
+  // ---------------------------------------------------------------------------
+
+  /** Check if all nodes in the mirror are in a terminal state. */
+  private isRunComplete(mirror: GraphMirror): boolean {
+    for (const [, state] of mirror.states) {
+      if (!isNodeTerminal(state.state)) {
+        return false
+      }
+    }
+    return true
+  }
+
+  // ---------------------------------------------------------------------------
+  // Dependency Management
+  // ---------------------------------------------------------------------------
+
+  /**
+   * After a node succeeds, decrement remainingDeps for all downstream nodes.
+   * If a downstream node's remainingDeps reaches 0 and it's still pending,
+   * it becomes ready on the next tick.
+   */
+  private decrementDownstreamDeps(
+    mirror: GraphMirror,
+    completedNodeId: NodeId,
+    _run: WorkflowRun,
+  ): void {
+    const outgoingEdgeIds = mirror.outgoing.get(completedNodeId) ?? []
+    for (const edgeId of outgoingEdgeIds) {
+      const edge = mirror.edges.get(edgeId)
+      if (!edge) continue
+      // Skip loop back-edges
+      if (edge.loopBackEdge || edge.kind === "loop_back") continue
+
+      const downstreamKey = stateKey(edge.toNodeId, 0)
+      const downstreamState = mirror.states.get(downstreamKey)
+      if (!downstreamState) continue
+
+      // Only decrement for non-terminal nodes
+      if (isNodeTerminal(downstreamState.state)) continue
+
+      const newDeps = downstreamState.remainingDeps - 1
+      if (newDeps < 0) {
+        this.logger.error(`Negative remaining deps for edge ${edgeId}`, {
+          nodeId: edge.toNodeId,
+          newDeps,
+        })
+        return
+      }
+      downstreamState.remainingDeps = newDeps
+    }
+  }
+
+  /**
+   * When a node fails, skip all downstream nodes that depend on it
+   * (unless they have alternative satisfied paths).
+   * Uses failurePolicy from the node definition to determine cascade behavior.
+   */
+  private propagateFailureDeps(
+    mirror: GraphMirror,
+    failedNodeId: NodeId,
+    run: WorkflowRun,
+  ): void {
+    const nodeDef = mirror.nodes.get(failedNodeId)
+    const policy = nodeDef?.failurePolicy ?? "fail_branch"
+
+    if (policy === "continue") {
+      // Don't propagate — downstream nodes can still run
+      return
+    }
+
+    // "fail_branch" or "fail_run": skip downstream nodes
+    const outgoingEdgeIds = mirror.outgoing.get(failedNodeId) ?? []
+    for (const edgeId of outgoingEdgeIds) {
+      const edge = mirror.edges.get(edgeId)
+      if (!edge) continue
+      if (edge.loopBackEdge || edge.kind === "loop_back") continue
+
+      const downstreamKey = stateKey(edge.toNodeId, 0)
+      const downstreamState = mirror.states.get(downstreamKey)
+      if (!downstreamState) continue
+      if (isNodeTerminal(downstreamState.state)) continue
+
+      // Skip the downstream node
+      const skipped = updateNodeState(mirror, edge.toNodeId, 0, "skipped", {
+        skipReason: "upstream_failed",
+      })
+      if (skipped) {
+        run.skippedNodeCount++
+        this.emitNodeState(run.runId, edge.toNodeId, 0, "skipped")
+      }
+    }
+
+    if (policy === "fail_run") {
+      // Mark the entire run as failed
+      run.state = "failed"
+      run.endedAt = new Date().toISOString()
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Event Emission
+  // ---------------------------------------------------------------------------
+
+  private emitNodeState(
+    runId: WorkflowRunId,
+    nodeId: NodeId,
+    iterationIndex: number,
+    state: NodeState,
+  ): void {
+    this.emitter.emit("workflow.node.state_changed", {
+      runId,
+      nodeId,
+      iterationIndex,
+      state,
+    })
   }
 
   // ---------------------------------------------------------------------------

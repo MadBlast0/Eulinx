@@ -174,6 +174,8 @@ export default function TemplateGallery() {
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
             <Input
+              id="template-search"
+              name="templateSearch"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search templates..."

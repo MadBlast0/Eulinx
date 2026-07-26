@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   type ReactNode,
 } from "react"
 import {
@@ -21,6 +22,7 @@ import type { CanvasNode, EdgeConn } from "../types"
 import type { CustomNodeData, CustomNodeType } from "./custom-node"
 import type { EulinxNodeKind } from "./node-types"
 import type { WorkerState } from "../a11y/state-signals"
+import { validateConnection, getDefaultEdgeKind } from "./connection-rules"
 
 function projectNode(node: CanvasNode): CustomNodeType {
   return {
@@ -32,9 +34,11 @@ function projectNode(node: CanvasNode): CustomNodeType {
       kind: node.kind as EulinxNodeKind,
       label: node.label,
       url: node.url,
+      model: node.model,
       status: node.status as WorkerState | undefined,
       shell: node.shell,
       lines: node.lines,
+      ports: node.ports,
     } satisfies CustomNodeData,
   }
 }
@@ -45,6 +49,7 @@ function projectEdge(conn: EdgeConn): Edge {
     source: conn.from,
     target: conn.to,
     type: "eulinx",
+    data: { kind: conn.kind ?? "control" },
   }
 }
 
@@ -71,6 +76,10 @@ export function NodeGraphProvider({ children }: { children: ReactNode }) {
   const [nodes, setNodes, onNodesChangeRaw] = useNodesState<CustomNodeType>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
 
+  // Track current node IDs to guard against stale drag gestures
+  const nodeIdsRef = useRef(new Set<string>())
+  nodeIdsRef.current = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes])
+
   // Sync workspace nodes → ReactFlow nodes, preserving any internal dimensions
   // (e.g. from NodeResizer) that aren't persisted to the project store.
   useEffect(() => {
@@ -96,8 +105,13 @@ export function NodeGraphProvider({ children }: { children: ReactNode }) {
 
   const onNodesChange = useCallback<OnNodesChange<CustomNodeType>>(
     (changes) => {
-      onNodesChangeRaw(changes)
-      for (const change of changes) {
+      // Filter out changes for nodes that no longer exist (stale drag gestures
+      // can fire after a sync replaces the nodes array).
+      const valid = changes.filter(
+        (c) => c.type !== "position" || nodeIdsRef.current.has(c.id),
+      )
+      if (valid.length > 0) onNodesChangeRaw(valid)
+      for (const change of valid) {
         if (change.type === "position" && change.position && !change.dragging) {
           moveNode(change.id, change.position.x, change.position.y)
         }
@@ -115,11 +129,29 @@ export function NodeGraphProvider({ children }: { children: ReactNode }) {
   // Persist new connections to workspace
   const onConnect = useCallback<OnConnect>(
     (connection: Connection) => {
-      if (connection.source && connection.target) {
-        addConnection(connection.source, connection.target)
+      if (!connection.source || !connection.target) return
+
+      // Find source and target node kinds
+      const sourceNode = wsNodes.find((n) => n.id === connection.source)
+      const targetNode = wsNodes.find((n) => n.id === connection.target)
+      if (!sourceNode || !targetNode) return
+
+      const sourceKind = sourceNode.kind as EulinxNodeKind
+      const targetKind = targetNode.kind as EulinxNodeKind
+
+      // Validate
+      const validation = validateConnection(sourceKind, targetKind)
+      if (!validation.valid) {
+        console.warn("Connection rejected:", validation.reason)
+        return
       }
+
+      // Auto-detect edge kind
+      const edgeKind = getDefaultEdgeKind(sourceKind, targetKind)
+
+      addConnection(connection.source, connection.target, edgeKind)
     },
-    [addConnection],
+    [addConnection, wsNodes],
   )
 
   const value = useMemo<NodeGraphContextValue>(

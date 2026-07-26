@@ -4,6 +4,8 @@ import {
   ReactFlowProvider,
   useReactFlow,
   useViewport,
+  type Connection,
+  type Edge,
   type EdgeTypes,
   type NodeTypes,
   type NodeMouseHandler,
@@ -21,6 +23,8 @@ import { useProjects } from "../use-projects"
 import { useCommand } from "../keyboard/use-keyboard"
 import { cn } from "@/utils/cn"
 import type { EulinxNodeKind } from "./node-types"
+import { validateConnection } from "./connection-rules"
+import type { CustomNodeData } from "./custom-node"
 
 const nodeTypes: NodeTypes = { eulinx: CustomNode }
 const edgeTypes: EdgeTypes = { eulinx: CustomEdge }
@@ -64,14 +68,15 @@ function NodeGraphInner() {
 
   // Dagre-based auto-layout (triggered by "eulinx:graph-auto-layout" event)
   useEffect(() => {
-    const handler = () => {
+    const handler = (e: Event) => {
       const flowNodes = rf.getNodes()
       const flowEdges = rf.getEdges()
       if (flowNodes.length === 0) return
 
+      const direction = (e as CustomEvent<{ direction?: "horizontal" | "vertical" }>).detail?.direction ?? "horizontal"
       const g = new graphlib.Graph()
       g.setDefaultEdgeLabel(() => ({}))
-      g.setGraph({ rankdir: "TB", nodesep: 60, ranksep: 100, marginx: 40, marginy: 40 })
+      g.setGraph({ rankdir: direction === "horizontal" ? "LR" : "TB", nodesep: 60, ranksep: 100, marginx: 40, marginy: 40 })
 
       for (const node of flowNodes) {
         const w = node.measured?.width ?? node.width ?? 200
@@ -103,6 +108,18 @@ function NodeGraphInner() {
   }, [rf, setGraphNodes])
 
   const defaultEdgeOptions = useMemo(() => ({ type: "eulinx" }), [])
+
+  const isValidConnection = useCallback((connection: Edge | Connection) => {
+    if (!connection.source || !connection.target) return false
+    const sourceNode = nodes.find((n) => n.id === connection.source)
+    const targetNode = nodes.find((n) => n.id === connection.target)
+    if (!sourceNode || !targetNode) return false
+    const result = validateConnection(
+      (sourceNode.data as CustomNodeData).kind,
+      (targetNode.data as CustomNodeData).kind,
+    )
+    return result.valid
+  }, [nodes])
 
   const onNodeContextMenu: NodeMouseHandler = useMemo(
     () => (_event, node) => {
@@ -141,6 +158,7 @@ function NodeGraphInner() {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
+        isValidConnection={isValidConnection}
         fitView
         proOptions={{ hideAttribution: true }}
         /* ── Camera behavior ── */

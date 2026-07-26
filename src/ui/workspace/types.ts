@@ -1,16 +1,37 @@
 /** All supported node kinds — matches EulinxNodeKind from node-types.ts */
 export type NodeKind =
+  // ── Official workflow engine kinds ──
+  | "input"
+  | "output"
+  | "worker"
+  | "orchestrator"
+  | "builder"
+  | "verifier"
+  | "condition"
+  | "loop"
+  | "merge"
+  | "artifact"
+  | "memory"
+  | "tool"
+  | "mcp"
+  | "delay"
+  | "human_approval"
+  | "switch"
+  | "filter"
+  | "set"
+  | "code"
+  | "threshold"
+  | "webhook_trigger"
+  | "schedule_trigger"
+  | "http_request"
+  // ── Legacy / UI-only kinds ──
   | "terminal"
   | "browser"
   | "map"
-  | "worker"
   | "agent"
   | "session"
-  | "memory"
   | "prompt"
-  | "merge"
   | "router"
-  | "tool"
   | "file"
   | "event"
   | "metric"
@@ -30,9 +51,13 @@ export interface CanvasNode {
   url?: string
   /** Optional shell override for terminal nodes (e.g. "pwsh", "bash"). */
   shell?: string
+  /** Model name for worker nodes (e.g. "gpt-4o", "claude-3-sonnet"). */
+  model?: string
   selected?: boolean
   /** Worker/runtime status for status badge rendering. */
   status?: string
+  /** Optional port overrides for this node. */
+  ports?: readonly { readonly id: string; readonly position: import("@xyflow/react").Position; readonly type: "source" | "target" }[]
 }
 
 export interface TerminalLine {
@@ -43,9 +68,20 @@ export interface TerminalLine {
   readonly cursor?: boolean
 }
 
+export type EdgeKind =
+  | "control" // solid, default A-B sequencing
+  | "data" // dashed, carries value
+  | "conditional" // dotted, colored per branch
+  | "error" // red dashed
+  | "loop_back" // curved back-edge
+  | "artifact" // diamond-dashed, amber
+  | "memory" // thin, labeled
+  | "event" // lightning style
+
 export interface EdgeConn {
   readonly from: string
   readonly to: string
+  readonly kind?: EdgeKind
 }
 
 export type RightTab = "files" | "git" | "sessions" | "logs" | "workers"

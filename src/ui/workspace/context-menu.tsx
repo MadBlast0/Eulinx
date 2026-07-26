@@ -28,7 +28,7 @@ export function ContextMenu({ constraint, restoreFocusRef }: ContextMenuProps) {
           setAddNodeOpen((v) => !v)
           return // don't close parent menu
         case 2:
-          autoLayout()
+          autoLayout("horizontal")
           break
       }
       closeContextMenu()
@@ -115,7 +115,7 @@ export function ContextMenu({ constraint, restoreFocusRef }: ContextMenuProps) {
         registerItem={registerItem}
         onHover={() => setHoverIndex(2)}
         onClick={() => {
-          autoLayout()
+          autoLayout("horizontal")
           closeContextMenu()
         }}
       />

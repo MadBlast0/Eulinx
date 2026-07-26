@@ -18,6 +18,7 @@ export interface Worker {
   readonly id: string
   readonly role: string
   readonly state: WorkerState
+  readonly model?: string
   readonly sessionId: string | null
   readonly health: "healthy" | "unhealthy" | "unknown"
   readonly tokensUsed: number

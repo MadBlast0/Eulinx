@@ -49,11 +49,15 @@ export function SegmentedControl<T extends string>({
 
 /** Compact search input with icon. */
 export function SearchField({
+  id,
+  name,
   value,
   onChange,
   placeholder = "Search",
   className,
 }: {
+  id?: string
+  name?: string
   value: string
   onChange: (v: string) => void
   placeholder?: string
@@ -82,6 +86,8 @@ export function SearchField({
       </svg>
       <input
         type="text"
+        id={id}
+        name={name}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}

@@ -162,6 +162,8 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
           <AppIcon name="search" className="h-4 w-4 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
           <input
             ref={inputRef}
+            id="command-query"
+            name="commandQuery"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search nodes, run commands…"

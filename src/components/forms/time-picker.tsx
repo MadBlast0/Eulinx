@@ -125,6 +125,8 @@ const TimePicker = React.forwardRef<HTMLDivElement, TimePickerProps>(
         >
           <input
             type="time"
+            id="time-picker"
+            name="timePicker"
             value={value ?? ""}
             min={minTime}
             max={maxTime}

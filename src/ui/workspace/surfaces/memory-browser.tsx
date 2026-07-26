@@ -59,6 +59,8 @@ export default function MemoryBrowser() {
         <div className="relative w-64">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
           <Input
+            id="memory-search"
+            name="memorySearch"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search memory…"

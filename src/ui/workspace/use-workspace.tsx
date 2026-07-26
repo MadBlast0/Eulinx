@@ -14,6 +14,7 @@ import type {
   CanvasNode,
   ContextMenuState,
   EdgeConn,
+  EdgeKind,
   NodeKind,
   OverlayKind,
   RightTab,
@@ -43,8 +44,8 @@ function toCanvasNode(node: GraphNode, selected: boolean): CanvasNode {
   }
 }
 
-function toEdgeConn(edge: { id: string; from: string; to: string }): EdgeConn {
-  return { from: edge.from, to: edge.to }
+function toEdgeConn(edge: { id: string; from: string; to: string; kind?: string }): EdgeConn {
+  return { from: edge.from, to: edge.to, kind: edge.kind as EdgeKind | undefined }
 }
 
 type Snapshot = { nodes: GraphNode[]; edges: GraphEdge[] }
@@ -74,8 +75,8 @@ interface WorkspaceContextValue {
   moveNode(id: string, x: number, y: number): void
   addNode(kind: EulinxNodeKind, shell?: string): void
   removeNode(id: string): void
-  addConnection(from: string, to: string): void
-  autoLayout(): void
+  addConnection(from: string, to: string, kind?: EdgeKind): void
+  autoLayout(direction?: "horizontal" | "vertical"): void
   undo(): void
   redo(): void
 }
@@ -194,7 +195,35 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const y = 150 + Math.random() * 200
       const label =
         shell && shell.length > 0 ? `Terminal (${shell})` : getNodeTypeMeta(kind).label
-      const width = kind === "browser" ? 280 : kind === "map" ? 180 : kind === "terminal" ? 480 : 240
+      const widthMap: Record<string, number> = {
+        terminal: 480,
+        browser: 280,
+        map: 180,
+        input: 140,
+        output: 140,
+        condition: 180,
+        delay: 140,
+        human_approval: 220,
+        worker: 220,
+        orchestrator: 220,
+        builder: 220,
+        verifier: 220,
+        loop: 220,
+        merge: 160,
+        artifact: 200,
+        memory: 200,
+        tool: 200,
+        mcp: 220,
+        switch: 220,
+        filter: 200,
+        set: 200,
+        code: 220,
+        threshold: 180,
+        webhook_trigger: 200,
+        schedule_trigger: 200,
+        http_request: 220,
+      }
+      const width = widthMap[kind] ?? 240
       const node: GraphNode = {
         id,
         kind,
@@ -206,6 +235,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         shell: shell && shell.length > 0 ? shell : undefined,
         lines: kind === "terminal" ? [{ prompt: "$", cursor: true }] : undefined,
         url: kind === "browser" ? "https://example.com" : undefined,
+        model: kind === "worker" ? "gpt-4o" : undefined,
       }
       projects.addNode(node)
       setSelectedId(id)
@@ -214,11 +244,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     [projects, pushSnapshot],
   )
 
-  const autoLayout = useCallback(() => {
+  const autoLayout = useCallback((direction: "horizontal" | "vertical" = "horizontal") => {
     const g = projects.graph
     if (!g) return
     pushSnapshot()
-    window.dispatchEvent(new CustomEvent("eulinx:graph-auto-layout"))
+    window.dispatchEvent(new CustomEvent("eulinx:graph-auto-layout", { detail: { direction } }))
     setContextMenu(null)
   }, [projects, pushSnapshot])
 
@@ -234,10 +264,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   )
 
   const addConnection = useCallback(
-    (from: string, to: string) => {
+    (from: string, to: string, kind?: EdgeKind) => {
       if (!projects.graph) return
       pushSnapshot()
-      const newEdge: GraphEdge = { id: `${from}->${to}`, from, to }
+      const newEdge: GraphEdge = { id: `${from}->${to}`, from, to, kind }
       projects.setGraphEdges([...projects.graph.edges, newEdge])
     },
     [projects, pushSnapshot],

@@ -7,12 +7,14 @@ export interface SearchInputProps {
   value: string
   onChange: (value: string) => void
   placeholder?: string
+  id?: string
+  name?: string
   className?: string
   onSubmit?: (value: string) => void
 }
 
 const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
-  ({ value, onChange, placeholder = "Search...", className, onSubmit }, ref) => {
+  ({ value, onChange, placeholder = "Search...", id, name, className, onSubmit }, ref) => {
     const [localValue, setLocalValue] = React.useState(value)
     const debouncedValue = useDebounce(localValue, 300)
 
@@ -43,6 +45,8 @@ const SearchInput = React.forwardRef<HTMLInputElement, SearchInputProps>(
         <Search className="absolute left-3 h-4 w-4 text-muted-foreground pointer-events-none" />
         <input
           ref={ref}
+          id={id}
+          name={name}
           type="text"
           value={localValue}
           onChange={(e) => setLocalValue(e.target.value)}

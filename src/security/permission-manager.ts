@@ -109,7 +109,7 @@ export class PermissionManager {
       reason: grant.reason ?? "Grant created",
       timestamp: new Date().toISOString(),
     })
-    this.logger.info(`Grant created: ${grant.id}`)
+
   }
 
   /** Revoke a permission grant */

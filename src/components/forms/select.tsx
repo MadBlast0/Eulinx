@@ -88,6 +88,8 @@ const Select = React.forwardRef<HTMLButtonElement, SelectProps>(
                 <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                 <input
                   type="text"
+                  id="select-search"
+                  name="selectSearch"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search..."

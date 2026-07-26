@@ -131,6 +131,8 @@ export default function PluginManager() {
     <div className="flex h-full flex-col overflow-hidden">
       <input
         ref={fileInputRef}
+        id="plugin-file"
+        name="pluginFile"
         type="file"
         accept=".json"
         className="hidden"
@@ -149,6 +151,8 @@ export default function PluginManager() {
           <div className="relative w-56">
             <AppIcon name="search" className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
             <Input
+              id="plugin-search"
+              name="pluginSearch"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search plugins…"

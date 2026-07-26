@@ -33,6 +33,8 @@ export function TerminalSearch({ onSearch, onClose, className }: TerminalSearchP
       <Search className="h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
       <input
         ref={inputRef}
+        id="terminal-search"
+        name="terminalSearch"
         value={value}
         onChange={(e) => {
           setValue(e.target.value)

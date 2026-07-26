@@ -34,6 +34,21 @@
     --Eulinx-color-node-map: #F59E0B;
     --Eulinx-color-node-worker: #606060;
     --Eulinx-color-node-graph-edge: #a0a0a0;
+    --Eulinx-color-node-input: #14B8A6;
+    --Eulinx-color-node-output: #EF4444;
+    --Eulinx-color-node-orchestrator: #8B5CF6;
+    --Eulinx-color-node-builder: #3B82F6;
+    --Eulinx-color-node-verifier: #EAB308;
+    --Eulinx-color-node-condition: #06B6D4;
+    --Eulinx-color-node-loop: #6366F1;
+    --Eulinx-color-node-artifact: #EC4899;
+    --Eulinx-color-node-mcp: #F97316;
+    --Eulinx-color-node-delay: #64748B;
+    --Eulinx-color-node-human: #F59E0B;
+    --Eulinx-color-node-switch: #14B8A6;
+    --Eulinx-color-node-filter: #F59E0B;
+    --Eulinx-color-node-set: #3B82F6;
+    --Eulinx-color-node-code: #22C55E;
 
     /* ── shadcn aliases (map to Eulinx tokens) ── */
     --background: var(--Eulinx-color-background);
@@ -241,6 +256,21 @@
     --Eulinx-color-node-map: #F59E0B;
     --Eulinx-color-node-worker: #b0b0b0;
     --Eulinx-color-node-graph-edge: #a0a0a0;
+    --Eulinx-color-node-input: #2DD4BF;
+    --Eulinx-color-node-output: #F87171;
+    --Eulinx-color-node-orchestrator: #A78BFA;
+    --Eulinx-color-node-builder: #60A5FA;
+    --Eulinx-color-node-verifier: #FACC15;
+    --Eulinx-color-node-condition: #22D3EE;
+    --Eulinx-color-node-loop: #818CF8;
+    --Eulinx-color-node-artifact: #F472B6;
+    --Eulinx-color-node-mcp: #FB923C;
+    --Eulinx-color-node-delay: #94A3B8;
+    --Eulinx-color-node-human: #FBBF24;
+    --Eulinx-color-node-switch: #2DD4BF;
+    --Eulinx-color-node-filter: #FBBF24;
+    --Eulinx-color-node-set: #60A5FA;
+    --Eulinx-color-node-code: #4ADE80;
 
     /* ── shadcn aliases — dark ── */
     --background: var(--Eulinx-color-background);
@@ -389,6 +419,11 @@
   .animate-slide-down { animation: slideDown var(--duration-normal) var(--ease-out); }
   .animate-scale-in { animation: scaleIn var(--duration-fast) var(--ease-out); }
   .animate-pop-in { animation: popIn var(--duration-fast) var(--ease-spring); }
+
+  .wsx-edge-flow {
+    stroke-dasharray: 6 4;
+    animation: edge-flow 1s linear infinite;
+  }
 }
 
 @keyframes fadeIn {
@@ -410,4 +445,7 @@
 @keyframes popIn {
   from { opacity: 0; transform: scale(0.92); }
   to { opacity: 1; transform: scale(1); }
+}
+@keyframes edge-flow {
+  to { stroke-dashoffset: -10; }
 }

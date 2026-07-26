@@ -226,14 +226,45 @@ describe("WorkflowEngine", () => {
         runSeq: 0,
       } as unknown as WorkflowRun
       const mirror = engine.getMirror("run1" as WorkflowRunId) ?? {
+        states: new Map(),
         readySet: new Set(["A#0"]),
         runningSet: new Set(),
         topoOrder: ["A" as NodeId],
+        nodes: new Map(),
+        edges: new Map(),
+        incoming: new Map(),
+        outgoing: new Map(),
+        snapshotId: "snap_test" as SnapshotId,
       } as unknown as GraphMirror
 
-      // The engine's computeReadySet checks run.state
+      // computeReadySet iterates mirror.states — empty map → empty result
       const result = engine.computeReadySet(mirror, run)
       expect(result).toEqual([])
+    })
+
+    it("returns nodes with zero remaining deps", () => {
+      const run = {
+        runId: "run2" as WorkflowRunId,
+        state: "running" as const,
+        runSeq: 1,
+      } as unknown as WorkflowRun
+      const mirror = {
+        states: new Map([
+          ["A#0", { state: "pending", remainingDeps: 0, nodeId: "A" as NodeId, iterationIndex: 0, attempt: 0, runId: "run2" as WorkflowRunId }],
+          ["B#0", { state: "pending", remainingDeps: 1, nodeId: "B" as NodeId, iterationIndex: 0, attempt: 0, runId: "run2" as WorkflowRunId }],
+        ]),
+        readySet: new Set(),
+        runningSet: new Set(),
+        topoOrder: ["A" as NodeId, "B" as NodeId],
+        nodes: new Map(),
+        edges: new Map(),
+        incoming: new Map(),
+        outgoing: new Map(),
+        snapshotId: "snap_test" as SnapshotId,
+      } as unknown as GraphMirror
+
+      const result = engine.computeReadySet(mirror, run)
+      expect(result).toEqual(["A#0"])
     })
   })
 
