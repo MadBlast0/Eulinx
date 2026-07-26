@@ -3,7 +3,9 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
@@ -46,6 +48,8 @@ function toEdgeConn(edge: { id: string; from: string; to: string; kind?: string 
   return { from: edge.from, to: edge.to, kind: edge.kind as EdgeKind | undefined }
 }
 
+type Snapshot = { nodes: GraphNode[]; edges: GraphEdge[] }
+
 interface WorkspaceContextValue {
   readonly nodes: readonly CanvasNode[]
   readonly connections: readonly EdgeConn[]
@@ -79,6 +83,10 @@ interface WorkspaceContextValue {
 
 const WorkspaceContext = createContext<WorkspaceContextValue | null>(null)
 
+const MAX_UNDO = 50
+/** Minimum ms between consecutive snapshots — prevents drag/action floods */
+const SNAPSHOT_THROTTLE_MS = 300
+
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const projects = useProjects()
   const { graph } = projects
@@ -91,8 +99,19 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [rightSidebarOpen, setRightSidebarOpen] = useState(true)
   const [overlay, setOverlay] = useState<OverlayKind>(null)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
-  const [undoStack, setUndoStack] = useState<{ nodes: GraphNode[]; edges: GraphEdge[] }[]>([])
-  const [redoStack, setRedoStack] = useState<{ nodes: GraphNode[]; edges: GraphEdge[] }[]>([])
+  const [undoStack, setUndoStack] = useState<Snapshot[]>([])
+  const [redoStack, setRedoStack] = useState<Snapshot[]>([])
+
+  // Refs so undo/redo/pushSnapshot always read the LIVE stacks — avoids stale closures
+  const undoStackRef = useRef<Snapshot[]>([])
+  const redoStackRef = useRef<Snapshot[]>([])
+  const projectsRef = useRef(projects)
+  projectsRef.current = projects
+  const lastSnapshotTime = useRef(0)
+
+  // Keep refs in sync with state
+  useEffect(() => { undoStackRef.current = undoStack }, [undoStack])
+  useEffect(() => { redoStackRef.current = redoStack }, [redoStack])
 
   const nodes = useMemo<readonly CanvasNode[]>(() => {
     if (!graph) return []
@@ -112,34 +131,53 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   )
 
   const pushSnapshot = useCallback(() => {
-    const g = projects.graph
+    const g = projectsRef.current.graph
     if (!g) return
+
+    // Throttle: skip if less than SNAPSHOT_THROTTLE_MS since last snapshot
+    const now = Date.now()
+    if (now - lastSnapshotTime.current < SNAPSHOT_THROTTLE_MS) return
+    lastSnapshotTime.current = now
+
+    const snapshot: Snapshot = { nodes: [...g.nodes], edges: [...g.edges] }
     setUndoStack((prev) => {
-      const next = [{ nodes: [...g.nodes], edges: [...g.edges] }, ...prev]
-      return next.length > 50 ? next.slice(0, 50) : next
+      const next = [snapshot, ...prev]
+      return next.length > MAX_UNDO ? next.slice(0, MAX_UNDO) : next
     })
     setRedoStack([])
-  }, [projects.graph])
+  }, [])
 
   const undo = useCallback(() => {
-    const snapshot = undoStack[0]
-    if (!snapshot || !projects.graph) return
-    const graph = projects.graph
-    setRedoStack((prev) => [{ nodes: [...graph.nodes], edges: [...graph.edges] }, ...prev])
+    // Read LIVE stack via ref — never stale
+    const stack = undoStackRef.current
+    const snapshot = stack[0]
+    if (!snapshot) return
+    const p = projectsRef.current
+    if (!p.graph) return
+
+    // Push current state onto redo BEFORE restoring
+    const current: Snapshot = { nodes: [...p.graph.nodes], edges: [...p.graph.edges] }
+    setRedoStack((prev) => [current, ...prev])
     setUndoStack((prev) => prev.slice(1))
-    projects.setGraphNodes(snapshot.nodes)
-    projects.setGraphEdges(snapshot.edges)
-  }, [undoStack, projects])
+    p.setGraphNodes(snapshot.nodes)
+    p.setGraphEdges(snapshot.edges)
+  }, [])
 
   const redo = useCallback(() => {
-    const snapshot = redoStack[0]
-    if (!snapshot || !projects.graph) return
-    const graph = projects.graph
-    setUndoStack((prev) => [{ nodes: [...graph.nodes], edges: [...graph.edges] }, ...prev])
+    // Read LIVE stack via ref — never stale
+    const stack = redoStackRef.current
+    const snapshot = stack[0]
+    if (!snapshot) return
+    const p = projectsRef.current
+    if (!p.graph) return
+
+    // Push current state onto undo BEFORE restoring
+    const current: Snapshot = { nodes: [...p.graph.nodes], edges: [...p.graph.edges] }
+    setUndoStack((prev) => [current, ...prev])
     setRedoStack((prev) => prev.slice(1))
-    projects.setGraphNodes(snapshot.nodes)
-    projects.setGraphEdges(snapshot.edges)
-  }, [redoStack, projects])
+    p.setGraphNodes(snapshot.nodes)
+    p.setGraphEdges(snapshot.edges)
+  }, [])
 
   const moveNode = useCallback(
     (id: string, x: number, y: number) => {

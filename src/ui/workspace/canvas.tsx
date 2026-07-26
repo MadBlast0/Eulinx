@@ -11,6 +11,7 @@ export function Canvas() {
   const { openContextMenu, contextMenu } = useWorkspace()
   const canvasRef = useRef<HTMLDivElement>(null)
   const [constraint, setConstraint] = useState<DOMRect | null>(null)
+  const restoreFocusRef = useRef<HTMLElement>(null)
 
   const updateConstraint = useCallback(() => {
     if (canvasRef.current) {
@@ -47,8 +48,12 @@ export function Canvas() {
     <div className="flex flex-1 flex-col overflow-hidden bg-[color:var(--Eulinx-color-background)]">
       {isNodeGraph ? (
         <div
-          ref={canvasRef}
+          ref={(el) => {
+            ;(canvasRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+            ;(restoreFocusRef as React.MutableRefObject<HTMLElement | null>).current = el
+          }}
           className="relative flex-1 overflow-hidden"
+          tabIndex={-1}
           onContextMenu={(e) => {
             // Skip if right-click was on a node (handled by ReactFlow's onNodeContextMenu)
             const target = e.target as HTMLElement
@@ -61,9 +66,11 @@ export function Canvas() {
         >
           {meta.render()}
           {/* Empty canvas context menu */}
-          <ContextMenu constraint={constraint} />
+          <ContextMenu constraint={constraint} restoreFocusRef={restoreFocusRef} />
           {/* Node-specific context menu */}
-          {contextMenu?.nodeId && <NodeContextMenu constraint={constraint} />}
+          {contextMenu?.nodeId && (
+            <NodeContextMenu constraint={constraint} restoreFocusRef={restoreFocusRef} />
+          )}
         </div>
       ) : (
         <div className={`min-h-0 flex-1${activeView.kind === "terminal" ? " p-3" : ""}`}>

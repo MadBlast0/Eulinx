@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { ChevronRight, ChevronUp } from "lucide-react"
 import { AppIcon } from "./app-icon"
+import { useMenuKeyboard } from "./use-menu-keyboard"
 import type { EulinxNodeKind } from "./node-graph/node-types"
 
 // ---------------------------------------------------------------------------
@@ -168,7 +169,6 @@ export function NodeSubMenu({ open, onOpen, onClose, onPick, children, constrain
   const handleCategoryLeave = useCallback(() => {
     // Don't close category immediately — the mouse might be moving to the sub-dropdown
     // The sub-dropdown's onMouseEnter will call cancelClose
-    // Only reset category if mouse doesn't enter sub-dropdown within a short delay
   }, [])
 
   const handleSubEnter = useCallback(() => cancelClose(), [cancelClose])
@@ -176,6 +176,36 @@ export function NodeSubMenu({ open, onOpen, onClose, onPick, children, constrain
     setHoveredCategory(null)
     scheduleClose()
   }, [scheduleClose])
+
+  // Keyboard navigation for the sub-dropdown items
+  const currentCategoryItems = hoveredCategory !== null ? NODE_SECTIONS[hoveredCategory]?.items ?? [] : []
+
+  const handleSubExecute = useCallback(
+    (index: number) => {
+      const item = currentCategoryItems[index]
+      if (item) {
+        onPick(item.kind)
+        onClose()
+      }
+    },
+    [currentCategoryItems, onPick, onClose],
+  )
+
+  const { menuRef: subMenuRef, activeIndex, registerItem: registerSubItem, setHoverIndex: setSubHoverIndex, handleKeyDown: handleSubKeyDown } =
+    useMenuKeyboard({
+      open: open && hoveredCategory !== null,
+      itemCount: currentCategoryItems.length,
+      onClose,
+      onExecute: handleSubExecute,
+    })
+
+  // Merge refs for the sub-dropdown (smart-position + keyboard focus)
+  const mergedSubRef = useCallback(
+    (el: HTMLDivElement | null) => {
+      ;(subMenuRef as React.MutableRefObject<HTMLDivElement | null>).current = el
+    },
+    [subMenuRef],
+  )
 
   return (
     <div
@@ -197,6 +227,8 @@ export function NodeSubMenu({ open, onOpen, onClose, onPick, children, constrain
         >
           {/* Main dropdown — categories */}
           <div
+            role="menu"
+            aria-label="Node types"
             className="fixed z-[calc(var(--Eulinx-z-dropdown)+1)] min-w-[170px] animate-[ctx-in_120ms_ease] rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] p-1 shadow-lg"
             style={{ left: mainPos.x, top: mainPos.y }}
           >
@@ -209,7 +241,9 @@ export function NodeSubMenu({ open, onOpen, onClose, onPick, children, constrain
               >
                 <button
                   type="button"
-                  className={`flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-[12px] transition-colors duration-100 ${
+                  role="menuitem"
+                  tabIndex={-1}
+                  className={`flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-[12px] transition-colors duration-100 outline-none ${
                     hoveredCategory === si
                       ? "bg-[color:var(--Eulinx-color-hover)] text-[color:var(--Eulinx-color-text)]"
                       : "text-[color:var(--Eulinx-color-text-secondary)]"
@@ -231,21 +265,32 @@ export function NodeSubMenu({ open, onOpen, onClose, onPick, children, constrain
           {/* Sub-dropdown — nodes in the hovered category */}
           {hoveredCategory !== null && subPos && (
             <div
+              ref={mergedSubRef}
+              role="menu"
+              aria-label={NODE_SECTIONS[hoveredCategory]?.label}
               className="fixed z-[calc(var(--Eulinx-z-dropdown)+2)] min-w-[170px] animate-[ctx-in_80ms_ease] rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] p-1 shadow-lg"
               style={{ left: subPos.x, top: subPos.y }}
               onMouseEnter={handleSubEnter}
               onMouseLeave={handleSubLeave}
+              onKeyDown={handleSubKeyDown}
             >
-              <div className="px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-[color:var(--Eulinx-color-text-muted)]">
+              <div className="px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-[color:var(--Eulinx-color-text-muted)]" role="presentation">
                 {NODE_SECTIONS[hoveredCategory]?.label}
               </div>
-              <div className="my-0.5 h-px bg-[color:var(--Eulinx-color-border)]" />
-              {NODE_SECTIONS[hoveredCategory]?.items.map((opt) => (
+              <div className="my-0.5 h-px bg-[color:var(--Eulinx-color-border)]" role="separator" />
+              {NODE_SECTIONS[hoveredCategory]?.items.map((opt, ii) => (
                 <button
                   key={opt.kind}
+                  ref={(el) => registerSubItem(ii, el)}
                   type="button"
+                  role="menuitem"
+                  tabIndex={-1}
+                  data-active={activeIndex === ii || undefined}
+                  className={`flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-[12px] text-[color:var(--Eulinx-color-text)] transition-colors duration-100 hover:bg-[color:var(--Eulinx-color-hover)] outline-none ${
+                    activeIndex === ii ? "bg-[color:var(--Eulinx-color-hover)]" : ""
+                  }`}
+                  onMouseEnter={() => setSubHoverIndex(ii)}
                   onClick={() => { onPick(opt.kind); onClose() }}
-                  className="flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-[12px] text-[color:var(--Eulinx-color-text)] transition-colors duration-100 hover:bg-[color:var(--Eulinx-color-hover)]"
                 >
                   <AppIcon name={opt.icon} className="h-3.5 w-3.5 shrink-0 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2} />
                   <span>{opt.label}</span>
@@ -272,18 +317,47 @@ interface ContextMenuTriggerProps {
   label: string
   shortcut?: string
   constraint?: DOMRect | null
+  /** Index within the parent menu for keyboard navigation */
+  index?: number
+  /** Whether this item is the active (highlighted) one */
+  isActive?: boolean
+  /** Register this trigger's button element for keyboard focus */
+  registerItem?: (index: number, el: HTMLElement | null) => void
+  /** Called on hover to sync keyboard selection */
+  onHover?: () => void
 }
 
-export function ContextMenuTrigger({ open, onOpen, onClose, onPick, icon, label, shortcut, constraint }: ContextMenuTriggerProps) {
+export function ContextMenuTrigger({
+  open,
+  onOpen,
+  onClose,
+  onPick,
+  icon,
+  label,
+  shortcut,
+  constraint,
+  index,
+  isActive,
+  registerItem,
+  onHover,
+}: ContextMenuTriggerProps) {
   return (
     <NodeSubMenu open={open} onOpen={onOpen} onClose={onClose} onPick={onPick} constraint={constraint}>
       <button
+        ref={index !== undefined && registerItem ? (el) => registerItem(index, el) : undefined}
         type="button"
-        className="flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12.5px] text-[color:var(--Eulinx-color-text)] transition-colors duration-100 hover:bg-[color:var(--Eulinx-color-hover)]"
+        role="menuitem"
+        tabIndex={-1}
+        data-active={isActive || undefined}
+        className={`flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12.5px] text-[color:var(--Eulinx-color-text)] transition-colors duration-100 hover:bg-[color:var(--Eulinx-color-hover)] outline-none ${
+          isActive ? "bg-[color:var(--Eulinx-color-hover)]" : ""
+        }`}
+        onMouseEnter={onHover}
+        onClick={onOpen}
       >
         <span className="text-[color:var(--Eulinx-color-text-muted)]">{icon}</span>
         {label}
-        {shortcut && <kbd className="ml-auto text-[10px] text-[color:var(--Eulinx-color-text-muted)]">{shortcut}</kbd>}
+        {shortcut && <kbd className="text-[10px] text-[color:var(--Eulinx-color-text-muted)]">{shortcut}</kbd>}
         <ChevronRight className="ml-auto h-3 w-3 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2} />
       </button>
     </NodeSubMenu>
