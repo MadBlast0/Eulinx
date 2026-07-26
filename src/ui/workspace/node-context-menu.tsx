@@ -1,6 +1,7 @@
-import { useEffect } from "react"
+import { useCallback, useEffect, useMemo } from "react"
 import { AppIcon } from "./app-icon"
 import { useWorkspace } from "./use-workspace"
+import { useMenuKeyboard } from "./use-menu-keyboard"
 import type { EulinxNodeKind } from "./node-graph/node-types"
 
 // ---------------------------------------------------------------------------
@@ -117,11 +118,43 @@ const COMMON_ITEMS: NodeMenuItem[] = [
 
 interface NodeContextMenuProps {
   constraint?: DOMRect | null
+  restoreFocusRef?: React.RefObject<HTMLElement | null>
 }
 
-export function NodeContextMenu({ constraint }: NodeContextMenuProps) {
+export function NodeContextMenu({ constraint, restoreFocusRef }: NodeContextMenuProps) {
   const { contextMenu, closeContextMenu, removeNode } = useWorkspace()
 
+  const { nodeId, nodeKind } = contextMenu ?? {}
+  const specificItems = useMemo(
+    () => getNodeMenuItems(nodeKind ?? "unknown"),
+    [nodeKind],
+  )
+  const allItems = useMemo(
+    () => [...specificItems, ...COMMON_ITEMS],
+    [specificItems],
+  )
+  const itemCount = allItems.length
+
+  const handleExecute = useCallback(
+    (index: number) => {
+      const item = allItems[index]
+      if (!item || !nodeId) return
+      executeItem(item, nodeId, removeNode)
+      closeContextMenu()
+    },
+    [allItems, nodeId, removeNode, closeContextMenu],
+  )
+
+  const { menuRef, activeIndex, registerItem, setHoverIndex, handleKeyDown } =
+    useMenuKeyboard({
+      open: !!contextMenu?.nodeId,
+      itemCount,
+      onClose: closeContextMenu,
+      onExecute: handleExecute,
+      restoreFocusRef,
+    })
+
+  // Outside click — close on any document click
   useEffect(() => {
     if (!contextMenu?.nodeId) return
     const onClick = () => closeContextMenu()
@@ -131,13 +164,11 @@ export function NodeContextMenu({ constraint }: NodeContextMenuProps) {
 
   if (!contextMenu?.nodeId) return null
 
-  const { x, y, nodeId, nodeKind, nodeLabel } = contextMenu
-  const specificItems = getNodeMenuItems(nodeKind ?? "unknown")
-  const hasSpecific = specificItems.length > 0
+  const { x, y, nodeId: nid, nodeKind: kind, nodeLabel } = contextMenu
 
   // Clamp position within constraint
   const menuW = 200
-  const menuH = hasSpecific ? 280 : 140
+  const menuH = itemCount > 5 ? 280 : 140
   let px = x
   let py = y
   if (constraint) {
@@ -145,46 +176,20 @@ export function NodeContextMenu({ constraint }: NodeContextMenuProps) {
     py = Math.max(constraint.top, Math.min(y, constraint.bottom - menuH))
   }
 
-  const handleAction = (item: NodeMenuItem) => {
-    switch (item.action) {
-      case "delete":
-        removeNode(nodeId)
-        break
-      case "rename": {
-        // Trigger inline rename — dispatch a custom event the node can listen to
-        window.dispatchEvent(
-          new CustomEvent("eulinx:node-rename", { detail: { nodeId } }),
-        )
-        break
-      }
-      case "duplicate": {
-        window.dispatchEvent(
-          new CustomEvent("eulinx:node-duplicate", { detail: { nodeId } }),
-        )
-        break
-      }
-      case "custom": {
-        window.dispatchEvent(
-          new CustomEvent("eulinx:node-action", {
-            detail: { nodeId, action: item.customKey },
-          }),
-        )
-        break
-      }
-    }
-    closeContextMenu()
-  }
-
   return (
     <div
+      ref={menuRef}
+      role="menu"
+      aria-label={`${nodeLabel ?? "Node"} actions`}
       className="fixed z-[var(--Eulinx-z-dropdown)] min-w-[200px] animate-[ctx-in_120ms_ease] rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] p-1 shadow-lg"
       style={{ left: px, top: py }}
       onClick={(e) => e.stopPropagation()}
+      onKeyDown={handleKeyDown}
     >
       {/* Node header */}
-      <div className="flex items-center gap-2 px-3 py-1.5">
+      <div className="flex items-center gap-2 px-3 py-1.5" role="presentation">
         <AppIcon
-          name={nodeKind === "terminal" ? "terminal" : "variables"}
+          name={kind === "terminal" ? "terminal" : "variables"}
           className="h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-muted)]"
           strokeWidth={2}
         />
@@ -192,47 +197,68 @@ export function NodeContextMenu({ constraint }: NodeContextMenuProps) {
           {nodeLabel}
         </span>
       </div>
-      <div className="my-1 h-px bg-[color:var(--Eulinx-color-border)]" />
+      <div className="my-1 h-px bg-[color:var(--Eulinx-color-border)]" role="separator" />
 
-      {/* Node-specific items */}
-      {specificItems.map((item) => (
-        <Item key={item.label} item={item} onClick={() => handleAction(item)} />
-      ))}
-
-      {/* Separator before common items */}
-      {hasSpecific && <div className="my-1 h-px bg-[color:var(--Eulinx-color-border)]" />}
-
-      {/* Common items */}
-      {COMMON_ITEMS.map((item) => (
-        <Item
+      {/* All items */}
+      {allItems.map((item, i) => (
+        <MenuItem
           key={item.label}
           item={item}
-          onClick={() => handleAction(item)}
+          index={i}
+          isActive={activeIndex === i}
           danger={item.action === "delete"}
+          registerItem={registerItem}
+          onHover={() => setHoverIndex(i)}
+          onClick={() => {
+            if (nid) executeItem(item, nid, removeNode)
+            closeContextMenu()
+          }}
         />
       ))}
     </div>
   )
 }
 
-function Item({
-  item,
-  onClick,
-  danger,
-}: {
+// ---------------------------------------------------------------------------
+// Menu item — shared between node and canvas context menus
+// ---------------------------------------------------------------------------
+
+interface MenuItemProps {
   item: NodeMenuItem
-  onClick: () => void
+  index: number
+  isActive: boolean
   danger?: boolean
-}) {
+  registerItem: (index: number, el: HTMLElement | null) => void
+  onHover: () => void
+  onClick: () => void
+}
+
+export function MenuItem({
+  item,
+  index,
+  isActive,
+  danger,
+  registerItem,
+  onHover,
+  onClick,
+}: MenuItemProps) {
   return (
     <button
+      ref={(el) => registerItem(index, el)}
       type="button"
-      onClick={onClick}
-      className={`flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12.5px] transition-colors duration-100 hover:bg-[color:var(--Eulinx-color-hover)] ${
+      role="menuitem"
+      tabIndex={-1}
+      aria-disabled={false}
+      data-active={isActive || undefined}
+      className={`flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12.5px] transition-colors duration-100 hover:bg-[color:var(--Eulinx-color-hover)] outline-none ${
+        isActive ? "bg-[color:var(--Eulinx-color-hover)]" : ""
+      } ${
         danger
           ? "text-[color:var(--Eulinx-color-error)]"
           : "text-[color:var(--Eulinx-color-text)]"
       }`}
+      onMouseEnter={onHover}
+      onClick={onClick}
     >
       <span className="text-[color:var(--Eulinx-color-text-muted)]">
         <AppIcon name={item.icon} className="h-3.5 w-3.5" strokeWidth={2} />
@@ -245,4 +271,37 @@ function Item({
       )}
     </button>
   )
+}
+
+// ---------------------------------------------------------------------------
+// Shared action executor
+// ---------------------------------------------------------------------------
+
+function executeItem(
+  item: NodeMenuItem,
+  nodeId: string,
+  removeNode: (id: string) => void,
+) {
+  switch (item.action) {
+    case "delete":
+      removeNode(nodeId)
+      break
+    case "rename":
+      window.dispatchEvent(
+        new CustomEvent("eulinx:node-rename", { detail: { nodeId } }),
+      )
+      break
+    case "duplicate":
+      window.dispatchEvent(
+        new CustomEvent("eulinx:node-duplicate", { detail: { nodeId } }),
+      )
+      break
+    case "custom":
+      window.dispatchEvent(
+        new CustomEvent("eulinx:node-action", {
+          detail: { nodeId, action: item.customKey },
+        }),
+      )
+      break
+  }
 }
