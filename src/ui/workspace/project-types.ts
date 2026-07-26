@@ -23,6 +23,7 @@ export interface GraphNode {
   accent?: "accent" | "green" | "amber" | "red" | "purple"
   shell?: string
   url?: string
+  model?: string
   lines?: readonly {
     prompt?: string
     command?: string

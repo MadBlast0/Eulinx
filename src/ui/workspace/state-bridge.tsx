@@ -20,6 +20,7 @@ function mapZustandWorkerToContext(w: ZustandWorker): import("./workers-store").
     id: w.id,
     name: w.role,
     status,
+    model: w.model,
     desc: `${w.role} worker`,
     utilization: 0,
     meta: [status, "·", `${w.tokensUsed} tokens`],

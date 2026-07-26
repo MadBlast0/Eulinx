@@ -21,6 +21,7 @@ export interface CustomNodeData extends Record<string, unknown> {
   readonly kind: EulinxNodeKind
   readonly label: string
   readonly url?: string
+  readonly model?: string
   readonly status?: WorkerState
   readonly shell?: string
   readonly lines?: readonly { prompt?: string; command?: string; output?: string; outputColor?: string; cursor?: boolean }[]
@@ -218,7 +219,7 @@ function WorkerBody({ data }: { data: CustomNodeData }) {
   const progress = data.status === "running" ? 0.6 : data.status === "stopped" ? 1 : 0
   return (
     <div className="mx-3 mt-1 mb-2 flex flex-col gap-1.5 text-[11px]">
-      <div className="text-[color:var(--Eulinx-color-text-muted)]">model-placeholder</div>
+      <div className="text-[color:var(--Eulinx-color-text-muted)]">{data.model ?? "No model"}</div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--Eulinx-color-surface-sunken)]">
         <div
           className="h-full rounded-full transition-all duration-300"

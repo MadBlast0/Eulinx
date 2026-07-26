@@ -51,6 +51,8 @@ export interface CanvasNode {
   url?: string
   /** Optional shell override for terminal nodes (e.g. "pwsh", "bash"). */
   shell?: string
+  /** Model name for worker nodes (e.g. "gpt-4o", "claude-3-sonnet"). */
+  model?: string
   selected?: boolean
   /** Worker/runtime status for status badge rendering. */
   status?: string

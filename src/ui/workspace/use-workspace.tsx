@@ -197,6 +197,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         shell: shell && shell.length > 0 ? shell : undefined,
         lines: kind === "terminal" ? [{ prompt: "$", cursor: true }] : undefined,
         url: kind === "browser" ? "https://example.com" : undefined,
+        model: kind === "worker" ? "gpt-4o" : undefined,
       }
       projects.addNode(node)
       setSelectedId(id)

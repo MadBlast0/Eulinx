@@ -33,6 +33,7 @@ function projectNode(node: CanvasNode): CustomNodeType {
       kind: node.kind as EulinxNodeKind,
       label: node.label,
       url: node.url,
+      model: node.model,
       status: node.status as WorkerState | undefined,
       shell: node.shell,
       lines: node.lines,
