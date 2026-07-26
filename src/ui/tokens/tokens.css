@@ -179,6 +179,21 @@
   --Eulinx-color-node-browser: var(--Eulinx-color-success);
   --Eulinx-color-node-map: var(--Eulinx-color-warning);
   --Eulinx-color-node-worker: var(--Eulinx-color-accent);
+  --Eulinx-color-node-input: #14B8A6;
+  --Eulinx-color-node-output: #EF4444;
+  --Eulinx-color-node-orchestrator: #8B5CF6;
+  --Eulinx-color-node-builder: #3B82F6;
+  --Eulinx-color-node-verifier: #EAB308;
+  --Eulinx-color-node-condition: #06B6D4;
+  --Eulinx-color-node-loop: #6366F1;
+  --Eulinx-color-node-artifact: #EC4899;
+  --Eulinx-color-node-mcp: #F97316;
+  --Eulinx-color-node-delay: #64748B;
+  --Eulinx-color-node-human: #F59E0B;
+  --Eulinx-color-node-switch: #14B8A6;
+  --Eulinx-color-node-filter: #F59E0B;
+  --Eulinx-color-node-set: #3B82F6;
+  --Eulinx-color-node-code: #22C55E;
 }
 
 /* Light theme overrides (color + elev only) */

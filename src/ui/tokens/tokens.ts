@@ -181,6 +181,21 @@ export type EulinxTokenName =
   | "--Eulinx-color-node-browser"
   | "--Eulinx-color-node-map"
   | "--Eulinx-color-node-worker"
+  | "--Eulinx-color-node-input"
+  | "--Eulinx-color-node-output"
+  | "--Eulinx-color-node-orchestrator"
+  | "--Eulinx-color-node-builder"
+  | "--Eulinx-color-node-verifier"
+  | "--Eulinx-color-node-condition"
+  | "--Eulinx-color-node-loop"
+  | "--Eulinx-color-node-artifact"
+  | "--Eulinx-color-node-mcp"
+  | "--Eulinx-color-node-delay"
+  | "--Eulinx-color-node-human"
+  | "--Eulinx-color-node-switch"
+  | "--Eulinx-color-node-filter"
+  | "--Eulinx-color-node-set"
+  | "--Eulinx-color-node-code"
 ;
 
 /**

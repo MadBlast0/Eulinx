@@ -706,7 +706,10 @@ export function ThemeProvider({ children, onApplied }: ThemeProviderProps): Reac
 
     return () => {
       cancelled = true
-      unlisten?.()
+      // Guard against Tauri API being unavailable (e.g. in test environment)
+      if (typeof window !== "undefined" && window.__TAURI_EVENT_PLUGIN_INTERNALS__) {
+        unlisten?.()
+      }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
