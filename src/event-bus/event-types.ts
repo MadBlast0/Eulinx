@@ -45,6 +45,7 @@ export type RuntimeServiceName =
   | "ToolRegistry"
   | "EventBus"
   | "ProcessLifecycle"
+  | "TaskManager"
 
 export type WorkerState =
   | "created"
@@ -287,6 +288,62 @@ export type ExecutionCancelledPayload = {
   readonly executionId: ExecutionId
   readonly requestedBy: "user" | "runtime"
   readonly cancelledNodeIds: string[]
+}
+
+// ---------------------------------------------------------------------------
+// Task Events (all replay-grade except progress_updated)
+// ---------------------------------------------------------------------------
+
+export type TaskCreatedPayload = {
+  readonly taskId: string
+  readonly title: string
+  readonly priority: string
+  readonly parentId?: string
+  readonly dependencies: string[]
+}
+
+export type TaskStateChangedPayload = {
+  readonly taskId: string
+  readonly from: string
+  readonly to: string
+  readonly reason: string
+  readonly actor?: string
+}
+
+export type TaskAssignedPayload = {
+  readonly taskId: string
+  readonly workerId: string
+  readonly previousWorkerId?: string
+}
+
+export type TaskProgressUpdatedPayload = {
+  readonly taskId: string
+  readonly percentage: number
+  readonly currentStep?: string
+}
+
+export type TaskCompletedPayload = {
+  readonly taskId: string
+  readonly artifactIds: string[]
+  readonly verificationPassed: boolean
+  readonly durationMs: number
+}
+
+export type TaskFailedPayload = {
+  readonly taskId: string
+  readonly error: string
+  readonly willRetry: boolean
+}
+
+export type TaskDependencyAddedPayload = {
+  readonly taskId: string
+  readonly dependsOnTaskId: string
+  readonly type: "requires" | "blocks"
+}
+
+export type TaskDependencyMetPayload = {
+  readonly taskId: string
+  readonly dependsOnTaskId: string
 }
 
 // ---------------------------------------------------------------------------
@@ -744,6 +801,15 @@ export type EulinxEventUnion =
   | EulinxEvent<"execution.completed", ExecutionCompletedPayload>
   | EulinxEvent<"execution.failed", ExecutionFailedPayload>
   | EulinxEvent<"execution.cancelled", ExecutionCancelledPayload>
+  // Task
+  | EulinxEvent<"task.created", TaskCreatedPayload>
+  | EulinxEvent<"task.state_changed", TaskStateChangedPayload>
+  | EulinxEvent<"task.assigned", TaskAssignedPayload>
+  | EulinxEvent<"task.progress_updated", TaskProgressUpdatedPayload>
+  | EulinxEvent<"task.completed", TaskCompletedPayload>
+  | EulinxEvent<"task.failed", TaskFailedPayload>
+  | EulinxEvent<"task.dependency_added", TaskDependencyAddedPayload>
+  | EulinxEvent<"task.dependency_met", TaskDependencyMetPayload>
   // Artifact
   | EulinxEvent<"artifact.created", ArtifactCreatedPayload>
   | EulinxEvent<"artifact.verified", ArtifactVerifiedPayload>
@@ -823,6 +889,7 @@ export const NON_REPLAY_GRADE_TYPES: readonly string[] = [
   "ui.view_opened",
   "ui.user_action",
   "ui.notification_raised",
+  "task.progress_updated",
 ] as const
 
 export function isReplayGrade(type: string): boolean {
@@ -837,6 +904,7 @@ export type EventFamily =
   | "runtime"
   | "worker"
   | "execution"
+  | "task"
   | "artifact"
   | "merge"
   | "lock"
@@ -861,6 +929,7 @@ function isValidEventFamily(value: string): value is EventFamily {
     value === "runtime" ||
     value === "worker" ||
     value === "execution" ||
+    value === "task" ||
     value === "artifact" ||
     value === "merge" ||
     value === "lock" ||

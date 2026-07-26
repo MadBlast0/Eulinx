@@ -106,7 +106,7 @@ export class EventRegistry {
 
     // Family must be valid
     const validFamilies = [
-      "runtime", "worker", "execution", "artifact", "merge",
+      "runtime", "worker", "execution", "task", "artifact", "merge",
       "lock", "permission", "memory", "tool", "process",
       "plugin", "ui", "eventbus",
     ]
@@ -156,6 +156,16 @@ export class EventRegistry {
       { type: "execution.completed", family: "execution", replayGrade: true, description: "Execution completed", publisher: "ExecutionEngine", highFrequency: false },
       { type: "execution.failed", family: "execution", replayGrade: true, description: "Execution failed", publisher: "ExecutionEngine", highFrequency: false },
       { type: "execution.cancelled", family: "execution", replayGrade: true, description: "Execution cancelled", publisher: "ExecutionEngine", highFrequency: false },
+
+      // Task
+      { type: "task.created", family: "task", replayGrade: true, description: "Task created", publisher: "TaskManager", highFrequency: false },
+      { type: "task.state_changed", family: "task", replayGrade: true, description: "Task state changed", publisher: "TaskManager", highFrequency: false },
+      { type: "task.assigned", family: "task", replayGrade: true, description: "Task assigned", publisher: "TaskManager", highFrequency: false },
+      { type: "task.progress_updated", family: "task", replayGrade: false, description: "Task progress updated", publisher: "TaskManager", highFrequency: true },
+      { type: "task.completed", family: "task", replayGrade: true, description: "Task completed", publisher: "TaskManager", highFrequency: false },
+      { type: "task.failed", family: "task", replayGrade: true, description: "Task failed", publisher: "TaskManager", highFrequency: false },
+      { type: "task.dependency_added", family: "task", replayGrade: true, description: "Task dependency added", publisher: "TaskManager", highFrequency: false },
+      { type: "task.dependency_met", family: "task", replayGrade: true, description: "Task dependency met", publisher: "TaskManager", highFrequency: false },
 
       // Artifact
       { type: "artifact.created", family: "artifact", replayGrade: true, description: "Artifact created", publisher: "ArtifactManager", highFrequency: false },

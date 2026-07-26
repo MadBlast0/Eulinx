@@ -26,6 +26,7 @@ import { MergeManager } from "@/runtime/services/merge-manager"
 import { WorkflowManager } from "@/workflow/workflow-manager"
 import type { WorkflowDefinition } from "@/workflow/workflow-manager"
 import { TriggerEngine } from "@/workflow/triggers"
+import { TaskManager } from "./services/task-manager"
 import type { ReadSnapshotFn, WebhookRegisterFn } from "@/workflow/triggers"
 import type { PersistenceAdapter, WorkflowEventEmitter } from "@/workflow/workflow-engine"
 import type {
@@ -168,6 +169,7 @@ export const CORE_SERVICE_DEFINITIONS: readonly RuntimeServiceDefinition[] = [
   { id: "MergeManager", name: "MergeManager", required: true, phase: 5, dependencies: ["ArtifactManager", "LockManager", "PermissionManager"] },
   { id: "WorkflowManager", name: "WorkflowManager", required: false, phase: 5, dependencies: ["EventBus"] },
   { id: "TriggerEngine", name: "TriggerEngine", required: false, phase: 5, dependencies: ["WorkflowManager", "EventBus"] },
+  { id: "TaskManager", name: "TaskManager", required: false, phase: 5, dependencies: ["EventBus"] },
 ]
 
 // ---------------------------------------------------------------------------
@@ -255,6 +257,9 @@ export function bootstrapServiceRegistry(
     },
   })
   registry.setInstance("TriggerEngine", triggerEngine)
+
+  // TaskManager (Phase 5 — optional)
+  registry.setInstance("TaskManager", new TaskManager(eventBus))
 
   logger.info(`Service registry bootstrapped (${CORE_SERVICE_DEFINITIONS.length} core services)`)
 }

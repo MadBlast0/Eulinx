@@ -141,6 +141,7 @@ const SERVICE_FAMILIES: Record<RuntimeServiceName, readonly string[]> = {
   ToolRegistry: ["tool"],
   EventBus: ["eventbus", "plugin"],
   ProcessLifecycle: ["process"],
+  TaskManager: ["task"],
 }
 
 export function canPublish(service: RuntimeServiceName, eventType: string): boolean {

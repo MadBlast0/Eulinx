@@ -3,6 +3,7 @@ import {
   isReplayGrade,
   getEventFamily,
   shouldFlushImmediately,
+  parseEulinxUri,
 } from "./event-types"
 
 describe("event-types", () => {
@@ -23,6 +24,20 @@ describe("event-types", () => {
       expect(isReplayGrade("ui.user_action")).toBe(false)
       expect(isReplayGrade("ui.notification_raised")).toBe(false)
     })
+
+    it("returns true for task replay-grade events", () => {
+      expect(isReplayGrade("task.created")).toBe(true)
+      expect(isReplayGrade("task.state_changed")).toBe(true)
+      expect(isReplayGrade("task.assigned")).toBe(true)
+      expect(isReplayGrade("task.completed")).toBe(true)
+      expect(isReplayGrade("task.failed")).toBe(true)
+      expect(isReplayGrade("task.dependency_added")).toBe(true)
+      expect(isReplayGrade("task.dependency_met")).toBe(true)
+    })
+
+    it("returns false for task non-replay-grade events", () => {
+      expect(isReplayGrade("task.progress_updated")).toBe(false)
+    })
   })
 
   describe("getEventFamily", () => {
@@ -34,9 +49,31 @@ describe("event-types", () => {
       expect(getEventFamily("permission.denied")).toBe("permission")
     })
 
+    it("extracts task family", () => {
+      expect(getEventFamily("task.created")).toBe("task")
+      expect(getEventFamily("task.state_changed")).toBe("task")
+      expect(getEventFamily("task.completed")).toBe("task")
+    })
+
     it("returns undefined for invalid event type", () => {
       expect(getEventFamily("invalid")).toBe(undefined)
       expect(getEventFamily("")).toBe(undefined)
+    })
+  })
+
+  describe("parseEulinxUri", () => {
+    it("parses task URIs", () => {
+      const parsed = parseEulinxUri("Eulinx://task/completed")
+      expect(parsed).toEqual({ family: "task", fact: "completed" })
+    })
+
+    it("parses other family URIs", () => {
+      const parsed = parseEulinxUri("Eulinx://worker/spawned")
+      expect(parsed).toEqual({ family: "worker", fact: "spawned" })
+    })
+
+    it("returns undefined for non-URI strings", () => {
+      expect(parseEulinxUri("task.created")).toBeUndefined()
     })
   })
 
@@ -66,6 +103,11 @@ describe("event-types", () => {
       expect(shouldFlushImmediately("worker.spawned")).toBe(false)
       expect(shouldFlushImmediately("worker.output_streamed")).toBe(false)
       expect(shouldFlushImmediately("execution.progress_reported")).toBe(false)
+    })
+
+    it("returns false for task events (not in immediate flush list)", () => {
+      expect(shouldFlushImmediately("task.created")).toBe(false)
+      expect(shouldFlushImmediately("task.completed")).toBe(false)
     })
   })
 })

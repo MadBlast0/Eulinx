@@ -71,7 +71,7 @@ describe("EventRegistry", () => {
   it("filters high-frequency types", () => {
     const registry = new EventRegistry()
     const highFreq = registry.highFrequencyTypes()
-    expect(highFreq.length).toBe(3) // output_streamed x2 + progress_reported
+    expect(highFreq.length).toBe(4) // output_streamed x2 + progress_reported + task.progress_updated
     expect(highFreq.every((e) => e.highFrequency)).toBe(true)
   })
 
