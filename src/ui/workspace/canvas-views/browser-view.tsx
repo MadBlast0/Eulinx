@@ -148,6 +148,8 @@ export function BrowserView({ url: initialUrl = "about:blank" }: BrowserViewProp
           <div className="relative flex w-full items-center">
             <AppIcon name="browser" className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
             <input
+              id="browser-url"
+              name="browserUrl"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onFocus={(e) => e.target.select()}

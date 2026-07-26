@@ -340,6 +340,8 @@ export default function Settings() {
               <Label className="text-[13px] text-[color:var(--Eulinx-color-text)]">Anthropic API Key</Label>
               <Input
                 type="password"
+                id="anthropic-key"
+                name="anthropicKey"
                 value={settings.anthropicKey}
                 placeholder="sk-ant-••••••••••••"
                 className="bg-[color:var(--Eulinx-color-surface-sunken)]"

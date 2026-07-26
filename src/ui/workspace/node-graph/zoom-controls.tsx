@@ -51,6 +51,8 @@ export function ZoomControls() {
       {editing ? (
         <input
           ref={inputRef}
+          id="zoom-input"
+          name="zoomInput"
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value.replace(/\D/g, ""))}

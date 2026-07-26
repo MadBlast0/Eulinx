@@ -190,6 +190,8 @@ export function GitTab() {
         <div className="mx-3 mb-2 rounded-md border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-2.5 py-1.5 transition-colors focus-within:border-[color:var(--Eulinx-color-ring)]">
           <input
             type="text"
+            id="commit-message"
+            name="commitMessage"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void doCommit() }}

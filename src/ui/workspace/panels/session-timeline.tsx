@@ -243,6 +243,8 @@ function FilterBar({
       )}
       <input
         type="text"
+        id="event-search"
+        name="eventSearch"
         placeholder="Search events..."
         value={filters.searchQuery}
         onChange={(e) => onSetSearchQuery(e.target.value)}
@@ -358,6 +360,8 @@ function ReplayControls({
         {currentIndex + 1}/{totalCount}
       </span>
       <select
+        id="timeline-speed"
+        name="timelineSpeed"
         value={speed}
         onChange={(e) => onSpeedChange(Number(e.target.value))}
         className="ml-1 h-5 rounded border border-[color:var(--Eulinx-color-border)] bg-transparent px-1 text-[10px] text-[color:var(--Eulinx-color-text-muted)] focus:outline-none"

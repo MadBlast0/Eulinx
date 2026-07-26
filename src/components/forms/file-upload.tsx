@@ -161,6 +161,8 @@ const FileUpload = React.forwardRef<HTMLDivElement, FileUploadProps>(
         >
           <input
             ref={inputRef}
+            id="file-upload"
+            name="fileUpload"
             type="file"
             accept={accept}
             multiple={multiple}

@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   type ReactNode,
 } from "react"
 import {
@@ -74,6 +75,10 @@ export function NodeGraphProvider({ children }: { children: ReactNode }) {
   const [nodes, setNodes, onNodesChangeRaw] = useNodesState<CustomNodeType>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
 
+  // Track current node IDs to guard against stale drag gestures
+  const nodeIdsRef = useRef(new Set<string>())
+  nodeIdsRef.current = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes])
+
   // Sync workspace nodes → ReactFlow nodes, preserving any internal dimensions
   // (e.g. from NodeResizer) that aren't persisted to the project store.
   useEffect(() => {
@@ -99,8 +104,13 @@ export function NodeGraphProvider({ children }: { children: ReactNode }) {
 
   const onNodesChange = useCallback<OnNodesChange<CustomNodeType>>(
     (changes) => {
-      onNodesChangeRaw(changes)
-      for (const change of changes) {
+      // Filter out changes for nodes that no longer exist (stale drag gestures
+      // can fire after a sync replaces the nodes array).
+      const valid = changes.filter(
+        (c) => c.type !== "position" || nodeIdsRef.current.has(c.id),
+      )
+      if (valid.length > 0) onNodesChangeRaw(valid)
+      for (const change of valid) {
         if (change.type === "position" && change.position && !change.dragging) {
           moveNode(change.id, change.position.x, change.position.y)
         }

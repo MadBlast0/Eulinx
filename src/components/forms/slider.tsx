@@ -10,6 +10,7 @@ export interface SliderProps {
   max?: number
   step?: number
   label?: string
+  name?: string
   error?: string
   showValue?: boolean
   formatValue?: (value: number) => string
@@ -26,6 +27,7 @@ const Slider = React.forwardRef<HTMLInputElement, SliderProps>(
       max = 100,
       step = 1,
       label,
+      name,
       error,
       showValue = true,
       formatValue,
@@ -51,6 +53,7 @@ const Slider = React.forwardRef<HTMLInputElement, SliderProps>(
             ref={ref}
             type="range"
             id={id}
+            name={name ?? id}
             value={value}
             onChange={(e) => onChange(Number(e.target.value))}
             min={min}

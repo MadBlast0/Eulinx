@@ -11,6 +11,8 @@ export default function SearchPanel() {
       title="Search"
       actions={
         <Input
+          id="workspace-search"
+          name="workspaceSearch"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search workspace..."

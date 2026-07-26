@@ -89,6 +89,8 @@ export default function KnowledgeBasePanel() {
         <div className="relative w-56">
           <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
           <Input
+            id="kb-search"
+            name="kbSearch"
             value={query}
             onChange={(e) => {
               setQuery(e.target.value)
@@ -123,6 +125,8 @@ export default function KnowledgeBasePanel() {
                 Paste text or markdown
               </label>
               <Textarea
+                id="kb-ingest-text"
+                name="kbIngestText"
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 placeholder="Paste content to index…"
@@ -142,6 +146,8 @@ export default function KnowledgeBasePanel() {
                 From URL
               </label>
               <Input
+                id="kb-ingest-url"
+                name="kbIngestUrl"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://example.com/doc"
@@ -162,6 +168,8 @@ export default function KnowledgeBasePanel() {
               </label>
               <input
                 type="file"
+                id="kb-upload-file"
+                name="kbUploadFile"
                 accept=".txt,.md,.markdown,.mdx,.pdf"
                 onChange={(e) => void onFile(e.target.files?.[0])}
                 className="text-xs text-[color:var(--Eulinx-color-text-muted)]"

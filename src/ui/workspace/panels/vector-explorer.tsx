@@ -1002,6 +1002,8 @@ function FilterSidebar({ filters, onChange, pointCount, totalCount }: FilterSide
               >
                 <input
                   type="checkbox"
+                  id={`kind-${kind}`}
+                  name={`kind-${kind}`}
                   checked={filters.kinds.has(kind)}
                   onChange={() => toggleKind(kind)}
                   className="h-3 w-3 accent-[color:var(--Eulinx-color-accent)]"
@@ -1030,6 +1032,8 @@ function FilterSidebar({ filters, onChange, pointCount, totalCount }: FilterSide
               >
                 <input
                   type="checkbox"
+                  id={`sensitivity-${s}`}
+                  name={`sensitivity-${s}`}
                   checked={filters.sensitivity.has(s)}
                   onChange={() => toggleSensitivity(s)}
                   className="h-3 w-3 accent-[color:var(--Eulinx-color-accent)]"
@@ -1052,6 +1056,8 @@ function FilterSidebar({ filters, onChange, pointCount, totalCount }: FilterSide
             onToggle={() => toggle("session")}
           >
             <Input
+              id="vector-session-filter"
+              name="vectorSessionFilter"
               value={filters.sessionId}
               onChange={(e) => onChange({ ...filters, sessionId: e.target.value })}
               placeholder="Session ID..."
@@ -1069,6 +1075,8 @@ function FilterSidebar({ filters, onChange, pointCount, totalCount }: FilterSide
               <label className="text-[10px] text-[color:var(--Eulinx-color-text-muted)]">From</label>
               <input
                 type="date"
+                id="vector-date-from"
+                name="vectorDateFrom"
                 value={filters.dateFrom}
                 onChange={(e) => onChange({ ...filters, dateFrom: e.target.value })}
                 className="rounded border border-[color:var(--Eulinx-color-border)] bg-transparent px-1.5 py-0.5 text-xs text-[color:var(--Eulinx-color-text)]"
@@ -1076,6 +1084,8 @@ function FilterSidebar({ filters, onChange, pointCount, totalCount }: FilterSide
               <label className="text-[10px] text-[color:var(--Eulinx-color-text-muted)]">To</label>
               <input
                 type="date"
+                id="vector-date-to"
+                name="vectorDateTo"
                 value={filters.dateTo}
                 onChange={(e) => onChange({ ...filters, dateTo: e.target.value })}
                 className="rounded border border-[color:var(--Eulinx-color-border)] bg-transparent px-1.5 py-0.5 text-xs text-[color:var(--Eulinx-color-text)]"
@@ -1527,6 +1537,8 @@ export function VectorExplorer({ workspaceId }: { readonly workspaceId: string }
               strokeWidth={1.5}
             />
             <Input
+              id="vector-search"
+              name="vectorSearch"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search points..."

@@ -26,6 +26,8 @@ export default function VectorExplorer() {
           <div className="relative">
             <Search className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[color:var(--Eulinx-color-text-muted)]" />
             <Input
+              id="cv-vector-search"
+              name="cvVectorSearch"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search vectors..."

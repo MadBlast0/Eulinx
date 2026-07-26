@@ -17,6 +17,7 @@ import {
   type Edge,
   type NodeTypes,
   type NodeMouseHandler,
+  type OnNodesChange,
   Handle,
   Position,
 } from "@xyflow/react"
@@ -793,7 +794,21 @@ function KnowledgeGraphInner({
   }, [filteredNodes, searchQuery])
 
   // React Flow nodes — knowledge nodes only (Memory nodes not shown as clusters)
-  const [nodes, setNodes, onNodesChange] = useNodesState<KnowledgeFlowNode>([])
+  const [nodes, setNodes, onNodesChangeRaw] = useNodesState<KnowledgeFlowNode>([])
+
+  // Guard against stale drag gestures after node sync
+  const nodeIdsRef = useRef(new Set<string>())
+  nodeIdsRef.current = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes])
+
+  const onNodesChange = useCallback<OnNodesChange<KnowledgeFlowNode>>(
+    (changes) => {
+      const valid = changes.filter(
+        (c) => c.type !== "position" || nodeIdsRef.current.has(c.id),
+      )
+      if (valid.length > 0) onNodesChangeRaw(valid)
+    },
+    [onNodesChangeRaw],
+  )
 
   const computedNodes: KnowledgeFlowNode[] = useMemo(() => {
     return filteredNodes.map((n) => {
@@ -922,6 +937,8 @@ export function KnowledgeGraph({ workspaceId }: KnowledgeGraphProps) {
         <div className="relative w-56">
           <AppIcon name="search" className="absolute left-2 top-1/2 h-3 w-3 -translate-y-1/2 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2.25} />
           <Input
+            id="kg-search"
+            name="kgSearch"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Highlight chunks..."

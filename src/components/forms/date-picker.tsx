@@ -79,6 +79,8 @@ const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
         >
           <input
             type="date"
+            id="date-picker"
+            name="datePicker"
             value={dateStr}
             min={minDate?.toISOString().split("T")[0]}
             max={maxDate?.toISOString().split("T")[0]}

@@ -6,6 +6,7 @@ export interface OtpInputProps {
   length?: number
   value: string
   onChange: (value: string) => void
+  name?: string
   error?: string
   disabled?: boolean
   className?: string
@@ -17,7 +18,7 @@ interface OtpInputRefHandle {
 }
 
 const OtpInput = React.forwardRef<OtpInputRefHandle, OtpInputProps>(
-  ({ length = 6, value, onChange, error, disabled, className }, ref) => {
+  ({ length = 6, value, onChange, name = "otp", error, disabled, className }, ref) => {
     const inputRefs = React.useRef<(HTMLInputElement | null)[]>([])
     const id = useId("otp")
 
@@ -123,6 +124,8 @@ const OtpInput = React.forwardRef<OtpInputRefHandle, OtpInputProps>(
             <input
               key={`${id}-${index}`}
               ref={setInputRef(index)}
+              id={`${id}-${index}`}
+              name={`${name}-${index}`}
               type="tel"
               inputMode="numeric"
               autoComplete="one-time-code"

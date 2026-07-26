@@ -155,6 +155,8 @@ const AudioPlayer = React.forwardRef<HTMLDivElement, AudioPlayerProps>(
         <div className="relative flex flex-1 items-center">
           <input
             type="range"
+            id="audio-seek"
+            name="audioSeek"
             min={0}
             max={duration || 0}
             step={0.1}
@@ -188,6 +190,8 @@ const AudioPlayer = React.forwardRef<HTMLDivElement, AudioPlayerProps>(
 
         <input
           type="range"
+          id="audio-volume"
+          name="audioVolume"
           min={0}
           max={1}
           step={0.05}
