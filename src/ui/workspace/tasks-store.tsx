@@ -137,7 +137,8 @@ function hasCycle(tasks: Task[], taskId: string, depId: string): boolean {
   const visited = new Set<string>()
   const stack = [depId]
   while (stack.length > 0) {
-    const current = stack.pop()!
+    const current = stack.pop()
+    if (current === undefined) break
     if (current === taskId) return true
     if (visited.has(current)) continue
     visited.add(current)

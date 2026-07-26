@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+ 
 /**
  * P04-STATE-ARTIFACT — Artifact State Tests
  */

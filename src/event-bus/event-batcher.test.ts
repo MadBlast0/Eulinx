@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+ 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 import { UiBatcher } from "./event-batcher"
 import { DEFAULT_EVENT_BUS_CONFIG } from "./event-bus-config"

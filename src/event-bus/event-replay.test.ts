@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+ 
 import { describe, it, expect } from "vitest"
 import { ReplayBus } from "./event-replay"
 import type { EulinxEventUnion } from "./event-types"

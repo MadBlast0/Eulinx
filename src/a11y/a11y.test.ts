@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+ 
 /**
  * Accessibility — Conformance gate tests (Accessibility-Part01..06).
  *

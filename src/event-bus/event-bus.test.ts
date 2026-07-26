@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+ 
 import { describe, it, expect, beforeEach } from "vitest"
 import { EventBus } from "./event-bus"
 import { DEFAULT_EVENT_BUS_CONFIG } from "./event-bus-config"

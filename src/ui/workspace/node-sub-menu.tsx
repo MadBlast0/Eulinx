@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { ChevronRight, ChevronUp } from "lucide-react"
 import { AppIcon } from "./app-icon"
 import { useMenuKeyboard } from "./use-menu-keyboard"
@@ -178,7 +178,10 @@ export function NodeSubMenu({ open, onOpen, onClose, onPick, children, constrain
   }, [scheduleClose])
 
   // Keyboard navigation for the sub-dropdown items
-  const currentCategoryItems = hoveredCategory !== null ? NODE_SECTIONS[hoveredCategory]?.items ?? [] : []
+  const currentCategoryItems = useMemo(
+    () => (hoveredCategory !== null ? NODE_SECTIONS[hoveredCategory]?.items ?? [] : []),
+    [hoveredCategory],
+  )
 
   const handleSubExecute = useCallback(
     (index: number) => {
