@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from "react"
-import { ChevronRight, FolderPlus, Plus } from "lucide-react"
+import { ChevronRight, FolderPlus, Plus, Folder, FileText } from "lucide-react"
 import { AppIcon } from "./app-icon"
 import { cn } from "@/utils/cn"
 import { Button } from "@/components/ui/button"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 import { useWorkspace } from "./use-workspace"
 import { useProjects } from "./use-projects"
 import { projectStorage } from "./project-storage"
@@ -251,12 +253,6 @@ export function LeftSidebar({
           active={activeSurface === "knowledge"}
           onClick={() => onOpenSurface("knowledge")}
         />
-        <NavRow
-          icon={<AppIcon name="settings" className="h-4 w-4 shrink-0" strokeWidth={2} />}
-          label="Settings"
-          active={activeSurface === "settings"}
-          onClick={() => onOpenSurface("settings")}
-        />
 
         {/* Divider */}
         <div className="my-3 h-px bg-[color:var(--Eulinx-color-border)]" />
@@ -268,31 +264,54 @@ export function LeftSidebar({
             <span className="text-[11px] font-medium uppercase tracking-wider text-[color:var(--Eulinx-color-text-muted)]">
               Projects
             </span>
-            <div className="flex items-center">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Add project"
-                    title="Add project"
-                    className="h-5 w-5 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Add project"
+                  title="Add project"
+                  className="h-5 w-5 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
+                >
+                  <FolderPlus className="h-3.5 w-3.5" strokeWidth={2} />
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add Project</DialogTitle>
+                  <DialogDescription>
+                    Choose how to add a new project to your workspace.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="flex flex-col gap-2">
+                  <button
+                    onClick={() => {
+                      handleAddProject()
+                    }}
+                    className="flex items-center gap-3 rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-3 text-left transition-colors hover:border-[color:var(--Eulinx-color-accent)] hover:bg-[color:var(--Eulinx-color-surface-raised)] focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    <FolderPlus className="h-3.5 w-3.5" strokeWidth={2} />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" side="bottom" className="w-48">
-                  <DropdownMenuItem onClick={() => void handleAddProject()}>
-                    <AppIcon name="projects" className="mr-2 h-3.5 w-3.5" strokeWidth={2} />
-                    Open Folder…
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => void handleAddProject()}>
-                    <AppIcon name="graph" className="mr-2 h-3.5 w-3.5" strokeWidth={2} />
-                    New Empty Project
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                    <Folder className="h-4 w-4 text-[color:var(--Eulinx-color-text-muted)]" />
+                    <div>
+                      <div className="text-[13px] font-medium text-[color:var(--Eulinx-color-text)]">Open Folder</div>
+                      <div className="text-[11px] text-[color:var(--Eulinx-color-text-muted)]">Import an existing project folder</div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => {
+                      const name = `Project ${projects.length + 1}`
+                      addProject(`local:/${name}`, name)
+                    }}
+                    className="flex items-center gap-3 rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-3 text-left transition-colors hover:border-[color:var(--Eulinx-color-accent)] hover:bg-[color:var(--Eulinx-color-surface-raised)] focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <FileText className="h-4 w-4 text-[color:var(--Eulinx-color-text-muted)]" />
+                    <div>
+                      <div className="text-[13px] font-medium text-[color:var(--Eulinx-color-text)]">New Empty Project</div>
+                      <div className="text-[11px] text-[color:var(--Eulinx-color-text-muted)]">Create a new empty project</div>
+                    </div>
+                  </button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
 
           {/* Empty state */}

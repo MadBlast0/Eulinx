@@ -17,7 +17,6 @@ const KnowledgeWorkspace = React.lazy(() =>
 import { StatusBar } from "./status-bar"
 import { Overlays } from "./overlays"
 const Dashboard = React.lazy(() => import("./surfaces/dashboard"))
-const Settings = React.lazy(() => import("./surfaces/settings"))
 const MemoryBrowser = React.lazy(() => import("./surfaces/memory-browser"))
 const WorkerExplorer = React.lazy(() => import("./surfaces/worker-explorer"))
 const SessionViewer = React.lazy(() => import("./surfaces/session-viewer"))
@@ -48,7 +47,6 @@ import { saveLayout, loadLayout } from "./layout-persistence"
 
 export type SurfaceKey =
   | "dashboard"
-  | "settings"
   | "memory"
   | "workers"
   | "sessions"
@@ -71,7 +69,6 @@ export type SurfaceKey =
 
 const SURFACES: Record<SurfaceKey, React.LazyExoticComponent<React.ComponentType>> = {
   dashboard: Dashboard,
-  settings: Settings,
   memory: MemoryBrowser,
   workers: WorkerExplorer,
   sessions: SessionViewer,
