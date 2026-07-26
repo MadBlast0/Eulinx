@@ -10,6 +10,7 @@ import {
   Clock,
   Cloud,
   Cpu,
+  Crosshair,
   Database,
   FileText,
   Folder,
@@ -21,6 +22,7 @@ import {
   HelpCircle,
   Key,
   LayoutDashboard,
+  LayoutGrid,
   Layers,
   Map,
   MessageSquare,
@@ -144,6 +146,8 @@ const iconConfig: Record<string, {
   tool: { size: 20 },
   harddrive: { size: 20 },
   split: { size: 20 },
+  crosshair: { size: 20 },
+  board: { size: 20 },
 }
 
 type IconKey =
@@ -193,6 +197,8 @@ type IconKey =
   | "tool"
   | "harddrive"
   | "split"
+  | "crosshair"
+  | "board"
   | "default"
 
 const iconRegistry: Record<IconKey, LucideIcon> = {
@@ -242,5 +248,7 @@ const iconRegistry: Record<IconKey, LucideIcon> = {
   tool: Wrench,
   harddrive: HardDrive,
   split: Network,
+  crosshair: Crosshair,
+  board: LayoutGrid,
   default: Circle,
 }

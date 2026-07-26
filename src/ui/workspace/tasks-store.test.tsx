@@ -1,33 +1,10 @@
-import { describe, it, expect, beforeEach } from "vitest"
+import { describe, it, expect } from "vitest"
 import { renderHook, act } from "@testing-library/react"
 import { ReactNode } from "react"
-import { TasksProvider, useTasks, type Task } from "./tasks-store"
+import { TasksProvider, useTasks } from "./tasks-store"
 
 function wrapper({ children }: { children: ReactNode }) {
   return <TasksProvider>{children}</TasksProvider>
-}
-
-function createTask(overrides?: Partial<Task>): Task {
-  return {
-    id: "task-1",
-    title: "Test Task",
-    description: "",
-    status: "backlog",
-    priority: "medium",
-    dueDate: null,
-    assignee: null,
-    parentId: null,
-    subtasks: [],
-    artifacts: [],
-    dependencies: [],
-    progress: { percentage: 0, lastUpdatedAt: new Date().toISOString() },
-    history: [],
-    verificationStatus: null,
-    verificationRecord: null,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    ...overrides,
-  }
 }
 
 describe("tasks-store", () => {
@@ -48,7 +25,7 @@ describe("tasks-store", () => {
       })
 
       expect(result.current.tasks).toHaveLength(1)
-      const task = result.current.tasks[0]
+      const task = result.current.tasks[0]!
       expect(task.title).toBe("New Task")
       expect(task.dependencies).toEqual([])
       expect(task.progress).toEqual({ percentage: 0, lastUpdatedAt: expect.any(String) })
@@ -75,7 +52,7 @@ describe("tasks-store", () => {
         })
       })
 
-      const taskId = result.current.tasks[0].id
+      const taskId = result.current.tasks[0]!.id
 
       act(() => {
         result.current.moveTask(taskId, "in_progress", "Starting work")
@@ -107,7 +84,7 @@ describe("tasks-store", () => {
         })
       })
 
-      const taskId = result.current.tasks[0].id
+      const taskId = result.current.tasks[0]!.id
 
       let moved: boolean = false
       act(() => {
@@ -115,7 +92,7 @@ describe("tasks-store", () => {
       })
 
       expect(moved).toBe(false)
-      expect(result.current.tasks[0].status).toBe("backlog")
+      expect(result.current.tasks[0]!.status).toBe("backlog")
     })
   })
 
@@ -144,7 +121,8 @@ describe("tasks-store", () => {
         })
       })
 
-      const [taskA, taskB] = result.current.tasks
+      const taskA = result.current.tasks[0]!
+      const taskB = result.current.tasks[1]!
 
       act(() => {
         result.current.addDependency(taskA.id, taskB.id, "requires")
@@ -170,7 +148,7 @@ describe("tasks-store", () => {
         })
       })
 
-      const taskId = result.current.tasks[0].id
+      const taskId = result.current.tasks[0]!.id
 
       let success: boolean = false
       act(() => {
@@ -178,7 +156,7 @@ describe("tasks-store", () => {
       })
 
       expect(success).toBe(false)
-      expect(result.current.tasks[0].dependencies).toEqual([])
+      expect(result.current.tasks[0]!.dependencies).toEqual([])
     })
 
     it("prevents circular dependencies", () => {
@@ -205,7 +183,8 @@ describe("tasks-store", () => {
         })
       })
 
-      const [taskA, taskB] = result.current.tasks
+      const taskA = result.current.tasks[0]!
+      const taskB = result.current.tasks[1]!
 
       act(() => {
         result.current.addDependency(taskA.id, taskB.id, "requires")
@@ -245,7 +224,8 @@ describe("tasks-store", () => {
         })
       })
 
-      const [depTask, mainTask] = result.current.tasks
+      const depTask = result.current.tasks[0]!
+      const mainTask = result.current.tasks[1]!
 
       act(() => {
         result.current.addDependency(mainTask.id, depTask.id, "requires")
@@ -278,7 +258,8 @@ describe("tasks-store", () => {
         })
       })
 
-      const [depTask, mainTask] = result.current.tasks
+      const depTask = result.current.tasks[0]!
+      const mainTask = result.current.tasks[1]!
 
       act(() => {
         result.current.addDependency(mainTask.id, depTask.id, "requires")
@@ -304,7 +285,7 @@ describe("tasks-store", () => {
         })
       })
 
-      const taskId = result.current.tasks[0].id
+      const taskId = result.current.tasks[0]!.id
 
       act(() => {
         result.current.updateProgress(taskId, { percentage: 60 })
@@ -328,7 +309,7 @@ describe("tasks-store", () => {
         })
       })
 
-      const parentId = result.current.tasks[0].id
+      const parentId = result.current.tasks[0]!.id
 
       act(() => {
         result.current.addSubtask(parentId, "Sub 1")
@@ -337,7 +318,7 @@ describe("tasks-store", () => {
       })
 
       const parent = result.current.tasks.find((t) => t.id === parentId)!
-      const sub1 = parent.subtasks[0]
+      const sub1 = parent.subtasks[0]!
 
       act(() => {
         result.current.moveTask(sub1.id, "in_progress")
@@ -365,14 +346,14 @@ describe("tasks-store", () => {
         })
       })
 
-      const taskId = result.current.tasks[0].id
+      const taskId = result.current.tasks[0]!.id
 
       act(() => {
         result.current.verifyTask(taskId, true, "All tests passed")
       })
 
-      expect(result.current.tasks[0].verificationStatus).toBe("passed")
-      expect(result.current.tasks[0].verificationRecord).toBe("All tests passed")
+      expect(result.current.tasks[0]!.verificationStatus).toBe("passed")
+      expect(result.current.tasks[0]!.verificationRecord).toBe("All tests passed")
     })
   })
 
@@ -392,13 +373,13 @@ describe("tasks-store", () => {
         })
       })
 
-      const taskId = result.current.tasks[0].id
+      const taskId = result.current.tasks[0]!.id
 
       act(() => {
         result.current.addArtifact(taskId, "auth.ts")
       })
 
-      expect(result.current.tasks[0].artifacts).toContain("auth.ts")
+      expect(result.current.tasks[0]!.artifacts).toContain("auth.ts")
     })
 
     it("does not add duplicate artifacts", () => {
@@ -416,14 +397,14 @@ describe("tasks-store", () => {
         })
       })
 
-      const taskId = result.current.tasks[0].id
+      const taskId = result.current.tasks[0]!.id
 
       act(() => {
         result.current.addArtifact(taskId, "auth.ts")
         result.current.addArtifact(taskId, "auth.ts")
       })
 
-      expect(result.current.tasks[0].artifacts).toHaveLength(1)
+      expect(result.current.tasks[0]!.artifacts).toHaveLength(1)
     })
   })
 
@@ -443,7 +424,7 @@ describe("tasks-store", () => {
         })
       })
 
-      const taskId = result.current.tasks[0].id
+      const taskId = result.current.tasks[0]!.id
       expect(result.current.getTaskById(taskId)).toBeDefined()
       expect(result.current.getTaskById(taskId)!.title).toBe("Task")
     })
@@ -463,14 +444,14 @@ describe("tasks-store", () => {
         })
       })
 
-      const parentId = result.current.tasks[0].id
+      const parentId = result.current.tasks[0]!.id
 
       act(() => {
         result.current.addSubtask(parentId, "Child")
       })
 
       const parent = result.current.tasks.find((t) => t.id === parentId)!
-      const childId = parent.subtasks[0].id
+      const childId = parent.subtasks[0]!.id
 
       expect(result.current.getTaskById(childId)).toBeDefined()
       expect(result.current.getTaskById(childId)!.title).toBe("Child")

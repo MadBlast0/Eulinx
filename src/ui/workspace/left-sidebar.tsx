@@ -213,7 +213,7 @@ export function LeftSidebar({
   activeSurface: SurfaceKey | null
   onOpenSurface: (key: SurfaceKey | null) => void
 }) {
-  const { setOverlay } = useWorkspace()
+  const { overlay, setOverlay } = useWorkspace()
   const { projects, activeProjectId, selectProject, selectView, addProject } = useProjects()
 
   const handleAddProject = useCallback(async (): Promise<void> => {
@@ -328,6 +328,35 @@ export function LeftSidebar({
 
       {/* ── Bottom actions ── */}
       <div className="flex items-center gap-0.5 border-t border-[color:var(--Eulinx-color-border)] px-2 py-1.5">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Focus project"
+          title="Focus current project"
+          onClick={() => {
+            // Focus the canvas on the current project's active view
+            onOpenSurface(null)
+          }}
+          className="h-7 w-7 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
+        >
+          <AppIcon name="crosshair" className="h-4 w-4" strokeWidth={2} />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Task board"
+          title="Workspace board"
+          onClick={() => setOverlay(overlay === "taskBoard" ? null : "taskBoard")}
+          className={cn(
+            "h-7 w-7 hover:text-[color:var(--Eulinx-color-text-secondary)]",
+            overlay === "taskBoard"
+              ? "text-[color:var(--Eulinx-color-accent)]"
+              : "text-[color:var(--Eulinx-color-text-muted)]",
+          )}
+        >
+          <AppIcon name="board" className="h-4 w-4" strokeWidth={2} />
+        </Button>
+        <div className="flex-1" />
         <Button
           variant="ghost"
           size="icon"

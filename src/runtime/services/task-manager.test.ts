@@ -45,11 +45,12 @@ describe("TaskManager", () => {
       await taskManager.taskCreated("task-1", "Test Task", "high", ["task-0"])
 
       expect(received).toHaveLength(1)
-      expect(received[0].type).toBe("task.created")
-      expect((received[0].payload as Record<string, unknown>).taskId).toBe("task-1")
-      expect((received[0].payload as Record<string, unknown>).title).toBe("Test Task")
-      expect((received[0].payload as Record<string, unknown>).priority).toBe("high")
-      expect((received[0].payload as Record<string, unknown>).dependencies).toEqual(["task-0"])
+      const event0 = received[0]!
+      expect(event0.type).toBe("task.created")
+      expect((event0.payload as Record<string, unknown>).taskId).toBe("task-1")
+      expect((event0.payload as Record<string, unknown>).title).toBe("Test Task")
+      expect((event0.payload as Record<string, unknown>).priority).toBe("high")
+      expect((event0.payload as Record<string, unknown>).dependencies).toEqual(["task-0"])
     })
 
     it("taskStateChanged publishes correct event", async () => {
@@ -62,8 +63,9 @@ describe("TaskManager", () => {
       await taskManager.taskStateChanged("task-1", "backlog", "in_progress", "Starting work", "user-1")
 
       expect(received).toHaveLength(1)
-      expect(received[0].type).toBe("task.state_changed")
-      const payload = received[0].payload as Record<string, unknown>
+      const event1 = received[0]!
+      expect(event1.type).toBe("task.state_changed")
+      const payload = event1.payload as Record<string, unknown>
       expect(payload.taskId).toBe("task-1")
       expect(payload.from).toBe("backlog")
       expect(payload.to).toBe("in_progress")
@@ -81,8 +83,9 @@ describe("TaskManager", () => {
       await taskManager.taskAssigned("task-1", "worker-1", "worker-0")
 
       expect(received).toHaveLength(1)
-      expect(received[0].type).toBe("task.assigned")
-      const payload = received[0].payload as Record<string, unknown>
+      const event2 = received[0]!
+      expect(event2.type).toBe("task.assigned")
+      const payload = event2.payload as Record<string, unknown>
       expect(payload.taskId).toBe("task-1")
       expect(payload.workerId).toBe("worker-1")
       expect(payload.previousWorkerId).toBe("worker-0")
@@ -98,8 +101,9 @@ describe("TaskManager", () => {
       await taskManager.taskProgressUpdated("task-1", 75, "Implementing auth")
 
       expect(received).toHaveLength(1)
-      expect(received[0].type).toBe("task.progress_updated")
-      const payload = received[0].payload as Record<string, unknown>
+      const event3 = received[0]!
+      expect(event3.type).toBe("task.progress_updated")
+      const payload = event3.payload as Record<string, unknown>
       expect(payload.taskId).toBe("task-1")
       expect(payload.percentage).toBe(75)
       expect(payload.currentStep).toBe("Implementing auth")
@@ -115,8 +119,9 @@ describe("TaskManager", () => {
       await taskManager.taskCompleted("task-1", ["auth.ts", "auth.test.ts"], true, 5000)
 
       expect(received).toHaveLength(1)
-      expect(received[0].type).toBe("task.completed")
-      const payload = received[0].payload as Record<string, unknown>
+      const event4 = received[0]!
+      expect(event4.type).toBe("task.completed")
+      const payload = event4.payload as Record<string, unknown>
       expect(payload.taskId).toBe("task-1")
       expect(payload.artifactIds).toEqual(["auth.ts", "auth.test.ts"])
       expect(payload.verificationPassed).toBe(true)
@@ -133,8 +138,9 @@ describe("TaskManager", () => {
       await taskManager.taskFailed("task-1", "Type error in auth.ts", true)
 
       expect(received).toHaveLength(1)
-      expect(received[0].type).toBe("task.failed")
-      const payload = received[0].payload as Record<string, unknown>
+      const event5 = received[0]!
+      expect(event5.type).toBe("task.failed")
+      const payload = event5.payload as Record<string, unknown>
       expect(payload.taskId).toBe("task-1")
       expect(payload.error).toBe("Type error in auth.ts")
       expect(payload.willRetry).toBe(true)

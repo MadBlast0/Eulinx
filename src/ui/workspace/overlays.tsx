@@ -1,5 +1,5 @@
-import { useEffect } from "react"
-import { X } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { X, Minus, GripVertical } from "lucide-react"
 import { AppIcon } from "./app-icon"
 import { cn } from "@/utils/cn"
 import {
@@ -19,6 +19,7 @@ import { StateBadge } from "./primitives"
 import { type Tone } from "./state"
 import { useWorkspace } from "./use-workspace"
 import { CommandPalette, ShortcutHelpOverlay } from "./keyboard/discovery-overlay"
+import TaskBoard from "./surfaces/task-board"
 
 export function Overlays() {
   const { overlay, setOverlay } = useWorkspace()
@@ -29,7 +30,123 @@ export function Overlays() {
       {overlay === "welcome" && <WelcomeScreen />}
       {overlay === "settings" && <SettingsScreen />}
       {overlay === "shortcuts" && <ShortcutHelpOverlay onClose={close} />}
+      {overlay === "taskBoard" && <TaskBoardWindow onClose={close} />}
     </>
+  )
+}
+
+/* ----------------------------------------------------------------------- */
+/* Floating window                                                          */
+/* ----------------------------------------------------------------------- */
+
+function TaskBoardWindow({ onClose }: { onClose: () => void }) {
+  const [pos, setPos] = useState({ x: 120, y: 80 })
+  const [size, setSize] = useState({ w: 800, h: 520 })
+  const [minimized, setMinimized] = useState(false)
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null)
+  const resizeRef = useRef<{ startX: number; startY: number; origW: number; origH: number } | null>(null)
+
+  const clampPos = useCallback((x: number, y: number, w: number, h: number) => {
+    const vw = window.innerWidth
+    const vh = window.innerHeight
+    return {
+      x: Math.max(0, Math.min(x, vw - w)),
+      y: Math.max(0, Math.min(y, vh - h)),
+    }
+  }, [])
+
+  const handleDragStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: pos.x, origY: pos.y }
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return
+      const rawX = dragRef.current.origX + (ev.clientX - dragRef.current.startX)
+      const rawY = dragRef.current.origY + (ev.clientY - dragRef.current.startY)
+      setPos(clampPos(rawX, rawY, size.w, size.h))
+    }
+    const onUp = () => {
+      dragRef.current = null
+      document.removeEventListener("mousemove", onMove)
+      document.removeEventListener("mouseup", onUp)
+    }
+    document.addEventListener("mousemove", onMove)
+    document.addEventListener("mouseup", onUp)
+  }, [pos, size, clampPos])
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    resizeRef.current = { startX: e.clientX, startY: e.clientY, origW: size.w, origH: size.h }
+    const onMove = (ev: MouseEvent) => {
+      if (!resizeRef.current) return
+      const newW = Math.max(500, resizeRef.current.origW + (ev.clientX - resizeRef.current.startX))
+      const newH = Math.max(350, resizeRef.current.origH + (ev.clientY - resizeRef.current.startY))
+      setSize({ w: newW, h: newH })
+      setPos((prev) => clampPos(prev.x, prev.y, newW, newH))
+    }
+    const onUp = () => {
+      resizeRef.current = null
+      document.removeEventListener("mousemove", onMove)
+      document.removeEventListener("mouseup", onUp)
+    }
+    document.addEventListener("mousemove", onMove)
+    document.addEventListener("mouseup", onUp)
+  }, [size, clampPos])
+
+  return (
+    <div
+      className={cn(
+        "fixed z-[300] flex flex-col rounded-[var(--Eulinx-radius-lg)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] shadow-[var(--Eulinx-elev-lg)] transition-[height,opacity] duration-200",
+        minimized ? "h-10 overflow-hidden" : "",
+      )}
+      style={{
+        left: pos.x,
+        top: pos.y,
+        width: size.w,
+        height: minimized ? 40 : size.h,
+      }}
+    >
+      {/* Title bar */}
+      <div
+        onMouseDown={handleDragStart}
+        className="flex h-10 shrink-0 cursor-grab items-center gap-2 border-b border-[color:var(--Eulinx-color-border)] px-3 active:cursor-grabbing"
+      >
+        <GripVertical className="h-3.5 w-3.5 shrink-0 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={1.5} />
+        <AppIcon name="board" className="h-4 w-4 shrink-0 text-[color:var(--Eulinx-color-accent)]" strokeWidth={2} />
+        <span className="flex-1 text-[13px] font-medium text-[color:var(--Eulinx-color-text)]">Task Board</span>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setMinimized((v) => !v)}
+            className="flex h-6 w-6 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]"
+          >
+            <Minus className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-6 w-6 items-center justify-center rounded text-[color:var(--Eulinx-color-text-muted)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)] hover:text-[color:var(--Eulinx-color-text)]"
+          >
+            <X className="h-3.5 w-3.5" strokeWidth={1.5} />
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      {!minimized && (
+        <div className="flex-1 overflow-hidden">
+          <TaskBoard />
+        </div>
+      )}
+
+      {/* Resize handle */}
+      {!minimized && (
+        <div
+          onMouseDown={handleResizeStart}
+          className="absolute bottom-0 right-0 h-4 w-4 cursor-nwse-resize"
+        />
+      )}
+    </div>
   )
 }
 

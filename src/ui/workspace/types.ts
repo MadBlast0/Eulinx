@@ -86,7 +86,7 @@ export interface EdgeConn {
 
 export type RightTab = "files" | "git" | "sessions" | "logs" | "workers"
 export type BottomTab = "logs" | "problems" | "events" | "memory"
-export type OverlayKind = "cmd" | "welcome" | "settings" | "shortcuts" | null
+export type OverlayKind = "cmd" | "welcome" | "settings" | "shortcuts" | "taskBoard" | null
 
 export interface ContextMenuState {
   readonly x: number
