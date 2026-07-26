@@ -22,9 +22,21 @@ import {
 } from "./types"
 import { conditionExecutor } from "./condition"
 import { loopExecutor } from "./loop"
+import { inputExecutor } from "./input-executor"
+import { outputExecutor } from "./output-executor"
+import { delayExecutor } from "./delay-executor"
+import { humanApprovalExecutor } from "./human-approval-executor"
 import { createBuilderExecutor, type BuilderBackend } from "./builder"
 import { createVerifierExecutor, type VerifierExecutorDeps } from "./verifier"
 import { createMcpExecutor } from "./mcp"
+import { workerExecutor } from "./worker-executor"
+import { orchestratorExecutor } from "./orchestrator-executor"
+import { toolExecutor } from "./tool-executor"
+import { switchExecutor } from "./switch-executor"
+import { filterExecutor } from "./filter-executor"
+import { setExecutor } from "./set-executor"
+import { codeExecutor } from "./code-executor"
+import { thresholdExecutor } from "./threshold-executor"
 
 export interface NodeExecutorRegistryDeps {
   readonly scheduler: ExecutorServices["scheduler"]
@@ -54,6 +66,10 @@ export class NodeExecutorRegistry {
   private register(): void {
     this.executors.set("condition", conditionExecutor)
     this.executors.set("loop", loopExecutor)
+    this.executors.set("input", inputExecutor)
+    this.executors.set("output", outputExecutor)
+    this.executors.set("delay", delayExecutor)
+    this.executors.set("human_approval", humanApprovalExecutor)
     if (this.deps.builderBackend) {
       this.executors.set("builder", createBuilderExecutor({ backend: this.deps.builderBackend }))
     }
@@ -63,6 +79,14 @@ export class NodeExecutorRegistry {
     }
     this.executors.set("verifier", createVerifierExecutor(verifierDeps))
     this.executors.set("mcp", createMcpExecutor(this.deps.mcp))
+    this.executors.set("worker", workerExecutor)
+    this.executors.set("orchestrator", orchestratorExecutor)
+    this.executors.set("tool", toolExecutor)
+    this.executors.set("switch", switchExecutor)
+    this.executors.set("filter", filterExecutor)
+    this.executors.set("set", setExecutor)
+    this.executors.set("code", codeExecutor)
+    this.executors.set("threshold", thresholdExecutor)
   }
 
   get(kind: NodeKind): NodeExecutor | undefined {

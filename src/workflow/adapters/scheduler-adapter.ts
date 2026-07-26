@@ -31,6 +31,11 @@ const NODE_KIND_TO_SCHEDULING: Record<NodeKind, SchedulingUnitKind> = {
   output: "task",
   delay: "background_job",
   human_approval: "task",
+  switch: "task",
+  filter: "task",
+  set: "task",
+  code: "task",
+  threshold: "task",
 }
 
 export class SchedulerAdapter implements SchedulerAdapterIface {

@@ -122,6 +122,16 @@ export type { VerifierExecutorDeps } from "./node-executors/verifier"
 export { NodeExecutorRegistry } from "./node-executors"
 export { evaluateExpression, compileExpression } from "./node-executors/expression"
 
+// Expression Evaluator (n8n-style structured conditions)
+export type {
+  DataType,
+  ComparisonOp,
+  Combinator,
+  Condition,
+  Expression,
+} from "./expression-evaluator"
+export { evaluate, resolveValue, checkCondition } from "./expression-evaluator"
+
 // Adapters (production)
 export { SchedulerAdapter } from "./adapters"
 export { ExecutionEngineAdapter } from "./adapters"
