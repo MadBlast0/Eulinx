@@ -36,6 +36,7 @@ export interface GraphEdge {
   id: string
   from: string
   to: string
+  kind?: string
 }
 
 export interface NodeGraphDoc {

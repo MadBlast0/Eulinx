@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
-import { ChevronRight } from "lucide-react"
+import { ChevronRight, ChevronUp } from "lucide-react"
 import { AppIcon } from "./app-icon"
 import type { EulinxNodeKind } from "./node-graph/node-types"
 
@@ -9,120 +9,72 @@ import type { EulinxNodeKind } from "./node-graph/node-types"
 
 export const NODE_SECTIONS = [
   {
-    label: "Core",
+    label: "Pipeline",
     items: [
-      { kind: "terminal" as const, label: "Terminal", icon: "terminal" },
-      { kind: "browser" as const, label: "Browser", icon: "browser" },
-      { kind: "worker" as const, label: "Worker", icon: "graph" },
-      { kind: "agent" as const, label: "Agent", icon: "aiAgent" },
-      { kind: "session" as const, label: "Session", icon: "network" },
+      { kind: "input" as const, label: "Input", icon: "run" },
+      { kind: "output" as const, label: "Output", icon: "panel" },
+      { kind: "worker" as const, label: "Worker", icon: "aiAgent" },
+      { kind: "builder" as const, label: "Builder", icon: "graph" },
+      { kind: "verifier" as const, label: "Verifier", icon: "conditions" },
+      { kind: "merge" as const, label: "Merge", icon: "merge" },
     ],
   },
   {
     label: "Control",
     items: [
-      { kind: "map" as const, label: "Map", icon: "map" },
-      { kind: "router" as const, label: "Router", icon: "split" },
-      { kind: "merge" as const, label: "Merge", icon: "merge" },
-      { kind: "prompt" as const, label: "Prompt", icon: "prompt" },
+      { kind: "orchestrator" as const, label: "Orchestrator", icon: "scheduler" },
+      { kind: "condition" as const, label: "Condition", icon: "route" },
+      { kind: "loop" as const, label: "Loop", icon: "loops" },
     ],
   },
   {
-    label: "Data",
+    label: "Data & IO",
     items: [
-      { kind: "memory" as const, label: "Memory", icon: "harddrive" },
-      { kind: "file" as const, label: "File", icon: "file" },
+      { kind: "artifact" as const, label: "Artifact", icon: "artifacts" },
+      { kind: "memory" as const, label: "Memory", icon: "memory" },
       { kind: "tool" as const, label: "Tool", icon: "tool" },
-      { kind: "note" as const, label: "Note", icon: "note" },
+      { kind: "mcp" as const, label: "MCP", icon: "cloud" },
+      { kind: "http_request" as const, label: "HTTP Request", icon: "cloud" },
     ],
   },
   {
-    label: "Observability",
+    label: "Logic",
     items: [
-      { kind: "event" as const, label: "Event", icon: "event" },
-      { kind: "metric" as const, label: "Metric", icon: "diagnostics" },
-      { kind: "log" as const, label: "Log", icon: "logs" },
+      { kind: "switch" as const, label: "Switch", icon: "split" },
+      { kind: "filter" as const, label: "Filter", icon: "conditions" },
+      { kind: "set" as const, label: "Set", icon: "variables" },
+      { kind: "code" as const, label: "Code", icon: "terminal" },
+      { kind: "threshold" as const, label: "Threshold", icon: "diagnostics" },
+    ],
+  },
+  {
+    label: "Triggers",
+    items: [
+      { kind: "webhook_trigger" as const, label: "Webhook", icon: "api" },
+      { kind: "schedule_trigger" as const, label: "Schedule", icon: "scheduler" },
+    ],
+  },
+  {
+    label: "Timing & Gate",
+    items: [
+      { kind: "delay" as const, label: "Delay", icon: "scheduler" },
+      { kind: "human_approval" as const, label: "Human Approval", icon: "aiAgent" },
+    ],
+  },
+  {
+    label: "Legacy",
+    items: [
+      { kind: "terminal" as const, label: "Terminal", icon: "terminal" },
+      { kind: "browser" as const, label: "Browser", icon: "api" },
+      { kind: "agent" as const, label: "Agent", icon: "aiAgent" },
+      { kind: "session" as const, label: "Session", icon: "network" },
+      { kind: "file" as const, label: "File", icon: "file" },
     ],
   },
 ] as const
 
 // ---------------------------------------------------------------------------
-// Smart positioning hook
-// ---------------------------------------------------------------------------
-
-type Direction = "right" | "left" | "down" | "up"
-
-/**
- * @param triggerRef  ref to the element that anchors the sub-dropdown
- * @param open        whether the sub-dropdown is open
- * @param constraint  optional bounding rect to constrain within (e.g. canvas viewport)
- */
-function useSmartPosition(
-  triggerRef: React.RefObject<HTMLElement | null>,
-  open: boolean,
-  constraint?: DOMRect | null,
-) {
-  const [pos, setPos] = useState<{ x: number; y: number; dir: Direction }>({ x: 0, y: 0, dir: "right" })
-  const subRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const trigger = triggerRef.current
-    if (!trigger) return
-
-    const r = trigger.getBoundingClientRect()
-    const SUB_W = 200
-    const SUB_H = 340
-    const GAP = 4
-
-    // Use constraint rect (canvas viewport) if provided, else fall back to window
-    const bounds = constraint ?? { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight }
-
-    const space = {
-      right: bounds.right - r.right,
-      left: r.left - bounds.left,
-      down: bounds.bottom - r.bottom,
-      up: r.top - bounds.top,
-    }
-
-    let dir: Direction
-    if (space.right >= SUB_W + GAP) dir = "right"
-    else if (space.left >= SUB_W + GAP) dir = "left"
-    else if (space.down >= SUB_H + GAP) dir = "down"
-    else dir = "up"
-
-    let x: number, y: number
-    switch (dir) {
-      case "right":
-        x = r.right + GAP
-        y = r.top
-        break
-      case "left":
-        x = r.left - SUB_W - GAP
-        y = r.top
-        break
-      case "down":
-        x = r.left
-        y = r.bottom + GAP
-        break
-      case "up":
-        x = r.left
-        y = r.top - SUB_H - GAP
-        break
-    }
-
-    // Clamp within the constraint bounds
-    x = Math.max(bounds.left, Math.min(x, bounds.right - SUB_W))
-    y = Math.max(bounds.top, Math.min(y, bounds.bottom - SUB_H))
-
-    setPos({ x, y, dir })
-  }, [open, triggerRef, constraint])
-
-  return { subRef, pos }
-}
-
-// ---------------------------------------------------------------------------
-// NodeSubMenu — shared between context menu and toolbar
+// NodeSubMenu — two-level: categories → node items on hover
 // ---------------------------------------------------------------------------
 
 interface NodeSubMenuProps {
@@ -131,26 +83,99 @@ interface NodeSubMenuProps {
   onClose: () => void
   onPick: (kind: EulinxNodeKind) => void
   children: ReactNode
-  /** Optional bounding rect to constrain the sub-dropdown within */
   constraint?: DOMRect | null
 }
 
 export function NodeSubMenu({ open, onOpen, onClose, onPick, children, constraint }: NodeSubMenuProps) {
   const triggerRef = useRef<HTMLDivElement>(null)
-  const { subRef, pos } = useSmartPosition(triggerRef, open, constraint)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [hoveredCategory, setHoveredCategory] = useState<number | null>(null)
   const closeTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
 
   const scheduleClose = useCallback(() => {
-    closeTimer.current = setTimeout(onClose, 150)
+    closeTimer.current = setTimeout(onClose, 200)
   }, [onClose])
 
   const cancelClose = useCallback(() => {
     clearTimeout(closeTimer.current)
   }, [])
 
+  useEffect(() => () => clearTimeout(closeTimer.current), [])
+
+  // Compute main dropdown position (below the trigger, left-aligned)
+  const [mainPos, setMainPos] = useState<{ x: number; y: number } | null>(null)
+
   useEffect(() => {
-    return () => clearTimeout(closeTimer.current)
+    if (!open) { setMainPos(null); return }
+    const trigger = triggerRef.current
+    if (!trigger) return
+
+    const r = trigger.getBoundingClientRect()
+    const MAIN_W = 170
+    const GAP = 4
+    const bounds = constraint ?? { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight }
+
+    let x = r.left
+    let y = r.bottom + GAP
+    x = Math.max(bounds.left, Math.min(x, bounds.right - MAIN_W))
+    y = Math.max(bounds.top, Math.min(y, bounds.bottom - 400))
+
+    setMainPos({ x, y })
+  }, [open, constraint])
+
+  // Compute sub-dropdown position (to the LEFT of the main dropdown, aligned to hovered category)
+  const [subPos, setSubPos] = useState<{ x: number; y: number } | null>(null)
+
+  useEffect(() => {
+    if (hoveredCategory === null || !mainPos) { setSubPos(null); return }
+
+    const menuEl = menuRef.current
+    if (!menuEl) return
+
+    const categoryEls = menuEl.querySelectorAll<HTMLElement>("[data-cat]")
+    const catEl = categoryEls[hoveredCategory]
+    if (!catEl) return
+
+    const catR = catEl.getBoundingClientRect()
+    const SUB_W = 180
+    const MAIN_W = 170
+    const bounds = constraint ?? { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight }
+
+    // Sub-dropdown right edge overlaps main dropdown left border by 1px — no gap
+    let x = mainPos.x - SUB_W + 1
+    let y = catR.top
+
+    // If no space on left, show on the right side (touching main dropdown right edge)
+    if (x < bounds.left) {
+      x = mainPos.x + MAIN_W - 1
+    }
+
+    const section = NODE_SECTIONS[hoveredCategory]
+    const subH = section ? section.items.length * 32 + 36 : 200
+    y = Math.max(bounds.top, Math.min(y, bounds.bottom - subH))
+
+    setSubPos({ x, y })
+  }, [hoveredCategory, mainPos, constraint])
+
+  const handleMenuEnter = useCallback(() => cancelClose(), [cancelClose])
+  const handleMenuLeave = useCallback(() => scheduleClose(), [scheduleClose])
+
+  const handleCategoryEnter = useCallback((index: number) => {
+    cancelClose()
+    setHoveredCategory(index)
+  }, [cancelClose])
+
+  const handleCategoryLeave = useCallback(() => {
+    // Don't close category immediately — the mouse might be moving to the sub-dropdown
+    // The sub-dropdown's onMouseEnter will call cancelClose
+    // Only reset category if mouse doesn't enter sub-dropdown within a short delay
   }, [])
+
+  const handleSubEnter = useCallback(() => cancelClose(), [cancelClose])
+  const handleSubLeave = useCallback(() => {
+    setHoveredCategory(null)
+    scheduleClose()
+  }, [scheduleClose])
 
   return (
     <div
@@ -162,35 +187,72 @@ export function NodeSubMenu({ open, onOpen, onClose, onPick, children, constrain
       {/* Trigger item */}
       <div onClick={onOpen}>{children}</div>
 
-      {/* Sub-dropdown */}
-      {open && (
+      {/* Both dropdowns live inside one container for unified mouse handling */}
+      {open && mainPos && (
         <div
-          ref={subRef}
-          className="fixed z-[calc(var(--Eulinx-z-dropdown)+1)] min-w-[180px] animate-[ctx-in_120ms_ease] rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] p-1 shadow-lg"
-          style={{ left: pos.x, top: pos.y }}
-          onMouseEnter={cancelClose}
-          onMouseLeave={scheduleClose}
+          ref={menuRef}
+          onMouseEnter={handleMenuEnter}
+          onMouseLeave={handleMenuLeave}
           onClick={(e) => e.stopPropagation()}
         >
-          {NODE_SECTIONS.map((section, si) => (
-            <div key={section.label}>
-              {si > 0 && <div className="my-1 h-px bg-[color:var(--Eulinx-color-border)]" />}
-              <div className="px-3 py-1 text-[10px] font-medium uppercase tracking-wider text-[color:var(--Eulinx-color-text-muted)]">
-                {section.label}
+          {/* Main dropdown — categories */}
+          <div
+            className="fixed z-[calc(var(--Eulinx-z-dropdown)+1)] min-w-[170px] animate-[ctx-in_120ms_ease] rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] p-1 shadow-lg"
+            style={{ left: mainPos.x, top: mainPos.y }}
+          >
+            {NODE_SECTIONS.map((section, si) => (
+              <div
+                key={section.label}
+                data-cat={si}
+                onMouseEnter={() => handleCategoryEnter(si)}
+                onMouseLeave={handleCategoryLeave}
+              >
+                <button
+                  type="button"
+                  className={`flex h-8 w-full items-center gap-2 rounded-md px-2.5 text-[12px] transition-colors duration-100 ${
+                    hoveredCategory === si
+                      ? "bg-[color:var(--Eulinx-color-hover)] text-[color:var(--Eulinx-color-text)]"
+                      : "text-[color:var(--Eulinx-color-text-secondary)]"
+                  }`}
+                >
+                  <ChevronUp
+                    className={`h-3 w-3 shrink-0 text-[color:var(--Eulinx-color-text-muted)] transition-transform duration-150 ${
+                      hoveredCategory === si ? "-rotate-90" : ""
+                    }`}
+                    strokeWidth={2}
+                  />
+                  <span className="flex-1 text-left">{section.label}</span>
+                  <span className="text-[10px] text-[color:var(--Eulinx-color-text-muted)]">{section.items.length}</span>
+                </button>
               </div>
-              {section.items.map((opt) => (
+            ))}
+          </div>
+
+          {/* Sub-dropdown — nodes in the hovered category */}
+          {hoveredCategory !== null && subPos && (
+            <div
+              className="fixed z-[calc(var(--Eulinx-z-dropdown)+2)] min-w-[170px] animate-[ctx-in_80ms_ease] rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] p-1 shadow-lg"
+              style={{ left: subPos.x, top: subPos.y }}
+              onMouseEnter={handleSubEnter}
+              onMouseLeave={handleSubLeave}
+            >
+              <div className="px-2.5 py-1 text-[10px] font-medium uppercase tracking-wider text-[color:var(--Eulinx-color-text-muted)]">
+                {NODE_SECTIONS[hoveredCategory]?.label}
+              </div>
+              <div className="my-0.5 h-px bg-[color:var(--Eulinx-color-border)]" />
+              {NODE_SECTIONS[hoveredCategory]?.items.map((opt) => (
                 <button
                   key={opt.kind}
                   type="button"
                   onClick={() => { onPick(opt.kind); onClose() }}
-                  className="flex h-8 w-full items-center gap-2.5 rounded-md px-3 text-[12.5px] text-[color:var(--Eulinx-color-text)] transition-colors duration-100 hover:bg-[color:var(--Eulinx-color-hover)]"
+                  className="flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-[12px] text-[color:var(--Eulinx-color-text)] transition-colors duration-100 hover:bg-[color:var(--Eulinx-color-hover)]"
                 >
-                  <AppIcon name={opt.icon} className="h-3.5 w-3.5 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2} />
-                  {opt.label}
+                  <AppIcon name={opt.icon} className="h-3.5 w-3.5 shrink-0 text-[color:var(--Eulinx-color-text-muted)]" strokeWidth={2} />
+                  <span>{opt.label}</span>
                 </button>
               ))}
             </div>
-          ))}
+          )}
         </div>
       )}
     </div>
@@ -198,7 +260,7 @@ export function NodeSubMenu({ open, onOpen, onClose, onPick, children, constrain
 }
 
 // ---------------------------------------------------------------------------
-// Context menu trigger wrapper — wraps any item to show the sub-dropdown
+// Context menu trigger wrapper
 // ---------------------------------------------------------------------------
 
 interface ContextMenuTriggerProps {

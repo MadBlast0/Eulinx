@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Keyboard, Play, Plus, RotateCw } from "lucide-react"
+import { Keyboard, Play, Plus, RotateCw, ChevronDown, ArrowRight, ArrowDown } from "lucide-react"
 import { AppIcon } from "./app-icon"
 import { ToolbarButton, ToolbarSep } from "./primitives"
 import { useWorkspace } from "./use-workspace"
@@ -17,19 +17,21 @@ export function Toolbar() {
   const { registry } = useKeymap()
   const [addOpen, setAddOpen] = useState(false)
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [layoutOpen, setLayoutOpen] = useState(false)
   const kbRef = useRef<HTMLDivElement>(null)
+  const layoutRef = useRef<HTMLDivElement>(null)
 
   // Compute canvas bounding rect to constrain dropdowns within the canvas
   // (preventing overflow into right sidebar)
   const [canvasRect, setCanvasRect] = useState<DOMRect | null>(null)
   useEffect(() => {
-    if (addOpen || shortcutsOpen) {
+    if (addOpen || shortcutsOpen || layoutOpen) {
       const el = document.querySelector<HTMLElement>('[data-region="canvas"]')
       setCanvasRect(el ? el.getBoundingClientRect() : null)
     } else {
       setCanvasRect(null)
     }
-  }, [addOpen, shortcutsOpen])
+  }, [addOpen, shortcutsOpen, layoutOpen])
 
   const handleRun = useCallback(() => {
     if (!graph) return
@@ -167,9 +169,44 @@ export function Toolbar() {
           <AppIcon name="terminal" className="h-4 w-4" strokeWidth={2} />
         </ToolbarButton>
 
-        <ToolbarButton tip="Auto-layout" onClick={autoLayout}>
-          <AppIcon name="conditions" className="h-4 w-4" strokeWidth={2} />
-        </ToolbarButton>
+        <div ref={layoutRef} className="relative">
+          <button
+            type="button"
+            aria-label="Auto-layout"
+            onClick={() => setLayoutOpen((v) => !v)}
+            className="flex h-7 items-center gap-1 rounded-md px-2 text-[color:var(--Eulinx-color-text)] transition-colors duration-150 hover:bg-[color:var(--Eulinx-color-hover)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          >
+            <AppIcon name="conditions" className="h-4 w-4" strokeWidth={2} />
+            <ChevronDown className="h-3 w-3 opacity-50" />
+          </button>
+
+          {layoutOpen && (
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setLayoutOpen(false)} aria-hidden="true" />
+              <div
+                className="absolute z-[calc(var(--Eulinx-z-dropdown)+1)] min-w-[160px] animate-[ctx-in_120ms_ease] rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] p-1 shadow-lg"
+                style={{ right: 0, top: "100%", marginTop: 4 }}
+              >
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-[color:var(--Eulinx-color-text)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)]"
+                  onClick={() => { autoLayout("horizontal"); setLayoutOpen(false) }}
+                >
+                  <ArrowRight className="h-3.5 w-3.5" strokeWidth={2} />
+                  <span>Horizontal</span>
+                </button>
+                <button
+                  type="button"
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-[12px] text-[color:var(--Eulinx-color-text)] transition-colors hover:bg-[color:var(--Eulinx-color-hover)]"
+                  onClick={() => { autoLayout("vertical"); setLayoutOpen(false) }}
+                >
+                  <ArrowDown className="h-3.5 w-3.5" strokeWidth={2} />
+                  <span>Vertical</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
 
         <ToolbarButton tip="Undo" onClick={undo} disabled={!canUndo}>
           <AppIcon name="undo" size={16} strokeWidth={2} />

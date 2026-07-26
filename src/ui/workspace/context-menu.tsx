@@ -54,7 +54,7 @@ export function ContextMenu({ constraint }: ContextMenuProps) {
         icon={<AppIcon name="conditions" className="h-3.5 w-3.5" strokeWidth={2} />}
         label="Auto-layout"
         shortcut="Shift+A"
-        onClick={autoLayout}
+        onClick={() => autoLayout("horizontal")}
       />
     </div>
   )

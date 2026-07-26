@@ -1,12 +1,13 @@
 import { memo, useEffect, useMemo, useRef, useState, type ReactNode } from "react"
 import { Handle, NodeResizer, Position, useNodes, useReactFlow, type Node, type NodeProps } from "@xyflow/react"
-import { ChevronDown, ChevronRight, Terminal } from "lucide-react"
+import { Check, ChevronDown, ChevronRight, FileText, Terminal, X } from "lucide-react"
 import { AppIcon } from "../app-icon"
 import { cn } from "@/utils/cn"
 import { StateBadge } from "../primitives"
 import type { Tone } from "../state"
 import { getStateSignal, type WorkerState } from "../a11y/state-signals"
 import { getNodeTypeMeta, type EulinxNodeKind } from "./node-types"
+import { getPortsForKind } from "./node-ports"
 import { TONE_FG } from "../state"
 import { TerminalView } from "../terminal/terminal-view"
 
@@ -30,16 +31,12 @@ export interface CustomNodeData extends Record<string, unknown> {
 
 export type CustomNodeType = Node<CustomNodeData, "eulinx">
 
-const DEFAULT_PORTS: readonly CustomNodePort[] = [
-  { id: "in", position: Position.Left, type: "target" },
-  { id: "out", position: Position.Right, type: "source" },
-]
-
 function CustomNodeImpl({ id, data, selected, width, height }: NodeProps<CustomNodeType>) {
   const meta = getNodeTypeMeta(data.kind)
-  const ports = data.ports ?? DEFAULT_PORTS
+  const ports = data.ports ?? getPortsForKind(data.kind)
   const signal = data.status ? getStateSignal(data.status) : null
   const isTerminal = data.kind === "terminal"
+  const isPill = data.kind === "input" || data.kind === "output" || data.kind === "delay"
   const expanded = data.expanded ?? false
   const rf = useReactFlow()
   const savedSize = useRef<{ width: number; height: number } | null>(null)
@@ -74,7 +71,8 @@ function CustomNodeImpl({ id, data, selected, width, height }: NodeProps<CustomN
   return (
     <div
       className={cn(
-        "group flex select-none flex-col rounded-lg border bg-[color:var(--Eulinx-color-surface)] transition-[border-color,box-shadow] duration-150",
+        "group flex select-none flex-col border bg-[color:var(--Eulinx-color-surface)] transition-[border-color,box-shadow] duration-150",
+        isPill ? "rounded-full" : "rounded-lg",
         expanded ? "" : "max-w-[420px]",
         selected
           ? "border-[color:var(--Eulinx-color-accent)]/40 shadow-[0_0_0_1px_var(--Eulinx-color-accent)]"
@@ -170,6 +168,36 @@ function CustomNodeImpl({ id, data, selected, width, height }: NodeProps<CustomN
       {/* ── Map overview ── */}
       {data.kind === "map" && <MapOverview />}
 
+      {/* ── Official kind body content ── */}
+      {data.kind === "input" && (
+        <div className="px-3 pb-2.5 pt-0 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+          Entry point
+        </div>
+      )}
+      {data.kind === "output" && (
+        <div className="px-3 pb-2.5 pt-0 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+          Terminal
+        </div>
+      )}
+      {data.kind === "worker" && <WorkerBody data={data} />}
+      {data.kind === "orchestrator" && <OrchestratorBody data={data} />}
+      {data.kind === "builder" && <BuilderBody />}
+      {data.kind === "verifier" && <VerifierBody data={data} />}
+      {data.kind === "condition" && <ConditionBody data={data} />}
+      {data.kind === "loop" && <LoopBody data={data} />}
+      {data.kind === "artifact" && <ArtifactBody />}
+      {data.kind === "mcp" && <McpBody data={data} />}
+      {data.kind === "delay" && <DelayBody />}
+      {data.kind === "human_approval" && <HumanApprovalBody data={data} />}
+      {data.kind === "switch" && <SwitchBody />}
+      {data.kind === "filter" && <FilterBody data={data} />}
+      {data.kind === "set" && <SetBody />}
+      {data.kind === "code" && <CodeBody />}
+      {data.kind === "threshold" && <ThresholdBody />}
+      {data.kind === "webhook_trigger" && <WebhookTriggerBody />}
+      {data.kind === "schedule_trigger" && <ScheduleTriggerBody />}
+      {data.kind === "http_request" && <HttpRequestBody />}
+
       {/* ── Status badge + children ── */}
       {(signal || data.children) && data.kind !== "browser" && data.kind !== "map" && (
         <div className="mt-2 flex min-h-[36px] flex-col gap-2 px-3 pb-2.5 pt-0 text-xs text-[color:var(--Eulinx-color-text-secondary)]">
@@ -182,6 +210,261 @@ function CustomNodeImpl({ id, data, selected, width, height }: NodeProps<CustomN
           {data.children}
         </div>
       )}
+    </div>
+  )
+}
+
+function WorkerBody({ data }: { data: CustomNodeData }) {
+  const progress = data.status === "running" ? 0.6 : data.status === "stopped" ? 1 : 0
+  return (
+    <div className="mx-3 mt-1 mb-2 flex flex-col gap-1.5 text-[11px]">
+      <div className="text-[color:var(--Eulinx-color-text-muted)]">model-placeholder</div>
+      <div className="h-1.5 w-full overflow-hidden rounded-full bg-[color:var(--Eulinx-color-surface-sunken)]">
+        <div
+          className="h-full rounded-full transition-all duration-300"
+          style={{
+            width: `${progress * 100}%`,
+            background: progress > 0 ? "var(--Eulinx-color-node-worker)" : "transparent",
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function OrchestratorBody({ data }: { data: CustomNodeData }) {
+  const nodeCount = data.status === "running" ? 3 : 0
+  return (
+    <div className="flex items-center gap-2 px-3 pb-2.5 pt-0 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+      {data.status === "running" && <span className="animate-pulse">Planning...</span>}
+      {data.status !== "running" && <span>Idle</span>}
+      {nodeCount > 0 && (
+        <span className="rounded-full border border-[color:var(--Eulinx-color-border)] px-1.5 py-0.5 text-[10px]">
+          +{nodeCount} nodes
+        </span>
+      )}
+    </div>
+  )
+}
+
+function BuilderBody() {
+  return (
+    <div className="mx-3 mt-1 mb-2 flex flex-col gap-1 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+      <div className="flex items-center gap-1.5">
+        <span className="inline-block h-2 w-2 rounded-sm" style={{ background: "var(--Eulinx-color-node-builder)" }} />
+        <span>artifact port</span>
+      </div>
+      <div className="rounded border border-dashed border-[color:var(--Eulinx-color-border)] px-2 py-1 font-mono text-[10px]">
+        spec input
+      </div>
+    </div>
+  )
+}
+
+function VerifierBody({ data }: { data: CustomNodeData }) {
+  const modes = ["schema", "lint", "test"]
+  const verdict = data.status === "stopped" ? "pass" : data.status === "error" ? "fail" : null
+  return (
+    <div className="mx-3 mt-1 mb-2 flex flex-col gap-1.5 text-[11px]">
+      <div className="flex gap-1">
+        {modes.map((m) => (
+          <span
+            key={m}
+            className="rounded border border-[color:var(--Eulinx-color-border)] px-1.5 py-0.5 text-[10px] text-[color:var(--Eulinx-color-text-muted)]"
+          >
+            {m}
+          </span>
+        ))}
+      </div>
+      {verdict && (
+        <div
+          className={cn(
+            "flex items-center gap-1 self-start rounded-full px-2 py-0.5 text-[10px] font-medium",
+            verdict === "pass"
+              ? "bg-[color:var(--Eulinx-color-success)]/15 text-[color:var(--Eulinx-color-success)]"
+              : "bg-[color:var(--Eulinx-color-error)]/15 text-[color:var(--Eulinx-color-error)]",
+          )}
+        >
+          {verdict === "pass" ? <Check className="h-2.5 w-2.5" strokeWidth={2.5} /> : <X className="h-2.5 w-2.5" strokeWidth={2.5} />}
+          {verdict}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ConditionBody({ data }: { data: CustomNodeData }) {
+  return (
+    <div className="mx-3 mt-1 mb-2">
+      <div className="rounded border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-sunken)] px-2 py-1 font-mono text-[11px] text-[color:var(--Eulinx-color-text-secondary)]">
+        {data.label === "Condition" ? "expression" : data.label}
+      </div>
+    </div>
+  )
+}
+
+function LoopBody({ data }: { data: CustomNodeData }) {
+  const kind = data.status === "running" ? "foreach" : "while"
+  const filled = data.status === "running" ? 3 : 0
+  const total = 5
+  return (
+    <div className="mx-3 mt-1 mb-2 flex flex-col gap-1 text-[11px]">
+      <div className="text-[color:var(--Eulinx-color-text-muted)]">{kind}</div>
+      <div className="flex gap-1">
+        {Array.from({ length: total }, (_, i) => (
+          <span
+            key={i}
+            className={cn(
+              "inline-block h-1.5 w-1.5 rounded-full",
+              i < filled
+                ? "bg-[color:var(--Eulinx-color-node-loop)]"
+                : "bg-[color:var(--Eulinx-color-border)]",
+            )}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ArtifactBody() {
+  return (
+    <div className="mx-3 mt-1 mb-2 flex items-center gap-2 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+      <FileText className="h-3.5 w-3.5 shrink-0" strokeWidth={2} />
+      <span>doc</span>
+      <span className="text-[10px]">0 KB</span>
+    </div>
+  )
+}
+
+function McpBody({ data }: { data: CustomNodeData }) {
+  const indicator = data.status === "running" ? "*" : data.status === "idle" ? "~" : data.status === "error" ? "!" : "?"
+  const color =
+    data.status === "running"
+      ? "var(--Eulinx-color-success)"
+      : data.status === "idle"
+        ? "var(--Eulinx-color-text-muted)"
+        : data.status === "error"
+          ? "var(--Eulinx-color-error)"
+          : "var(--Eulinx-color-border)"
+  return (
+    <div className="flex items-center gap-1.5 px-3 pb-2.5 pt-0 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+      <span className="font-mono text-sm font-bold" style={{ color }}>{indicator}</span>
+      <span>{data.status ?? "disconnected"}</span>
+    </div>
+  )
+}
+
+function DelayBody() {
+  return (
+    <div className="px-3 pb-2.5 pt-0 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+      0s
+    </div>
+  )
+}
+
+function HumanApprovalBody({ data }: { data: CustomNodeData }) {
+  if (data.status !== "running") return null
+  return (
+    <div className="mx-3 mt-1 mb-2 flex gap-1.5">
+      <button
+        type="button"
+        className="flex items-center gap-1 rounded-full border border-[color:var(--Eulinx-color-success)]/30 bg-[color:var(--Eulinx-color-success)]/10 px-2 py-0.5 text-[10px] font-medium text-[color:var(--Eulinx-color-success)] transition-colors hover:bg-[color:var(--Eulinx-color-success)]/20"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <Check className="h-2.5 w-2.5" strokeWidth={2.5} />
+        Approve
+      </button>
+      <button
+        type="button"
+        className="flex items-center gap-1 rounded-full border border-[color:var(--Eulinx-color-error)]/30 bg-[color:var(--Eulinx-color-error)]/10 px-2 py-0.5 text-[10px] font-medium text-[color:var(--Eulinx-color-error)] transition-colors hover:bg-[color:var(--Eulinx-color-error)]/20"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <X className="h-2.5 w-2.5" strokeWidth={2.5} />
+        Reject
+      </button>
+    </div>
+  )
+}
+
+function SwitchBody() {
+  return (
+    <div className="mx-3 mt-1 mb-2 flex flex-col gap-1 text-[11px]">
+      <div className="text-[color:var(--Eulinx-color-text-muted)]">routing rules</div>
+      <div className="flex gap-1">
+        {"case1 case2".split(" ").map((c) => (
+          <span key={c} className="rounded border border-[color:var(--Eulinx-color-border)] px-1.5 py-0.5 text-[10px] text-[color:var(--Eulinx-color-text-muted)]">
+            {c}
+          </span>
+        ))}
+        <span className="rounded border border-dashed border-[color:var(--Eulinx-color-border)] px-1.5 py-0.5 text-[10px] text-[color:var(--Eulinx-color-text-muted)]">
+          default
+        </span>
+      </div>
+    </div>
+  )
+}
+
+function FilterBody({ data }: { data: CustomNodeData }) {
+  return (
+    <div className="mx-3 mt-1 mb-2">
+      <div className="rounded border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-sunken)] px-2 py-1 font-mono text-[11px] text-[color:var(--Eulinx-color-text-secondary)]">
+        {data.label === "Filter" ? "condition" : data.label}
+      </div>
+    </div>
+  )
+}
+
+function SetBody() {
+  return (
+    <div className="mx-3 mt-1 mb-2 flex items-center gap-1.5 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+      <span className="inline-block h-2 w-2 rounded-sm" style={{ background: "var(--Eulinx-color-node-set)" }} />
+      <span>fields to set</span>
+    </div>
+  )
+}
+
+function CodeBody() {
+  return (
+    <div className="mx-3 mt-1 mb-2">
+      <div className="rounded border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-sunken)] px-2 py-1 font-mono text-[10px] text-[color:var(--Eulinx-color-text-secondary)]">
+        {"return input.map(...)"}
+      </div>
+    </div>
+  )
+}
+
+function ThresholdBody() {
+  return (
+    <div className="mx-3 mt-1 mb-2 flex gap-1 text-[10px]">
+      <span className="rounded-full border border-[color:var(--Eulinx-color-border)] px-1.5 py-0.5 text-[color:var(--Eulinx-color-text-muted)]">above</span>
+      <span className="rounded-full border border-[color:var(--Eulinx-color-border)] px-1.5 py-0.5 text-[color:var(--Eulinx-color-text-muted)]">equal</span>
+      <span className="rounded-full border border-[color:var(--Eulinx-color-border)] px-1.5 py-0.5 text-[color:var(--Eulinx-color-text-muted)]">below</span>
+    </div>
+  )
+}
+
+function WebhookTriggerBody() {
+  return (
+    <div className="px-3 pb-2.5 pt-0 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+      POST /webhook/:id
+    </div>
+  )
+}
+
+function ScheduleTriggerBody() {
+  return (
+    <div className="px-3 pb-2.5 pt-0 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+      every 1h
+    </div>
+  )
+}
+
+function HttpRequestBody() {
+  return (
+    <div className="mx-3 mt-1 mb-2 flex items-center gap-1.5 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+      <span className="rounded border border-[color:var(--Eulinx-color-border)] px-1.5 py-0.5 text-[10px] font-mono">GET</span>
+      <span>request</span>
     </div>
   )
 }

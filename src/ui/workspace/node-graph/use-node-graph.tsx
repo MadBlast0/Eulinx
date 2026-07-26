@@ -21,6 +21,7 @@ import type { CanvasNode, EdgeConn } from "../types"
 import type { CustomNodeData, CustomNodeType } from "./custom-node"
 import type { EulinxNodeKind } from "./node-types"
 import type { WorkerState } from "../a11y/state-signals"
+import { validateConnection, getDefaultEdgeKind } from "./connection-rules"
 
 function projectNode(node: CanvasNode): CustomNodeType {
   return {
@@ -35,6 +36,7 @@ function projectNode(node: CanvasNode): CustomNodeType {
       status: node.status as WorkerState | undefined,
       shell: node.shell,
       lines: node.lines,
+      ports: node.ports,
     } satisfies CustomNodeData,
   }
 }
@@ -45,6 +47,7 @@ function projectEdge(conn: EdgeConn): Edge {
     source: conn.from,
     target: conn.to,
     type: "eulinx",
+    data: { kind: conn.kind ?? "control" },
   }
 }
 
@@ -111,11 +114,29 @@ export function NodeGraphProvider({ children }: { children: ReactNode }) {
   // Persist new connections to workspace
   const onConnect = useCallback<OnConnect>(
     (connection: Connection) => {
-      if (connection.source && connection.target) {
-        addConnection(connection.source, connection.target)
+      if (!connection.source || !connection.target) return
+
+      // Find source and target node kinds
+      const sourceNode = wsNodes.find((n) => n.id === connection.source)
+      const targetNode = wsNodes.find((n) => n.id === connection.target)
+      if (!sourceNode || !targetNode) return
+
+      const sourceKind = sourceNode.kind as EulinxNodeKind
+      const targetKind = targetNode.kind as EulinxNodeKind
+
+      // Validate
+      const validation = validateConnection(sourceKind, targetKind)
+      if (!validation.valid) {
+        console.warn("Connection rejected:", validation.reason)
+        return
       }
+
+      // Auto-detect edge kind
+      const edgeKind = getDefaultEdgeKind(sourceKind, targetKind)
+
+      addConnection(connection.source, connection.target, edgeKind)
     },
-    [addConnection],
+    [addConnection, wsNodes],
   )
 
   const value = useMemo<NodeGraphContextValue>(
