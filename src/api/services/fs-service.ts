@@ -51,6 +51,10 @@ export const fsService = {
     return call<never>("fs_create_dir", { path }) as unknown as Promise<void>
   },
 
+  openFolderLocation(path: string): Promise<void> {
+    return call<never>("fs_open_folder_location", { path }) as unknown as Promise<void>
+  },
+
   pickFolder(): Promise<string | null> {
     return call<string | null>("dialog_pick_folder")
   },

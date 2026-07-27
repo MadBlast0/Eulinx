@@ -101,6 +101,7 @@ pub fn run() {
             commands::fs::fs_write_text,
             commands::fs::fs_create_dir,
             commands::fs::fs_remove_file,
+            commands::fs::fs_open_folder_location,
             commands::fs::fs_watch_path,
             commands::fs::fs_unwatch_path,
             commands::fs::fs_list_watchers,

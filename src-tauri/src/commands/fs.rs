@@ -112,6 +112,50 @@ pub async fn fs_watch_path(
     state.watch_path(path, app).await
 }
 
+/// Open a folder location in the native file explorer.
+#[cfg(target_os = "windows")]
+#[tauri::command]
+pub fn fs_open_folder_location(path: String) -> Result<(), String> {
+    use std::process::Command;
+    Command::new("explorer")
+        .args(&["/select,", &path])
+        .spawn()
+        .map_err(|e| format!("Failed to open folder: {}", e))?;
+    Ok(())
+}
+
+/// Open a folder location in the native file explorer (macOS).
+#[cfg(target_os = "macos")]
+#[tauri::command]
+pub fn fs_open_folder_location(path: String) -> Result<(), String> {
+    use std::process::Command;
+    Command::new("open")
+        .args(&["-R", &path])
+        .spawn()
+        .map_err(|e| format!("Failed to open folder: {}", e))?;
+    Ok(())
+}
+
+/// Open a folder location in the native file explorer (Linux).
+#[cfg(target_os = "linux")]
+#[tauri::command]
+pub fn fs_open_folder_location(path: String) -> Result<(), String> {
+    use std::process::Command;
+    // Try xdg-open first (works with most Linux DEs)
+    let result = Command::new("xdg-open")
+        .arg(&path)
+        .spawn()
+        .or_else(|_| {
+            // Fallback to nautilus if xdg-open fails
+            Command::new("nautilus")
+                .arg(&path)
+                .spawn()
+        });
+    
+    result.map_err(|e| format!("Failed to open folder: {}", e))?;
+    Ok(())
+}
+
 /// Stop watching a previously registered path.
 #[tauri::command]
 pub async fn fs_unwatch_path(state: State<'_, AppState>, id: String) -> Result<(), String> {

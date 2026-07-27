@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, memo } from "react"
-import { ChevronRight, FolderPlus, Plus, Folder, Globe, X } from "lucide-react"
+import { ChevronRight, FolderPlus, Plus, Folder, Globe, X, Pencil, Trash2, FolderOpen } from "lucide-react"
 import { appConfigDir } from "@tauri-apps/api/path"
 import { isTauri } from "@tauri-apps/api/core"
 import { AppIcon } from "./app-icon"
@@ -527,7 +527,7 @@ export function LeftSidebar({
   onOpenSurface: (key: SurfaceKey | null) => void
 }) {
   const { overlay, setOverlay } = useWorkspace()
-  const { projects, activeProjectId, selectProject, selectView, addProject, removeProject } = useProjects()
+  const { projects, activeProjectId, selectProject, selectView, addProject, removeProject, renameProject } = useProjects()
   const [contextMenu, setContextMenu] = useState<{ projectId: string; x: number; y: number } | null>(null)
   const [renameProjectId, setRenameProjectId] = useState<string | null>(null)
   const [renamingText, setRenamingText] = useState("")
@@ -573,12 +573,22 @@ export function LeftSidebar({
     }
   }, [contextMenu?.projectId, projects])
 
+  const handleSaveRename = useCallback((projectId: string, newName: string) => {
+    if (newName.trim()) {
+      renameProject(projectId, newName.trim())
+    }
+    setRenameProjectId(null)
+    setRenamingText("")
+  }, [renameProject])
+
   const handleOpenFolderLocation = useCallback(() => {
     if (contextMenu?.projectId) {
       const project = projects.find(p => p.id === contextMenu.projectId)
       if (project && project.path.length > 0 && !project.path.startsWith("local:")) {
-        // Open folder in file explorer - would need a backend service for this
-        console.log("Opening folder:", project.path)
+        // Call the backend to open folder in file explorer
+        void fsService.openFolderLocation(project.path).catch((err) => {
+          console.error("Failed to open folder:", err)
+        })
       }
       setContextMenu(null)
     }
@@ -727,14 +737,14 @@ export function LeftSidebar({
             onClick={handleRenameProject}
             className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] text-[color:var(--Eulinx-color-text)] transition-colors duration-150 hover:bg-[color:var(--Eulinx-color-hover)] focus:outline-none focus:ring-2 focus:ring-[color:var(--Eulinx-color-info)]/30"
           >
-            <AppIcon name="edit" className="h-3.5 w-3.5" strokeWidth={2} />
+            <Pencil className="h-3.5 w-3.5" strokeWidth={2} />
             <span>Rename</span>
           </button>
           <button
             onClick={handleOpenFolderLocation}
             className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] text-[color:var(--Eulinx-color-text)] transition-colors duration-150 hover:bg-[color:var(--Eulinx-color-hover)] focus:outline-none focus:ring-2 focus:ring-[color:var(--Eulinx-color-info)]/30"
           >
-            <AppIcon name="folder" className="h-3.5 w-3.5" strokeWidth={2} />
+            <FolderOpen className="h-3.5 w-3.5" strokeWidth={2} />
             <span>Open folder</span>
           </button>
           <div className="my-1 h-px bg-[color:var(--Eulinx-color-border)]" />
@@ -742,7 +752,7 @@ export function LeftSidebar({
             onClick={handleDeleteProject}
             className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] text-red-500 transition-colors duration-150 hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-500/30"
           >
-            <AppIcon name="trash" className="h-3.5 w-3.5" strokeWidth={2} />
+            <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
             <span>Delete</span>
           </button>
         </div>

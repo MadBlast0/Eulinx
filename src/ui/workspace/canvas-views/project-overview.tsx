@@ -1,9 +1,10 @@
-import { Plus, MoreVertical } from "lucide-react"
+import { Plus, MoreVertical, Pencil, Trash2, FolderOpen } from "lucide-react"
 import { useState, useCallback, useEffect } from "react"
 import { AppIcon } from "../app-icon"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { useProjects } from "../use-projects"
+import { fsService } from "@/api/services"
 import type { CanvasViewKind } from "../project-types"
 
 const VIEW_META: Record<CanvasViewKind, { label: string; iconName: string; description: string }> = {
@@ -23,9 +24,11 @@ const VIEW_META: Record<CanvasViewKind, { label: string; iconName: string; descr
 const QUICK_ADD_KINDS: CanvasViewKind[] = ["node-graph", "artifacts", "terminal"]
 
 export function ProjectOverview() {
-  const { activeProject, selectView, addView, removeProject } = useProjects()
+  const { activeProject, selectView, addView, removeProject, renameProject } = useProjects()
   const [projectMenuOpen, setProjectMenuOpen] = useState(false)
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null)
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [renamingText, setRenamingText] = useState("")
 
   if (!activeProject) {
     return (
@@ -58,6 +61,12 @@ export function ProjectOverview() {
     }
   }, [projectMenuOpen])
 
+  const handleRenameProject = useCallback(() => {
+    setRenamingText(activeProject.name)
+    setIsRenaming(true)
+    setProjectMenuOpen(false)
+  }, [activeProject.name])
+
   const handleDeleteProject = useCallback(() => {
     if (activeProject && window.confirm(`Are you sure you want to delete "${activeProject.name}"?`)) {
       removeProject(activeProject.id)
@@ -67,11 +76,22 @@ export function ProjectOverview() {
 
   const handleOpenFolderLocation = useCallback(() => {
     if (activeProject && activeProject.path && !activeProject.path.startsWith("local:")) {
-      // This would need a backend service to open the folder in the file explorer
-      console.log("Opening folder:", activeProject.path)
+      // Call the backend to open folder in file explorer
+      void fsService.openFolderLocation(activeProject.path).catch((err) => {
+        console.error("Failed to open folder:", err)
+      })
     }
     setProjectMenuOpen(false)
   }, [activeProject])
+
+  const handleSaveRename = useCallback((newName: string) => {
+    if (activeProject && newName.trim()) {
+      renameProject(activeProject.id, newName.trim())
+      setIsRenaming(false)
+    } else {
+      setIsRenaming(false)
+    }
+  }, [activeProject, renameProject])
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -87,24 +107,46 @@ export function ProjectOverview() {
       {/* Header */}
       <div className="border-b border-border px-6 py-5">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-card">
+          <div className="flex items-center gap-3 flex-1">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-card flex-shrink-0">
               <AppIcon name="projects" className="h-5 w-5 text-primary" strokeWidth={2.25} />
             </div>
-            <div>
-              <h1 className="text-base font-semibold text-foreground">
-                {activeProject.name}
-              </h1>
-              {activeProject.path && (
-                <p className="text-xs text-muted-foreground">
-                  {activeProject.path}
-                </p>
+            <div className="flex-1 min-w-0">
+              {isRenaming ? (
+                <input
+                  autoFocus
+                  type="text"
+                  value={renamingText}
+                  onChange={(e) => setRenamingText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault()
+                      handleSaveRename(renamingText)
+                    } else if (e.key === "Escape") {
+                      e.preventDefault()
+                      setIsRenaming(false)
+                    }
+                  }}
+                  onBlur={() => handleSaveRename(renamingText)}
+                  className="w-full rounded-md border border-[color:var(--Eulinx-color-info)] bg-[color:var(--Eulinx-color-surface)] px-2 py-1 text-base font-semibold text-[color:var(--Eulinx-color-text)] focus:outline-none focus:ring-2 focus:ring-[color:var(--Eulinx-color-info)]/30"
+                />
+              ) : (
+                <>
+                  <h1 className="text-base font-semibold text-foreground">
+                    {activeProject.name}
+                  </h1>
+                  {activeProject.path && (
+                    <p className="text-xs text-muted-foreground">
+                      {activeProject.path}
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </div>
           
           {/* Project menu button */}
-          <div className="relative">
+          <div className="relative flex-shrink-0">
             <Button
               variant="ghost"
               size="icon"
@@ -123,11 +165,18 @@ export function ProjectOverview() {
                 onClick={(e) => e.stopPropagation()}
               >
                 <button
+                  onClick={handleRenameProject}
+                  className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] text-[color:var(--Eulinx-color-text)] transition-colors duration-150 hover:bg-[color:var(--Eulinx-color-hover)] focus:outline-none focus:ring-2 focus:ring-[color:var(--Eulinx-color-info)]/30"
+                >
+                  <Pencil className="h-3.5 w-3.5" strokeWidth={2} />
+                  <span>Rename</span>
+                </button>
+                <button
                   onClick={handleOpenFolderLocation}
                   disabled={!activeProject.path || activeProject.path.startsWith("local:")}
                   className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] text-[color:var(--Eulinx-color-text)] transition-colors duration-150 hover:bg-[color:var(--Eulinx-color-hover)] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[color:var(--Eulinx-color-info)]/30"
                 >
-                  <AppIcon name="folder" className="h-3.5 w-3.5" strokeWidth={2} />
+                  <FolderOpen className="h-3.5 w-3.5" strokeWidth={2} />
                   <span>Open folder</span>
                 </button>
                 <div className="my-1 h-px bg-[color:var(--Eulinx-color-border)]" />
@@ -135,7 +184,7 @@ export function ProjectOverview() {
                   onClick={handleDeleteProject}
                   className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] text-red-500 transition-colors duration-150 hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-500/30"
                 >
-                  <AppIcon name="trash" className="h-3.5 w-3.5" strokeWidth={2} />
+                  <Trash2 className="h-3.5 w-3.5" strokeWidth={2} />
                   <span>Delete</span>
                 </button>
               </div>

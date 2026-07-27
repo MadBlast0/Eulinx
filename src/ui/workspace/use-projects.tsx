@@ -61,6 +61,7 @@ interface ProjectsContextValue {
   selectProject(id: string): void
   addProject(path: string, name: string): string
   removeProject(id: string): void
+  renameProject(id: string, newName: string): void
 
   selectView(viewId: string): void
   addView(kind: CanvasViewKind, name: string): void
@@ -86,29 +87,28 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     
     let cancelled = false
     
-    // Use requestIdleCallback to defer workspace loading until after initial render
-    const id = requestIdleCallback(
-      () => {
-        void projectStorage.loadWorkspace().then((doc) => {
-          if (cancelled) return
-          if (doc && doc.projects.length > 0) {
-            setWorkspace(doc)
-          }
-        })
-      },
-      { timeout: 2000 } // Fallback to 2s timeout
-    )
+    // Load workspace immediately (not deferred)
+    void projectStorage.loadWorkspace().then((doc) => {
+      if (cancelled) return
+      // Always set the loaded workspace if it exists, even if projects are empty
+      if (doc) {
+        setWorkspace(doc)
+      }
+    }).catch((err) => {
+      console.error("Failed to load workspace:", err)
+    })
     
     return () => {
       cancelled = true
-      cancelIdleCallback(id)
     }
   }, [])
 
   const persist = useCallback((doc: WorkspaceDoc): void => {
     if (saveTimer.current) clearTimeout(saveTimer.current)
     saveTimer.current = setTimeout(() => {
-      void projectStorage.saveWorkspace(doc)
+      void projectStorage.saveWorkspace(doc).catch((err) => {
+        console.error("Failed to save workspace:", err)
+      })
     }, 300)
   }, [])
 
@@ -172,6 +172,19 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
           prev.activeProjectId === id ? projects[0]?.id : prev.activeProjectId
         return { ...prev, projects, activeProjectId }
       })
+    },
+    [commit],
+  )
+
+  const renameProject = useCallback(
+    (id: string, newName: string): void => {
+      if (!newName.trim()) return
+      commit((prev) => ({
+        ...prev,
+        projects: prev.projects.map((p) =>
+          p.id === id ? { ...p, name: newName.trim() } : p,
+        ),
+      }))
     },
     [commit],
   )
@@ -305,6 +318,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       selectProject,
       addProject,
       removeProject,
+      renameProject,
       selectView,
       addView,
       removeView,
@@ -322,6 +336,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       selectProject,
       addProject,
       removeProject,
+      renameProject,
       selectView,
       addView,
       removeView,
