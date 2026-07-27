@@ -48,16 +48,25 @@ const tauriStorage: ProjectStorage = {
   async loadWorkspace(): Promise<WorkspaceDoc | null> {
     try {
       const path = await REGISTRY_PATH_PROMISE
+      console.log("[ProjectStorage] Loading from:", path)
       const raw = await fsService.readText(path)
-      return parseWorkspace(raw)
-    } catch {
+      console.log("[ProjectStorage] Raw data:", raw ? raw.substring(0, 100) : "null")
+      const result = parseWorkspace(raw)
+      console.log("[ProjectStorage] Parsed result:", result ? `${result.projects.length} projects` : "null")
+      return result
+    } catch (err) {
+      console.log("[ProjectStorage] Error loading:", err)
       console.warn("eulinx: failed to load workspace from Tauri fs")
       return null
     }
   },
   async saveWorkspace(doc: WorkspaceDoc): Promise<void> {
     const path = await REGISTRY_PATH_PROMISE
-    await fsService.writeText(path, JSON.stringify(doc))
+    const json = JSON.stringify(doc)
+    console.log("[ProjectStorage] Saving to:", path)
+    console.log("[ProjectStorage] Data:", json.substring(0, 100))
+    await fsService.writeText(path, json)
+    console.log("[ProjectStorage] Save complete")
   },
   async pickFolder(): Promise<string | null> {
     try {

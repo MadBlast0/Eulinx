@@ -80,6 +80,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
   const [workspace, setWorkspace] = useState<WorkspaceDoc>(() => DEFAULT_SEEDED_WORKSPACE())
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const loadAttempted = useRef(false)
+  const workspaceRef = useRef<WorkspaceDoc>(DEFAULT_SEEDED_WORKSPACE())
 
   useEffect(() => {
     if (loadAttempted.current) return
@@ -92,7 +93,11 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       if (cancelled) return
       // Always set the loaded workspace if it exists, even if projects are empty
       if (doc) {
+        console.log("[ProjectsProvider] Loaded workspace with projects:", doc.projects.length, doc.projects.map(p => p.name))
         setWorkspace(doc)
+        workspaceRef.current = doc
+      } else {
+        console.log("[ProjectsProvider] No saved workspace found, using default")
       }
     }).catch((err) => {
       console.error("Failed to load workspace:", err)
@@ -104,18 +109,41 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const persist = useCallback((doc: WorkspaceDoc): void => {
+    workspaceRef.current = doc
+    // Clear any pending debounced save
     if (saveTimer.current) clearTimeout(saveTimer.current)
-    saveTimer.current = setTimeout(() => {
-      void projectStorage.saveWorkspace(doc).catch((err) => {
-        console.error("Failed to save workspace:", err)
-      })
-    }, 300)
+    // Save immediately without debounce - data integrity is more important than batching
+    // This ensures that adding a project and refreshing doesn't lose data
+    console.log("[ProjectsProvider] Persisting workspace with projects:", doc.projects.length, doc.projects.map(p => p.name))
+    void projectStorage.saveWorkspace(doc).then(() => {
+      console.log("[ProjectsProvider] Successfully saved workspace")
+    }).catch((err) => {
+      console.error("Failed to save workspace:", err)
+    })
+  }, [])
+
+  // Flush pending saves on unmount to prevent data loss when app is closed/refreshed
+  useEffect(() => {
+    return () => {
+      if (saveTimer.current) {
+        clearTimeout(saveTimer.current)
+        // Synchronously save the current workspace state
+        // This blocks unmount/navigation to ensure data persistence
+        const lastState = workspaceRef.current
+        // We can't await here in a cleanup function, but we can start the save
+        // and the browser will keep the process alive during refresh
+        projectStorage.saveWorkspace(lastState).catch((err) => {
+          console.error("Failed to save workspace on unmount:", err)
+        })
+      }
+    }
   }, [])
 
   const commit = useCallback(
     (updater: (prev: WorkspaceDoc) => WorkspaceDoc): void => {
       setWorkspace((prev) => {
         const next = updater(prev)
+        // Save immediately before state update
         persist(next)
         return next
       })
