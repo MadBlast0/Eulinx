@@ -288,7 +288,7 @@ export function LeftSidebar({
                     onClick={() => {
                       handleAddProject()
                     }}
-                    className="flex items-center gap-3 rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-3 text-left transition-colors hover:border-[color:var(--Eulinx-color-accent)] hover:bg-[color:var(--Eulinx-color-surface-raised)] focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="flex items-center gap-3 rounded-[var(--Eulinx-radius-md)] bg-[color:var(--Eulinx-color-surface)] p-3 text-left transition-colors hover:bg-[color:var(--Eulinx-color-surface-raised)] focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <Folder className="h-4 w-4 text-[color:var(--Eulinx-color-text-muted)]" />
                     <div>
@@ -301,7 +301,7 @@ export function LeftSidebar({
                       const name = `Project ${projects.length + 1}`
                       addProject(`local:/${name}`, name)
                     }}
-                    className="flex items-center gap-3 rounded-[var(--Eulinx-radius-md)] border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-3 text-left transition-colors hover:border-[color:var(--Eulinx-color-accent)] hover:bg-[color:var(--Eulinx-color-surface-raised)] focus:outline-none focus:ring-2 focus:ring-ring"
+                    className="flex items-center gap-3 rounded-[var(--Eulinx-radius-md)] bg-[color:var(--Eulinx-color-surface)] p-3 text-left transition-colors hover:bg-[color:var(--Eulinx-color-surface-raised)] focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <FileText className="h-4 w-4 text-[color:var(--Eulinx-color-text-muted)]" />
                     <div>
