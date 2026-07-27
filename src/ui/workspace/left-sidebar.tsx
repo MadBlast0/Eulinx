@@ -1,16 +1,21 @@
-import { useCallback, useEffect, useState } from "react"
-import { ChevronRight, FolderPlus, Plus, Folder, FileText } from "lucide-react"
+import { useCallback, useEffect, useState, memo } from "react"
+import { ChevronRight, FolderPlus, Plus, Folder, Globe, X } from "lucide-react"
 import { AppIcon } from "./app-icon"
 import { cn } from "@/utils/cn"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useWorkspace } from "./use-workspace"
 import { useProjects } from "./use-projects"
 import { projectStorage } from "./project-storage"
@@ -80,6 +85,8 @@ function NavRow({
     </Button>
   )
 }
+
+const NavRowMemo = memo(NavRow)
 
 // ---------------------------------------------------------------------------
 // Project tree
@@ -158,6 +165,8 @@ function ProjectRow({
   )
 }
 
+const ProjectRowMemo = memo(ProjectRow)
+
 function ChildRow({
   icon,
   label,
@@ -192,6 +201,8 @@ function ChildRow({
   )
 }
 
+const ChildRowMemo = memo(ChildRow)
+
 // ---------------------------------------------------------------------------
 // Tree wrapper — renders children with guide lines
 // ---------------------------------------------------------------------------
@@ -205,7 +216,246 @@ function TreeChildren({ children }: { children: React.ReactNode }) {
 }
 
 // ---------------------------------------------------------------------------
-// Main sidebar
+// Add Project Dialog Component
+// ---------------------------------------------------------------------------
+
+interface AddProjectDialogProps {
+  projects: readonly ProjectDoc[]
+  onAddProject: () => Promise<void>
+  onCreateProject: (name: string) => void
+}
+
+function AddProjectDialogComponent({ projects, onAddProject, onCreateProject }: AddProjectDialogProps) {
+  const [open, setOpen] = useState(false)
+  const [host, setHost] = useState("local-windows")
+  const [cloneUrl, setCloneUrl] = useState("")
+  const [showCloneInput, setShowCloneInput] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleBrowseFolder = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      await onAddProject()
+      setOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add project")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCreateNewProject = () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+      const name = `Project ${projects.length + 1}`
+      onCreateProject(name)
+      setOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create project")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleCloneFromUrl = async () => {
+    if (!cloneUrl.trim()) {
+      setError("Please enter a valid URL")
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      setError(null)
+      
+      // Extract repo name from URL
+      const urlParts = cloneUrl.trim().split("/")
+      const repoName = urlParts[urlParts.length - 1]?.replace(".git", "") || "cloned-project"
+      
+      // For now, just create a project with the cloned repo name
+      // TODO: Implement actual git clone in backend
+      onCreateProject(repoName)
+      
+      setCloneUrl("")
+      setShowCloneInput(false)
+      setOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to clone repository")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const resetDialog = () => {
+    setOpen(false)
+    setCloneUrl("")
+    setShowCloneInput(false)
+    setError(null)
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(newOpen) => {
+      if (!newOpen) resetDialog()
+      setOpen(newOpen)
+    }}>
+      <DialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="Add project"
+          title="Add project"
+          className="h-5 w-5 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
+        >
+          <FolderPlus className="h-3.5 w-3.5" strokeWidth={2} />
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="w-full max-w-[580px] gap-0 p-0" showClose={false}>
+        {/* Header with close button */}
+        <div className="flex items-center justify-between border-b border-[color:var(--Eulinx-color-border)] px-6 py-4">
+          <DialogTitle className="text-lg font-semibold">Add a project</DialogTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={resetDialog}
+            disabled={isLoading}
+            className="h-6 w-6 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text)]"
+          >
+            <X className="h-4 w-4" strokeWidth={2} />
+          </Button>
+        </div>
+
+        {/* Content */}
+        <div className="px-6 py-4">
+          {/* Error message */}
+          {error && (
+            <div className="mb-4 rounded-md bg-red-500/10 border border-red-500/30 p-3 text-[12px] text-red-500">
+              {error}
+            </div>
+          )}
+
+          {/* Host selector */}
+          <div className="mb-6">
+            <label className="block text-[12px] font-medium uppercase tracking-wider text-[color:var(--Eulinx-color-text-muted)] mb-2">
+              Host
+            </label>
+            <Select value={host} onValueChange={setHost} disabled={isLoading}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select host" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="local-windows">Local Windows</SelectItem>
+                <SelectItem value="local-mac">Local Mac</SelectItem>
+                <SelectItem value="local-linux">Local Linux</SelectItem>
+                <SelectItem value="remote-ssh">Remote (SSH)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Primary action - Browse folder */}
+          <button
+            onClick={handleBrowseFolder}
+            disabled={isLoading}
+            className="w-full flex items-start gap-4 rounded-lg border-2 border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-4 text-left transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:not-disabled:border-[color:var(--Eulinx-color-info)]/50 hover:not-disabled:bg-[color:var(--Eulinx-color-surface-raised)] focus:outline-none focus:ring-2 focus:ring-[color:var(--Eulinx-color-info)]/50"
+          >
+            <div className="flex h-10 w-10 items-center justify-center rounded-md bg-[color:var(--Eulinx-color-info)]/10 flex-shrink-0">
+              <Folder className="h-5 w-5 text-[color:var(--Eulinx-color-info)]" strokeWidth={2} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-[14px] font-semibold text-[color:var(--Eulinx-color-text)]">
+                Browse folder
+              </div>
+              <div className="text-[12px] text-[color:var(--Eulinx-color-text-secondary)] mt-1">
+                Local project, Git repo, or folder with many repos
+              </div>
+            </div>
+          </button>
+
+          {/* OTHER WAYS TO ADD section */}
+          <div className="mt-6 pt-6 border-t border-[color:var(--Eulinx-color-border)]">
+            <div className="text-[11px] font-medium uppercase tracking-wider text-[color:var(--Eulinx-color-text-muted)] mb-3">
+              Other ways to add
+            </div>
+
+            <div className="space-y-2">
+              {/* Clone from URL */}
+              <div>
+                <button
+                  onClick={() => !isLoading && setShowCloneInput(!showCloneInput)}
+                  disabled={isLoading}
+                  className="w-full flex items-start gap-3 rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-3 text-left transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:not-disabled:bg-[color:var(--Eulinx-color-surface-raised)] focus:outline-none focus:ring-2 focus:ring-[color:var(--Eulinx-color-info)]/30"
+                >
+                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[color:var(--Eulinx-color-surface-raised)] text-[color:var(--Eulinx-color-text-secondary)] flex-shrink-0 mt-0.5">
+                    <Globe className="h-4 w-4" strokeWidth={2} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[13px] font-medium text-[color:var(--Eulinx-color-text)]">
+                      Clone from URL
+                    </div>
+                    <div className="text-[11px] text-[color:var(--Eulinx-color-text-secondary)]">
+                      Clone a remote Git repository
+                    </div>
+                  </div>
+                </button>
+                
+                {/* Clone URL input - shown when expanded */}
+                {showCloneInput && (
+                  <div className="mt-2 flex gap-2 items-end">
+                    <input
+                      type="text"
+                      placeholder="https://github.com/user/repo.git"
+                      value={cloneUrl}
+                      onChange={(e) => setCloneUrl(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !isLoading) {
+                          handleCloneFromUrl()
+                        }
+                      }}
+                      disabled={isLoading}
+                      className="flex-1 rounded-md border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-3 py-2 text-[12px] text-[color:var(--Eulinx-color-text)] placeholder-[color:var(--Eulinx-color-text-muted)] disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[color:var(--Eulinx-color-info)]/30"
+                    />
+                    <Button
+                      onClick={handleCloneFromUrl}
+                      disabled={!cloneUrl.trim() || isLoading}
+                      className="h-8 px-3 text-[12px]"
+                    >
+                      {isLoading ? "Cloning..." : "Clone"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Create new project */}
+              <button
+                onClick={handleCreateNewProject}
+                disabled={isLoading}
+                className="w-full flex items-start gap-3 rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-3 text-left transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:not-disabled:bg-[color:var(--Eulinx-color-surface-raised)] focus:outline-none focus:ring-2 focus:ring-[color:var(--Eulinx-color-info)]/30"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-[color:var(--Eulinx-color-surface-raised)] text-[color:var(--Eulinx-color-text-secondary)] flex-shrink-0 mt-0.5">
+                  <Plus className="h-4 w-4" strokeWidth={2} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-medium text-[color:var(--Eulinx-color-text)]">
+                    Create new project
+                  </div>
+                  <div className="text-[11px] text-[color:var(--Eulinx-color-text-secondary)]">
+                    Start from an empty folder
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const AddProjectDialog = memo(AddProjectDialogComponent)
+
+// ---------------------------------------------------------------------------
+// Main Sidebar
 // ---------------------------------------------------------------------------
 
 export function LeftSidebar({
@@ -229,6 +479,14 @@ export function LeftSidebar({
     addProject(`local:/${name}`, name)
   }, [projects.length, addProject])
 
+  // Memoize callbacks for child components
+  const handleWorkspaceClick = useCallback(() => onOpenSurface(null), [onOpenSurface])
+  const handleKnowledgeClick = useCallback(() => onOpenSurface("knowledge"), [onOpenSurface])
+  const handleToggleSidebar = useCallback(() => setOverlay(overlay === "taskBoard" ? null : "taskBoard"), [setOverlay, overlay])
+  const handleOpenSettings = useCallback(() => setOverlay("settings"), [setOverlay])
+  const handleOpenHelp = useCallback(() => setOverlay("shortcuts"), [setOverlay])
+  const handleFocusProject = useCallback(() => onOpenSurface(null), [onOpenSurface])
+
   return (
     <div className="flex h-full flex-col overflow-hidden bg-sidebar">
       {/* ── Header ── */}
@@ -241,17 +499,17 @@ export function LeftSidebar({
       {/* ── Scrollable content ── */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden px-2">
         {/* Primary nav */}
-        <NavRow
+        <NavRowMemo
           icon={<AppIcon name="workspace" className="h-4 w-4 shrink-0" strokeWidth={2} />}
           label="Workspace"
           active={activeSurface === null}
-          onClick={() => onOpenSurface(null)}
+          onClick={handleWorkspaceClick}
         />
-        <NavRow
+        <NavRowMemo
           icon={<AppIcon name="knowledge" className="h-4 w-4 shrink-0" strokeWidth={2} />}
           label="Knowledge"
           active={activeSurface === "knowledge"}
-          onClick={() => onOpenSurface("knowledge")}
+          onClick={handleKnowledgeClick}
         />
 
         {/* Divider */}
@@ -264,54 +522,11 @@ export function LeftSidebar({
             <span className="text-[11px] font-medium uppercase tracking-wider text-[color:var(--Eulinx-color-text-muted)]">
               Projects
             </span>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Add project"
-                  title="Add project"
-                  className="h-5 w-5 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
-                >
-                  <FolderPlus className="h-3.5 w-3.5" strokeWidth={2} />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add Project</DialogTitle>
-                  <DialogDescription>
-                    Choose how to add a new project to your workspace.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="flex flex-col gap-2">
-                  <button
-                    onClick={() => {
-                      handleAddProject()
-                    }}
-                    className="flex items-center gap-3 rounded-[var(--Eulinx-radius-md)] bg-[color:var(--Eulinx-color-surface)] p-3 text-left transition-colors hover:bg-[color:var(--Eulinx-color-surface-raised)] focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <Folder className="h-4 w-4 text-[color:var(--Eulinx-color-text-muted)]" />
-                    <div>
-                      <div className="text-[13px] font-medium text-[color:var(--Eulinx-color-text)]">Open Folder</div>
-                      <div className="text-[11px] text-[color:var(--Eulinx-color-text-muted)]">Import an existing project folder</div>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => {
-                      const name = `Project ${projects.length + 1}`
-                      addProject(`local:/${name}`, name)
-                    }}
-                    className="flex items-center gap-3 rounded-[var(--Eulinx-radius-md)] bg-[color:var(--Eulinx-color-surface)] p-3 text-left transition-colors hover:bg-[color:var(--Eulinx-color-surface-raised)] focus:outline-none focus:ring-2 focus:ring-ring"
-                  >
-                    <FileText className="h-4 w-4 text-[color:var(--Eulinx-color-text-muted)]" />
-                    <div>
-                      <div className="text-[13px] font-medium text-[color:var(--Eulinx-color-text)]">New Empty Project</div>
-                      <div className="text-[11px] text-[color:var(--Eulinx-color-text-muted)]">Create a new empty project</div>
-                    </div>
-                  </button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <AddProjectDialog
+              projects={projects}
+              onAddProject={handleAddProject}
+              onCreateProject={(name) => addProject(`local:/${name}`, name)}
+            />
           </div>
 
           {/* Empty state */}
@@ -323,7 +538,7 @@ export function LeftSidebar({
 
           {/* Project tree */}
           {projects.map((project) => (
-            <ProjectItem
+            <ProjectItemMemo
               key={project.id}
               project={project}
               isActive={project.id === activeProjectId}
@@ -352,10 +567,7 @@ export function LeftSidebar({
           size="icon"
           aria-label="Focus project"
           title="Focus current project"
-          onClick={() => {
-            // Focus the canvas on the current project's active view
-            onOpenSurface(null)
-          }}
+          onClick={handleFocusProject}
           className="h-7 w-7 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
         >
           <AppIcon name="crosshair" className="h-4 w-4" strokeWidth={2} />
@@ -365,7 +577,7 @@ export function LeftSidebar({
           size="icon"
           aria-label="Task board"
           title="Workspace board"
-          onClick={() => setOverlay(overlay === "taskBoard" ? null : "taskBoard")}
+          onClick={handleToggleSidebar}
           className={cn(
             "h-7 w-7 hover:text-[color:var(--Eulinx-color-text-secondary)]",
             overlay === "taskBoard"
@@ -381,7 +593,7 @@ export function LeftSidebar({
           size="icon"
           aria-label="Settings"
           title="Settings"
-          onClick={() => setOverlay("settings")}
+          onClick={handleOpenSettings}
           className="h-7 w-7 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
         >
           <AppIcon name="settings" className="h-4 w-4" strokeWidth={2} />
@@ -391,7 +603,7 @@ export function LeftSidebar({
           size="icon"
           aria-label="Help"
           title="Keyboard shortcuts"
-          onClick={() => setOverlay("shortcuts")}
+          onClick={handleOpenHelp}
           className="h-7 w-7 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text-secondary)]"
         >
           <AppIcon name="help" className="h-4 w-4" strokeWidth={2} />
@@ -422,14 +634,19 @@ function ProjectItem({
     if (isActive) setOpen(true)
   }, [isActive])
 
+  // Memoize callbacks to prevent child re-renders
+  const handleToggle = useCallback(() => setOpen((v) => !v), [])
+  const handleSelect = useCallback(() => onSelectProject(project.id), [onSelectProject, project.id])
+  const handleViewClick = useCallback((viewId: string) => onSelectView(viewId), [onSelectView])
+
   return (
     <div className="mt-0.5">
-      <ProjectRow
+      <ProjectRowMemo
         name={project.name}
         active={isActive}
         isOpen={open}
-        onToggle={() => setOpen((v) => !v)}
-        onSelect={() => onSelectProject(project.id)}
+        onToggle={handleToggle}
+        onSelect={handleSelect}
       />
       <div
         className="grid transition-[grid-template-rows] duration-150 ease-in-out"
@@ -438,12 +655,12 @@ function ProjectItem({
         <div className="min-h-0 overflow-hidden">
           <TreeChildren>
             {project.views.map((view) => (
-              <ChildRow
+              <ChildRowMemo
                 key={view.id}
                 icon={viewIcon(view.kind)}
                 label={view.name}
                 active={isActive && view.id === project.activeViewId}
-                onClick={() => onSelectView(view.id)}
+                onClick={() => handleViewClick(view.id)}
               />
             ))}
           </TreeChildren>
@@ -452,3 +669,5 @@ function ProjectItem({
     </div>
   )
 }
+
+const ProjectItemMemo = memo(ProjectItem)

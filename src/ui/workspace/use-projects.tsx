@@ -78,17 +78,30 @@ const ProjectsContext = createContext<ProjectsContextValue | null>(null)
 export function ProjectsProvider({ children }: { children: ReactNode }) {
   const [workspace, setWorkspace] = useState<WorkspaceDoc>(() => DEFAULT_SEEDED_WORKSPACE())
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const loadAttempted = useRef(false)
 
   useEffect(() => {
+    if (loadAttempted.current) return
+    loadAttempted.current = true
+    
     let cancelled = false
-    void projectStorage.loadWorkspace().then((doc) => {
-      if (cancelled) return
-      if (doc && doc.projects.length > 0) {
-        setWorkspace(doc)
-      }
-    })
+    
+    // Use requestIdleCallback to defer workspace loading until after initial render
+    const id = requestIdleCallback(
+      () => {
+        void projectStorage.loadWorkspace().then((doc) => {
+          if (cancelled) return
+          if (doc && doc.projects.length > 0) {
+            setWorkspace(doc)
+          }
+        })
+      },
+      { timeout: 2000 } // Fallback to 2s timeout
+    )
+    
     return () => {
       cancelled = true
+      cancelIdleCallback(id)
     }
   }, [])
 
@@ -111,26 +124,22 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
   )
 
   const activeProject = useMemo<ProjectDoc | null>(() => {
-    return (
-      workspace.projects.find((p) => p.id === workspace.activeProjectId) ??
-      workspace.projects[0] ??
-      null
-    )
+    const project = workspace.projects.find((p) => p.id === workspace.activeProjectId) ?? workspace.projects[0] ?? null
+    return project
   }, [workspace.projects, workspace.activeProjectId])
 
   const activeView = useMemo<CanvasView | null>(() => {
     if (!activeProject) return null
-    return (
-      activeProject.views.find((v) => v.id === activeProject.activeViewId) ??
-      null
-    )
+    const view = activeProject.views.find((v) => v.id === activeProject.activeViewId) ?? null
+    return view
   }, [activeProject])
 
   const graph = useMemo<NodeGraphDoc | null>(() => {
     if (!activeProject || !activeView || activeView.kind !== "node-graph" || !activeView.graphId) {
       return null
     }
-    return activeProject.graphs?.[activeView.graphId] ?? null
+    const selectedGraph = activeProject.graphs?.[activeView.graphId] ?? null
+    return selectedGraph
   }, [activeProject, activeView])
 
   const selectProject = useCallback(

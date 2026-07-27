@@ -4,7 +4,7 @@ import "./workspace.css"
 import { cn } from "@/utils/cn"
 import { useWorkspace } from "./use-workspace"
 import { ProjectsProvider, useProjects } from "./use-projects"
-import { GlobalProviders, ProjectDataProviders } from "./merged-providers"
+import { GlobalProviders, ProjectDataProviders, useDeferredProvidersReady } from "./merged-providers"
 import { TopBar } from "./top-bar"
 import { Toolbar } from "./workspace-toolbar"
 import { LeftSidebar } from "./left-sidebar"
@@ -114,6 +114,8 @@ function WorkspaceShell() {
     bulkSetLayout,
     setFocusedRegion,
   } = useLayout()
+
+  const deferredProvidersReady = useDeferredProvidersReady()
 
   const workspaceIdRef = useRef("default")
   const loadedRef = useRef(false)
@@ -443,7 +445,7 @@ function WorkspaceShell() {
 
       <Overlays />
       <EventBridge />
-      <StateBridge />
+      {deferredProvidersReady && <StateBridge />}
     </div>
   )
 }
