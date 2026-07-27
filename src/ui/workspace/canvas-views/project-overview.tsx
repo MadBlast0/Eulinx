@@ -1,4 +1,5 @@
-import { Plus } from "lucide-react"
+import { Plus, MoreVertical } from "lucide-react"
+import { useState, useCallback, useEffect } from "react"
 import { AppIcon } from "../app-icon"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -22,7 +23,9 @@ const VIEW_META: Record<CanvasViewKind, { label: string; iconName: string; descr
 const QUICK_ADD_KINDS: CanvasViewKind[] = ["node-graph", "artifacts", "terminal"]
 
 export function ProjectOverview() {
-  const { activeProject, selectView, addView } = useProjects()
+  const { activeProject, selectView, addView, removeProject } = useProjects()
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false)
+  const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null)
 
   if (!activeProject) {
     return (
@@ -44,22 +47,98 @@ export function ProjectOverview() {
     addView(kind, name)
   }
 
+  const handleMenuToggle = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (projectMenuOpen) {
+      setProjectMenuOpen(false)
+    } else {
+      const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+      setMenuPosition({ x: rect.left, y: rect.bottom + 4 })
+      setProjectMenuOpen(true)
+    }
+  }, [projectMenuOpen])
+
+  const handleDeleteProject = useCallback(() => {
+    if (activeProject && window.confirm(`Are you sure you want to delete "${activeProject.name}"?`)) {
+      removeProject(activeProject.id)
+      setProjectMenuOpen(false)
+    }
+  }, [activeProject, removeProject])
+
+  const handleOpenFolderLocation = useCallback(() => {
+    if (activeProject && activeProject.path && !activeProject.path.startsWith("local:")) {
+      // This would need a backend service to open the folder in the file explorer
+      console.log("Opening folder:", activeProject.path)
+    }
+    setProjectMenuOpen(false)
+  }, [activeProject])
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    if (!projectMenuOpen) return
+    
+    const handleClick = () => setProjectMenuOpen(false)
+    document.addEventListener("click", handleClick)
+    return () => document.removeEventListener("click", handleClick)
+  }, [projectMenuOpen])
+
   return (
     <div className="flex flex-1 flex-col overflow-y-auto bg-background">
       {/* Header */}
       <div className="border-b border-border px-6 py-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-card">
-            <AppIcon name="projects" className="h-5 w-5 text-primary" strokeWidth={2.25} />
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-card">
+              <AppIcon name="projects" className="h-5 w-5 text-primary" strokeWidth={2.25} />
+            </div>
+            <div>
+              <h1 className="text-base font-semibold text-foreground">
+                {activeProject.name}
+              </h1>
+              {activeProject.path && (
+                <p className="text-xs text-muted-foreground">
+                  {activeProject.path}
+                </p>
+              )}
+            </div>
           </div>
-          <div>
-            <h1 className="text-base font-semibold text-foreground">
-              {activeProject.name}
-            </h1>
-            {activeProject.path && (
-              <p className="text-xs text-muted-foreground">
-                {activeProject.path}
-              </p>
+          
+          {/* Project menu button */}
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleMenuToggle}
+              className="h-8 w-8"
+              title="Project options"
+            >
+              <MoreVertical className="h-4 w-4" strokeWidth={2} />
+            </Button>
+
+            {/* Project dropdown menu */}
+            {projectMenuOpen && menuPosition && (
+              <div
+                className="fixed z-[var(--Eulinx-z-dropdown)] min-w-[160px] animate-[ctx-in_120ms_ease] rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] p-1 shadow-lg"
+                style={{ left: menuPosition.x - 150, top: menuPosition.y }}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={handleOpenFolderLocation}
+                  disabled={!activeProject.path || activeProject.path.startsWith("local:")}
+                  className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] text-[color:var(--Eulinx-color-text)] transition-colors duration-150 hover:bg-[color:var(--Eulinx-color-hover)] disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-[color:var(--Eulinx-color-info)]/30"
+                >
+                  <AppIcon name="folder" className="h-3.5 w-3.5" strokeWidth={2} />
+                  <span>Open folder</span>
+                </button>
+                <div className="my-1 h-px bg-[color:var(--Eulinx-color-border)]" />
+                <button
+                  onClick={handleDeleteProject}
+                  className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] text-red-500 transition-colors duration-150 hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                >
+                  <AppIcon name="trash" className="h-3.5 w-3.5" strokeWidth={2} />
+                  <span>Delete</span>
+                </button>
+              </div>
             )}
           </div>
         </div>

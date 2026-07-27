@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState, memo } from "react"
 import { ChevronRight, FolderPlus, Plus, Folder, Globe, X } from "lucide-react"
+import { appConfigDir } from "@tauri-apps/api/path"
+import { isTauri } from "@tauri-apps/api/core"
 import { AppIcon } from "./app-icon"
 import { cn } from "@/utils/cn"
 import { Button } from "@/components/ui/button"
@@ -19,6 +21,7 @@ import {
 import { useWorkspace } from "./use-workspace"
 import { useProjects } from "./use-projects"
 import { projectStorage } from "./project-storage"
+import { fsService } from "@/api/services"
 import type { CanvasViewKind, ProjectDoc } from "./project-types"
 import type { SurfaceKey } from "./workspace-app"
 
@@ -98,12 +101,14 @@ function ProjectRow({
   isOpen,
   onToggle,
   onSelect,
+  onContextMenu,
 }: {
   name: string
   active: boolean
   isOpen: boolean
   onToggle: () => void
   onSelect: () => void
+  onContextMenu?: (e: React.MouseEvent) => void
 }) {
   return (
     <div
@@ -113,6 +118,7 @@ function ProjectRow({
           ? "bg-[color:var(--Eulinx-color-info)]/8 text-[color:var(--Eulinx-color-text)]"
           : "text-[color:var(--Eulinx-color-text-secondary)] hover:bg-[color:var(--Eulinx-color-hover)]/50 hover:text-[color:var(--Eulinx-color-text)]",
       )}
+      onContextMenu={onContextMenu}
     >
       {/* Chevron toggle */}
       <button
@@ -222,7 +228,7 @@ function TreeChildren({ children }: { children: React.ReactNode }) {
 interface AddProjectDialogProps {
   projects: readonly ProjectDoc[]
   onAddProject: () => Promise<void>
-  onCreateProject: (name: string) => void
+  onCreateProject: (name: string, path: string) => void
 }
 
 function AddProjectDialogComponent({ projects, onAddProject, onCreateProject }: AddProjectDialogProps) {
@@ -246,12 +252,33 @@ function AddProjectDialogComponent({ projects, onAddProject, onCreateProject }: 
     }
   }
 
-  const handleCreateNewProject = () => {
+  const handleCreateNewProject = async () => {
     try {
       setIsLoading(true)
       setError(null)
       const name = `Project ${projects.length + 1}`
-      onCreateProject(name)
+      
+      // Create physical folder on disk if running in Tauri
+      if (isTauri()) {
+        const appDir = await appConfigDir()
+        const projectsDir = `${appDir}eulinx/projects/`
+        const projectPath = `${projectsDir}${name}/`
+        
+        // Create projects directory if it doesn't exist
+        try {
+          await fsService.createDir(projectsDir)
+        } catch {
+          // Directory might already exist, that's fine
+        }
+        
+        // Create the specific project folder
+        await fsService.createDir(projectPath)
+        
+        onCreateProject(name, projectPath)
+      } else {
+        // Browser fallback - use synthetic path
+        onCreateProject(name, `local:/${name}`)
+      }
       setOpen(false)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create project")
@@ -274,9 +301,28 @@ function AddProjectDialogComponent({ projects, onAddProject, onCreateProject }: 
       const urlParts = cloneUrl.trim().split("/")
       const repoName = urlParts[urlParts.length - 1]?.replace(".git", "") || "cloned-project"
       
-      // For now, just create a project with the cloned repo name
-      // TODO: Implement actual git clone in backend
-      onCreateProject(repoName)
+      // Create physical folder on disk if running in Tauri
+      if (isTauri()) {
+        const appDir = await appConfigDir()
+        const projectsDir = `${appDir}eulinx/projects/`
+        const projectPath = `${projectsDir}${repoName}/`
+        
+        // Create projects directory if it doesn't exist
+        try {
+          await fsService.createDir(projectsDir)
+        } catch {
+          // Directory might already exist, that's fine
+        }
+        
+        // Create the specific project folder
+        await fsService.createDir(projectPath)
+        
+        // TODO: Implement actual git clone in backend
+        onCreateProject(repoName, projectPath)
+      } else {
+        // Browser fallback - use synthetic path
+        onCreateProject(repoName, `local:/${repoName}`)
+      }
       
       setCloneUrl("")
       setShowCloneInput(false)
@@ -311,14 +357,17 @@ function AddProjectDialogComponent({ projects, onAddProject, onCreateProject }: 
           <FolderPlus className="h-3.5 w-3.5" strokeWidth={2} />
         </Button>
       </DialogTrigger>
-      <DialogContent className="w-full max-w-[580px] gap-0 p-0" showClose={false}>
+      <DialogContent className="w-full max-w-[580px] gap-0 p-0" showClose={false} onClick={(e) => e.stopPropagation()}>
         {/* Header with close button */}
         <div className="flex items-center justify-between border-b border-[color:var(--Eulinx-color-border)] px-6 py-4">
           <DialogTitle className="text-lg font-semibold">Add a project</DialogTitle>
           <Button
             variant="ghost"
             size="icon"
-            onClick={resetDialog}
+            onClick={(e) => {
+              e.stopPropagation()
+              resetDialog()
+            }}
             disabled={isLoading}
             className="h-6 w-6 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text)]"
           >
@@ -355,7 +404,11 @@ function AddProjectDialogComponent({ projects, onAddProject, onCreateProject }: 
 
           {/* Primary action - Browse folder */}
           <button
-            onClick={handleBrowseFolder}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              void handleBrowseFolder()
+            }}
             disabled={isLoading}
             className="w-full flex items-start gap-4 rounded-lg border-2 border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-4 text-left transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:not-disabled:border-[color:var(--Eulinx-color-info)]/50 hover:not-disabled:bg-[color:var(--Eulinx-color-surface-raised)] focus:outline-none focus:ring-2 focus:ring-[color:var(--Eulinx-color-info)]/50"
           >
@@ -382,7 +435,11 @@ function AddProjectDialogComponent({ projects, onAddProject, onCreateProject }: 
               {/* Clone from URL */}
               <div>
                 <button
-                  onClick={() => !isLoading && setShowCloneInput(!showCloneInput)}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    if (!isLoading) setShowCloneInput(!showCloneInput)
+                  }}
                   disabled={isLoading}
                   className="w-full flex items-start gap-3 rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-3 text-left transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:not-disabled:bg-[color:var(--Eulinx-color-surface-raised)] focus:outline-none focus:ring-2 focus:ring-[color:var(--Eulinx-color-info)]/30"
                 >
@@ -428,7 +485,11 @@ function AddProjectDialogComponent({ projects, onAddProject, onCreateProject }: 
 
               {/* Create new project */}
               <button
-                onClick={handleCreateNewProject}
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleCreateNewProject()
+                }}
                 disabled={isLoading}
                 className="w-full flex items-start gap-3 rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] p-3 text-left transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:not-disabled:bg-[color:var(--Eulinx-color-surface-raised)] focus:outline-none focus:ring-2 focus:ring-[color:var(--Eulinx-color-info)]/30"
               >
@@ -466,7 +527,10 @@ export function LeftSidebar({
   onOpenSurface: (key: SurfaceKey | null) => void
 }) {
   const { overlay, setOverlay } = useWorkspace()
-  const { projects, activeProjectId, selectProject, selectView, addProject } = useProjects()
+  const { projects, activeProjectId, selectProject, selectView, addProject, removeProject } = useProjects()
+  const [contextMenu, setContextMenu] = useState<{ projectId: string; x: number; y: number } | null>(null)
+  const [renameProjectId, setRenameProjectId] = useState<string | null>(null)
+  const [renamingText, setRenamingText] = useState("")
 
   const handleAddProject = useCallback(async (): Promise<void> => {
     const picked = await projectStorage.pickFolder()
@@ -486,6 +550,46 @@ export function LeftSidebar({
   const handleOpenSettings = useCallback(() => setOverlay("settings"), [setOverlay])
   const handleOpenHelp = useCallback(() => setOverlay("shortcuts"), [setOverlay])
   const handleFocusProject = useCallback(() => onOpenSurface(null), [onOpenSurface])
+
+  const handleProjectContextMenu = useCallback((projectId: string, e: React.MouseEvent) => {
+    setContextMenu({ projectId, x: e.clientX, y: e.clientY })
+  }, [])
+
+  const handleDeleteProject = useCallback(() => {
+    if (contextMenu?.projectId) {
+      removeProject(contextMenu.projectId)
+      setContextMenu(null)
+    }
+  }, [contextMenu?.projectId, removeProject])
+
+  const handleRenameProject = useCallback(() => {
+    if (contextMenu?.projectId) {
+      const project = projects.find(p => p.id === contextMenu.projectId)
+      if (project) {
+        setRenameProjectId(contextMenu.projectId)
+        setRenamingText(project.name)
+        setContextMenu(null)
+      }
+    }
+  }, [contextMenu?.projectId, projects])
+
+  const handleOpenFolderLocation = useCallback(() => {
+    if (contextMenu?.projectId) {
+      const project = projects.find(p => p.id === contextMenu.projectId)
+      if (project && project.path.length > 0 && !project.path.startsWith("local:")) {
+        // Open folder in file explorer - would need a backend service for this
+        console.log("Opening folder:", project.path)
+      }
+      setContextMenu(null)
+    }
+  }, [contextMenu?.projectId, projects])
+
+  // Close context menu when clicking elsewhere
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null)
+    document.addEventListener("click", handleClick)
+    return () => document.removeEventListener("click", handleClick)
+  }, [])
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-sidebar">
@@ -525,7 +629,7 @@ export function LeftSidebar({
             <AddProjectDialog
               projects={projects}
               onAddProject={handleAddProject}
-              onCreateProject={(name) => addProject(`local:/${name}`, name)}
+              onCreateProject={(name, path) => addProject(path, name)}
             />
           </div>
 
@@ -544,6 +648,7 @@ export function LeftSidebar({
               isActive={project.id === activeProjectId}
               onSelectProject={selectProject}
               onSelectView={selectView}
+              onProjectContextMenu={handleProjectContextMenu}
             />
           ))}
 
@@ -609,6 +714,39 @@ export function LeftSidebar({
           <AppIcon name="help" className="h-4 w-4" strokeWidth={2} />
         </Button>
       </div>
+
+      {/* Project context menu */}
+      {contextMenu && (
+        <div
+          className="fixed z-[var(--Eulinx-z-dropdown)] min-w-[180px] animate-[ctx-in_120ms_ease] rounded-lg border border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface-elevated)] p-1 shadow-lg"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <button
+            onClick={handleRenameProject}
+            className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] text-[color:var(--Eulinx-color-text)] transition-colors duration-150 hover:bg-[color:var(--Eulinx-color-hover)] focus:outline-none focus:ring-2 focus:ring-[color:var(--Eulinx-color-info)]/30"
+          >
+            <AppIcon name="edit" className="h-3.5 w-3.5" strokeWidth={2} />
+            <span>Rename</span>
+          </button>
+          <button
+            onClick={handleOpenFolderLocation}
+            className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] text-[color:var(--Eulinx-color-text)] transition-colors duration-150 hover:bg-[color:var(--Eulinx-color-hover)] focus:outline-none focus:ring-2 focus:ring-[color:var(--Eulinx-color-info)]/30"
+          >
+            <AppIcon name="folder" className="h-3.5 w-3.5" strokeWidth={2} />
+            <span>Open folder</span>
+          </button>
+          <div className="my-1 h-px bg-[color:var(--Eulinx-color-border)]" />
+          <button
+            onClick={handleDeleteProject}
+            className="w-full flex items-center gap-2 rounded-md px-3 py-2 text-[12px] text-red-500 transition-colors duration-150 hover:bg-red-500/10 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+          >
+            <AppIcon name="trash" className="h-3.5 w-3.5" strokeWidth={2} />
+            <span>Delete</span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -622,11 +760,13 @@ function ProjectItem({
   isActive,
   onSelectProject,
   onSelectView,
+  onProjectContextMenu,
 }: {
   project: ProjectDoc
   isActive: boolean
   onSelectProject: (id: string) => void
   onSelectView: (viewId: string) => void
+  onProjectContextMenu?: (projectId: string, e: React.MouseEvent) => void
 }) {
   const [open, setOpen] = useState(isActive)
 
@@ -638,6 +778,10 @@ function ProjectItem({
   const handleToggle = useCallback(() => setOpen((v) => !v), [])
   const handleSelect = useCallback(() => onSelectProject(project.id), [onSelectProject, project.id])
   const handleViewClick = useCallback((viewId: string) => onSelectView(viewId), [onSelectView])
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    onProjectContextMenu?.(project.id, e)
+  }, [project.id, onProjectContextMenu])
 
   return (
     <div className="mt-0.5">
@@ -647,6 +791,7 @@ function ProjectItem({
         isOpen={open}
         onToggle={handleToggle}
         onSelect={handleSelect}
+        onContextMenu={handleContextMenu}
       />
       <div
         className="grid transition-[grid-template-rows] duration-150 ease-in-out"
