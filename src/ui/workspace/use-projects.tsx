@@ -27,6 +27,11 @@ function uid(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}-${idCounter.toString(36)}`
 }
 
+// Module-level flag to prevent loading workspace multiple times
+// This persists across component remounts (important for React StrictMode)
+let workspaceLoadAttempted = false
+let workspaceLoadPromise: Promise<WorkspaceDoc | null> | null = null
+
 export function createNodeGraphDoc(name: string): NodeGraphDoc {
   const id = uid("graph")
   return { id, name, nodes: [], edges: [], updatedAt: Date.now() }
@@ -77,72 +82,140 @@ interface ProjectsContextValue {
 const ProjectsContext = createContext<ProjectsContextValue | null>(null)
 
 export function ProjectsProvider({ children }: { children: ReactNode }) {
-  const [workspace, setWorkspace] = useState<WorkspaceDoc>(() => DEFAULT_SEEDED_WORKSPACE())
+  console.log("[ProjectsProvider] Component render")
+  
+  const [workspace, setWorkspace] = useState<WorkspaceDoc>(() => {
+    console.log("[ProjectsProvider] Initial state function called")
+    return DEFAULT_SEEDED_WORKSPACE()
+  })
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const loadAttempted = useRef(false)
   const workspaceRef = useRef<WorkspaceDoc>(DEFAULT_SEEDED_WORKSPACE())
 
   useEffect(() => {
-    if (loadAttempted.current) return
-    loadAttempted.current = true
+    console.log("[ProjectsProvider] useEffect triggered, workspaceLoadAttempted:", workspaceLoadAttempted)
     
-    let cancelled = false
+    if (workspaceLoadAttempted) {
+      console.log("[ProjectsProvider] Load already attempted globally, checking if we have a promise")
+      
+      // If already loading, wait for that promise
+      if (workspaceLoadPromise) {
+        console.log("[ProjectsProvider] Reusing existing load promise")
+        void workspaceLoadPromise.then((doc) => {
+          if (doc) {
+            console.log("[ProjectsProvider] Reused promise resolved with", doc.projects.length, "projects")
+            setWorkspace(doc)
+            workspaceRef.current = doc
+          }
+        })
+      } else {
+        console.log("[ProjectsProvider] Load completed previously, skipping")
+      }
+      return
+    }
+    
+    workspaceLoadAttempted = true
+    console.log("[ProjectsProvider] Starting workspace load (first time)...")
     
     // Load workspace immediately (not deferred)
-    void projectStorage.loadWorkspace().then((doc) => {
-      if (cancelled) return
+    workspaceLoadPromise = projectStorage.loadWorkspace()
+    
+    void workspaceLoadPromise.then((doc) => {
+      console.log("[ProjectsProvider] loadWorkspace resolved, doc:", doc ? "exists" : "null")
+      
       // Always set the loaded workspace if it exists, even if projects are empty
       if (doc) {
         console.log("[ProjectsProvider] Loaded workspace with projects:", doc.projects.length, doc.projects.map(p => p.name))
+        console.log("[ProjectsProvider] Full workspace data:", JSON.stringify(doc))
         setWorkspace(doc)
         workspaceRef.current = doc
       } else {
         console.log("[ProjectsProvider] No saved workspace found, using default")
+        // Initialize with empty workspace to ensure consistent state
+        const defaultWorkspace = DEFAULT_SEEDED_WORKSPACE()
+        setWorkspace(defaultWorkspace)
+        workspaceRef.current = defaultWorkspace
       }
+      
+      // Clear the promise after it's resolved
+      workspaceLoadPromise = null
     }).catch((err) => {
-      console.error("Failed to load workspace:", err)
+      console.error("[ProjectsProvider] Failed to load workspace:", err)
+      // On error, initialize with default to avoid broken state
+      const defaultWorkspace = DEFAULT_SEEDED_WORKSPACE()
+      setWorkspace(defaultWorkspace)
+      workspaceRef.current = defaultWorkspace
+      workspaceLoadPromise = null
     })
-    
-    return () => {
-      cancelled = true
-    }
   }, [])
 
   const persist = useCallback((doc: WorkspaceDoc): void => {
+    console.log("[ProjectsProvider] persist called with", doc.projects.length, "projects:", doc.projects.map(p => p.name))
+    
     workspaceRef.current = doc
     // Clear any pending debounced save
     if (saveTimer.current) clearTimeout(saveTimer.current)
+    
     // Save immediately without debounce - data integrity is more important than batching
     // This ensures that adding a project and refreshing doesn't lose data
     console.log("[ProjectsProvider] Persisting workspace with projects:", doc.projects.length, doc.projects.map(p => p.name))
-    void projectStorage.saveWorkspace(doc).then(() => {
+    
+    // Create a promise that tracks the save operation
+    const savePromise = projectStorage.saveWorkspace(doc).then(() => {
       console.log("[ProjectsProvider] Successfully saved workspace")
     }).catch((err) => {
-      console.error("Failed to save workspace:", err)
+      console.error("[ProjectsProvider] Failed to save workspace:", err)
+      // Show user-visible error notification
+      console.error("⚠️ Failed to save project data. Changes may be lost on refresh.")
     })
+    
+    // Store the promise so we can wait for it during page unload
+    if (typeof window !== 'undefined') {
+      // @ts-expect-error - storing save promise for beforeunload handler
+      window.__eulinxPendingSave = savePromise
+    }
   }, [])
 
-  // Flush pending saves on unmount to prevent data loss when app is closed/refreshed
+  // Add beforeunload handler to ensure saves complete before page unload
   useEffect(() => {
-    return () => {
-      if (saveTimer.current) {
-        clearTimeout(saveTimer.current)
-        // Synchronously save the current workspace state
-        // This blocks unmount/navigation to ensure data persistence
-        const lastState = workspaceRef.current
-        // We can't await here in a cleanup function, but we can start the save
-        // and the browser will keep the process alive during refresh
-        projectStorage.saveWorkspace(lastState).catch((err) => {
-          console.error("Failed to save workspace on unmount:", err)
-        })
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Attempt synchronous save of current state
+      const currentState = workspaceRef.current
+      console.log("[ProjectsProvider] beforeunload - saving current state with projects:", currentState.projects.length)
+      
+      // For Tauri, we can't truly block, but we can start the save
+      // The browser/Tauri should keep the process alive briefly
+      void projectStorage.saveWorkspace(currentState).catch((err) => {
+        console.error("[ProjectsProvider] Failed to save on beforeunload:", err)
+      })
+      
+      // Check if there's a pending save
+      // @ts-expect-error - checking for pending save
+      if (window.__eulinxPendingSave) {
+        // Don't show warning dialog, just log
+        console.log("[ProjectsProvider] Pending save detected on unload")
       }
+    }
+    
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      // Final save attempt on unmount
+      const lastState = workspaceRef.current
+      console.log("[ProjectsProvider] Component unmounting - final save with projects:", lastState.projects.length)
+      void projectStorage.saveWorkspace(lastState).catch((err) => {
+        console.error("[ProjectsProvider] Failed to save on unmount:", err)
+      })
     }
   }, [])
 
   const commit = useCallback(
     (updater: (prev: WorkspaceDoc) => WorkspaceDoc): void => {
+      console.log("[ProjectsProvider] commit called")
       setWorkspace((prev) => {
+        console.log("[ProjectsProvider] commit updater - prev projects:", prev.projects.length)
         const next = updater(prev)
+        console.log("[ProjectsProvider] commit updater - next projects:", next.projects.length, next.projects.map(p => p.name))
         // Save immediately before state update
         persist(next)
         return next

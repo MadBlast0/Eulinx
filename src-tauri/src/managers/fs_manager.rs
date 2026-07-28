@@ -87,11 +87,38 @@ impl FsManagerImpl {
                 context: None,
             })?;
         }
-        std::fs::write(p, content).map_err(|e| ApiError {
+        
+        // Write to a temporary file first to ensure atomic write
+        let temp_path = format!("{}.tmp", path);
+        let temp_p = Path::new(&temp_path);
+        
+        // Write to temp file
+        std::fs::write(temp_p, content).map_err(|e| ApiError {
             code: "FS_WRITE".into(),
-            message: format!("write failed: {e}"),
+            message: format!("write to temp file failed: {e}"),
             context: None,
-        })
+        })?;
+        
+        // Sync the file to disk to ensure it's written
+        if let Ok(file) = std::fs::File::open(temp_p) {
+            let _ = file.sync_all(); // Best effort sync
+        }
+        
+        // Rename temp to final (atomic operation on most filesystems)
+        std::fs::rename(temp_p, p).map_err(|e| ApiError {
+            code: "FS_RENAME".into(),
+            message: format!("rename failed: {e}"),
+            context: None,
+        })?;
+        
+        // Sync the directory to ensure the rename is persisted
+        if let Some(parent) = p.parent() {
+            if let Ok(dir) = std::fs::File::open(parent) {
+                let _ = dir.sync_all(); // Best effort sync
+            }
+        }
+        
+        Ok(())
     }
 
     pub fn create_dir(&self, path: &str) -> ApiResult<()> {

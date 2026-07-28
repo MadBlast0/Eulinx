@@ -49,31 +49,61 @@ const tauriStorage: ProjectStorage = {
     try {
       const path = await REGISTRY_PATH_PROMISE
       console.log("[ProjectStorage] Loading from:", path)
+      
+      // First check if file exists
       const raw = await fsService.readText(path)
-      console.log("[ProjectStorage] Raw data:", raw ? raw.substring(0, 100) : "null")
+      console.log("[ProjectStorage] Raw data length:", raw ? raw.length : 0)
+      
+      if (!raw || raw.trim() === "") {
+        console.log("[ProjectStorage] Empty file, returning null")
+        return null
+      }
+      
       const result = parseWorkspace(raw)
       console.log("[ProjectStorage] Parsed result:", result ? `${result.projects.length} projects` : "null")
+      
+      if (result && result.projects) {
+        console.log("[ProjectStorage] Project names:", result.projects.map(p => p.name).join(", "))
+      }
+      
       return result
     } catch (err) {
       console.log("[ProjectStorage] Error loading:", err)
-      console.warn("eulinx: failed to load workspace from Tauri fs")
+      console.warn("eulinx: failed to load workspace from Tauri fs", err)
       return null
     }
   },
   async saveWorkspace(doc: WorkspaceDoc): Promise<void> {
-    const path = await REGISTRY_PATH_PROMISE
-    const json = JSON.stringify(doc)
-    console.log("[ProjectStorage] Saving to:", path)
-    console.log("[ProjectStorage] Data:", json.substring(0, 100))
-    await fsService.writeText(path, json)
-    console.log("[ProjectStorage] Save complete")
+    try {
+      const path = await REGISTRY_PATH_PROMISE
+      const json = JSON.stringify(doc, null, 2) // Pretty print for debugging
+      console.log("[ProjectStorage] Saving to:", path)
+      console.log("[ProjectStorage] Projects count:", doc.projects.length)
+      console.log("[ProjectStorage] Project names:", doc.projects.map(p => p.name).join(", "))
+      console.log("[ProjectStorage] JSON length:", json.length)
+      
+      await fsService.writeText(path, json)
+      console.log("[ProjectStorage] Write complete, verifying...")
+      
+      // Verify the write by reading back
+      const verification = await fsService.readText(path)
+      if (verification.length !== json.length) {
+        console.error("[ProjectStorage] Verification failed! Written:", json.length, "Read:", verification.length)
+        throw new Error("File verification failed after write")
+      }
+      
+      console.log("[ProjectStorage] Save and verification complete")
+    } catch (err) {
+      console.error("[ProjectStorage] Save failed:", err)
+      throw err
+    }
   },
   async pickFolder(): Promise<string | null> {
     try {
       const result = await fsService.pickFolder()
       return result
-    } catch {
-      console.warn("eulinx: failed to load workspace from Tauri fs")
+    } catch (err) {
+      console.warn("eulinx: failed to pick folder", err)
       return null
     }
   },
@@ -87,11 +117,16 @@ const tauriStorage: ProjectStorage = {
 const browserStorage: ProjectStorage = {
   async loadWorkspace(): Promise<WorkspaceDoc | null> {
     if (typeof localStorage === "undefined") return null
-    return parseWorkspace(localStorage.getItem(BROWSER_KEY))
+    const data = localStorage.getItem(BROWSER_KEY)
+    console.log("[BrowserStorage] Loading workspace, found data:", data ? "yes" : "no")
+    return parseWorkspace(data)
   },
   async saveWorkspace(doc: WorkspaceDoc): Promise<void> {
     if (typeof localStorage === "undefined") return
-    localStorage.setItem(BROWSER_KEY, JSON.stringify(doc))
+    const json = JSON.stringify(doc)
+    console.log("[BrowserStorage] Saving workspace with", doc.projects.length, "projects")
+    localStorage.setItem(BROWSER_KEY, json)
+    console.log("[BrowserStorage] Save complete")
   },
   async pickFolder(): Promise<string | null> {
     return ""
@@ -99,4 +134,7 @@ const browserStorage: ProjectStorage = {
 }
 
 export const projectStorage: ProjectStorage = isTauri() ? tauriStorage : browserStorage
+
+// Log which storage strategy is being used
+console.log("[projectStorage] Using storage strategy:", isTauri() ? "Tauri (file system)" : "Browser (localStorage)")
 
