@@ -5,6 +5,7 @@ import { AppIcon } from "./app-icon"
 import type { CanvasNode, NodeKind } from "./types"
 import { Dot } from "./primitives"
 import { TerminalView } from "./terminal"
+import { BrowserView } from "./browser/browser-view"
 
 const NODE_TOKEN: Record<NodeKind, string> = {
   // ── Official workflow engine kinds ──
@@ -153,21 +154,32 @@ export function CanvasNodeCard({
             <CollapsedTerminal />
           ))}
 
-        {node.kind === "browser" && (
-          <div className="min-h-[100px] bg-[color:var(--Eulinx-color-background)]">
-            <div className="flex items-center gap-2 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-2 py-1 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
-              <AppIcon name="browser" className="h-3 w-3" strokeWidth={2.25} />
-              <span className="font-mono text-[11px] text-[color:var(--Eulinx-color-text-secondary)]">
-                {node.url}
-              </span>
+        {node.kind === "browser" &&
+          (node.selected ? (
+            <div
+              className="flex-1 nodrag"
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
+              onContextMenu={(e) => { e.stopPropagation(); e.preventDefault() }}
+            >
+              <BrowserView nodeId={node.id} initialUrl={node.url} className="h-full" />
             </div>
-            <div className="p-3">
-              <div className="flex h-[60px] w-full items-center justify-center rounded bg-[color:var(--Eulinx-color-surface)] text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
-                Live preview
+          ) : (
+            <div className="min-h-[100px] bg-[color:var(--Eulinx-color-background)]">
+              <div className="flex items-center gap-2 border-b border-[color:var(--Eulinx-color-border)] bg-[color:var(--Eulinx-color-surface)] px-2 py-1 text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+                <AppIcon name="browser" className="h-3 w-3" strokeWidth={2.25} />
+                <span className="font-mono text-[11px] text-[color:var(--Eulinx-color-text-secondary)]">
+                  {node.url || "about:blank"}
+                </span>
+              </div>
+              <div className="p-3">
+                <div className="flex h-[60px] w-full items-center justify-center rounded bg-[color:var(--Eulinx-color-surface)] text-[11px] text-[color:var(--Eulinx-color-text-muted)]">
+                  Click to open browser
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          ))}
 
         {node.kind === "map" && (
           <div className="flex min-h-[50px] flex-col gap-2 p-3 font-mono text-xs text-[color:var(--Eulinx-color-text-secondary)]">

@@ -6,9 +6,11 @@ mod managers;
 mod scheduler;
 mod state;
 mod workflow;
+mod browser;
 
 use std::path::PathBuf;
 
+use browser::commands::BrowserState;
 use commands::pty::PtyState;
 use managers::db_manager::DbManager;
 use managers::dialog_manager::DialogManagerImpl;
@@ -56,6 +58,7 @@ pub fn run() {
         .manage(PtyState::default())
         .manage(AppState::new(true))
         .manage(db)
+        .manage(BrowserState::new())
         .setup(|app| {
             let handle = app.handle().clone();
             app.manage(FsManagerImpl::new());
@@ -219,6 +222,16 @@ pub fn run() {
             commands::event_log_cmd::log_get_stats,
             commands::event_log_cmd::log_get_range,
             commands::event_log_cmd::log_get_by_id,
+            // Browser
+            browser::commands::browser_connect,
+            browser::commands::browser_is_connected,
+            browser::commands::browser_navigate,
+            browser::commands::browser_reload,
+            browser::commands::browser_get_snapshot,
+            browser::commands::browser_clear_console,
+            browser::commands::browser_clear_errors,
+            browser::commands::browser_clear_network,
+            browser::commands::browser_clear_all,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
