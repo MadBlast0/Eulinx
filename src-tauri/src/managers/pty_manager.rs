@@ -40,7 +40,7 @@ impl PtyManagerImpl {
             return Err(ApiError {
                 code: "PTY_SHELL_NOT_FOUND".into(),
                 message: format!("Shell not found: {}. Please check the shell path.", program),
-                context: Some(format!("Attempted to spawn: {}", program)),
+                context: Some(serde_json::json!(format!("Attempted to spawn: {}", program))),
             });
         }
 
@@ -48,7 +48,7 @@ impl PtyManagerImpl {
         let metadata = std::fs::metadata(shell_path).map_err(|e| ApiError {
             code: "PTY_SHELL_METADATA".into(),
             message: format!("Cannot read shell metadata: {}", e),
-            context: Some(program.clone()),
+            context: Some(serde_json::json!(program.clone())),
         })?;
 
         if !metadata.is_file() {
@@ -70,7 +70,7 @@ impl PtyManagerImpl {
                 return Err(ApiError {
                     code: "PTY_SHELL_NOT_EXECUTABLE".into(),
                     message: format!("Shell is not executable: {}", program),
-                    context: Some(format!("Mode: {:o}", mode)),
+                    context: Some(serde_json::json!(format!("Mode: {:o}", mode))),
                 });
             }
         }
@@ -85,8 +85,8 @@ impl PtyManagerImpl {
         let size = PtySize {
             rows,
             cols,
-            pixel_width: (cols as u32) * 8,  // Approximate pixel width
-            pixel_height: (rows as u32) * 16, // Approximate pixel height
+            pixel_width: ((cols as u32) * 8) as u16,  // Approximate pixel width
+            pixel_height: ((rows as u32) * 16) as u16, // Approximate pixel height
         };
         let pair = pty_system.openpty(size).map_err(|e| ApiError {
             code: "PTY_SPAWN".into(),
