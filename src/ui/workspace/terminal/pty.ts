@@ -21,7 +21,7 @@ export interface Pty {
 import { ptyService } from "@/api/services"
 import { listen, type UnlistenFn } from "@tauri-apps/api/event"
 
-export function createNativePty(shell?: string): Pty {
+export function createNativePty(shell?: string, initialCols?: number, initialRows?: number): Pty {
   const id = "pty-" + Math.random().toString(36).slice(2, 10)
   const dataListeners = new Set<(data: string) => void>()
   const exitListeners = new Set<(code: ExitCode) => void>()
@@ -29,6 +29,7 @@ export function createNativePty(shell?: string): Pty {
   const unlisteners: UnlistenFn[] = []
 
   let connectionState: PtyConnectionState = "connecting"
+  let connectionTimeout: ReturnType<typeof setTimeout> | null = null
 
   const dispatchData: (chunk: string) => void = (chunk: string): void => {
     for (const cb of dataListeners) {
@@ -37,6 +38,11 @@ export function createNativePty(shell?: string): Pty {
   }
 
   const dispatchExit = (code: ExitCode): void => {
+    // Clear timeout on exit
+    if (connectionTimeout) {
+      clearTimeout(connectionTimeout)
+      connectionTimeout = null
+    }
     for (const cb of exitListeners) {
       try { cb(code) } catch { /* subscriber error */ }
     }
@@ -44,27 +50,52 @@ export function createNativePty(shell?: string): Pty {
 
   const dispatchConnectionChange = (state: PtyConnectionState): void => {
     connectionState = state
+    // Clear timeout when state changes
+    if (connectionTimeout && state !== "connecting") {
+      clearTimeout(connectionTimeout)
+      connectionTimeout = null
+    }
     for (const cb of connectionListeners) {
       try { cb(state) } catch { /* subscriber error */ }
     }
   }
 
-  // First data arrival confirms connection
+  // Set connection timeout (10 seconds)
+  connectionTimeout = setTimeout(() => {
+    if (connectionState === "connecting") {
+      console.warn(`[PTY ${id}] Connection timeout - no response after 10s`)
+      dispatchConnectionChange("error")
+      dispatchData(`\x1b[33mConnection timeout - shell may not have started\x1b[0m\r\n`)
+    }
+  }, 10000)
+
+  // First data arrival confirms connection (legacy fallback)
   let hasReceivedData = false
 
-  // Spawn the process
-  ptyService.spawn(id, shell).catch((err) => {
+  // Spawn the process with initial dimensions
+  ptyService.spawn(id, shell, initialCols, initialRows).catch((err) => {
     dispatchData(`\x1b[31mspawn failed: ${String(err)}\x1b[0m\r\n`)
     dispatchExit(1)
     dispatchConnectionChange("error")
   })
+
+  // Listen for spawn success event (emitted when process starts)
+  void listen(`pty://${id}/spawned`, () => {
+    console.log(`[PTY ${id}] Spawn successful, marking as connected`)
+    if (connectionState === "connecting") {
+      dispatchConnectionChange("connected")
+    }
+  }).then((unlisten) => { unlisteners.push(unlisten) })
 
   // Subscribe to PTY events
   void listen<string>(`pty://${id}/data`, (event) => {
     const chunk = typeof event.payload === "string" ? event.payload : ""
     if (!hasReceivedData) {
       hasReceivedData = true
-      dispatchConnectionChange("connected")
+      // If still connecting, mark as connected (legacy behavior)
+      if (connectionState === "connecting") {
+        dispatchConnectionChange("connected")
+      }
     }
     dispatchData(chunk)
   }).then((unlisten) => { unlisteners.push(unlisten) })
@@ -99,6 +130,10 @@ export function createNativePty(shell?: string): Pty {
       ptyService.resize(id, cols, rows).catch(() => { /* resize after kill */ })
     },
     kill(): void {
+      if (connectionTimeout) {
+        clearTimeout(connectionTimeout)
+        connectionTimeout = null
+      }
       for (const u of unlisteners) { void u() }
       unlisteners.length = 0
       ptyService.kill(id).catch(() => { /* already dead */ })

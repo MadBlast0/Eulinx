@@ -31,6 +31,10 @@ export interface GraphNode {
     outputColor?: "green" | "amber" | "red" | "muted"
     cursor?: boolean
   }[]
+  /** Terminal buffer content (for persistence across sessions) */
+  terminalBuffer?: string
+  /** Whether terminal should be expanded on load */
+  terminalExpanded?: boolean
 }
 
 export interface GraphEdge {

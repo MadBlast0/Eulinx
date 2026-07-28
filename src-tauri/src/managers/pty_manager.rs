@@ -24,7 +24,7 @@ impl PtyManagerImpl {
     }
 
     /// Spawn a real shell in a PTY. Returns the PID of the spawned process.
-    pub fn spawn(&self, workspace_id: &str, cmd: &str) -> ApiResult<u32> {
+    pub fn spawn(&self, workspace_id: &str, cmd: &str, cols: Option<u16>, rows: Option<u16>) -> ApiResult<u32> {
         let id = workspace_id.to_string();
         let cmd_str = if cmd.is_empty() {
             None
@@ -34,13 +34,59 @@ impl PtyManagerImpl {
 
         let (program, flag) = resolve_shell(cmd_str.as_deref());
 
+        // Validate shell path exists and is executable
+        let shell_path = std::path::Path::new(&program);
+        if !shell_path.exists() {
+            return Err(ApiError {
+                code: "PTY_SHELL_NOT_FOUND".into(),
+                message: format!("Shell not found: {}. Please check the shell path.", program),
+                context: Some(format!("Attempted to spawn: {}", program)),
+            });
+        }
+
+        // Check if it's a file (not a directory)
+        let metadata = std::fs::metadata(shell_path).map_err(|e| ApiError {
+            code: "PTY_SHELL_METADATA".into(),
+            message: format!("Cannot read shell metadata: {}", e),
+            context: Some(program.clone()),
+        })?;
+
+        if !metadata.is_file() {
+            return Err(ApiError {
+                code: "PTY_SHELL_INVALID".into(),
+                message: format!("Shell path is not a file: {}", program),
+                context: None,
+            });
+        }
+
+        // On Unix, check if executable
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let permissions = metadata.permissions();
+            let mode = permissions.mode();
+            // Check if any execute bit is set (owner, group, or other)
+            if mode & 0o111 == 0 {
+                return Err(ApiError {
+                    code: "PTY_SHELL_NOT_EXECUTABLE".into(),
+                    message: format!("Shell is not executable: {}", program),
+                    context: Some(format!("Mode: {:o}", mode)),
+                });
+            }
+        }
+
         // Create a platform-native PTY pair (ConPTY on Windows, forkpty on Unix)
         let pty_system = portable_pty::native_pty_system();
+        
+        // Use provided dimensions or sensible defaults
+        let cols = cols.unwrap_or(100);
+        let rows = rows.unwrap_or(30);
+        
         let size = PtySize {
-            rows: 24,
-            cols: 80,
-            pixel_width: 640,
-            pixel_height: 480,
+            rows,
+            cols,
+            pixel_width: (cols as u32) * 8,  // Approximate pixel width
+            pixel_height: (rows as u32) * 16, // Approximate pixel height
         };
         let pair = pty_system.openpty(size).map_err(|e| ApiError {
             code: "PTY_SPAWN".into(),
@@ -216,7 +262,7 @@ impl PtyManagerImpl {
     }
 }
 
-/// Resolve the default shell for the current OS.
+/// Resolve the default shell for the current OS, trying multiple fallbacks.
 pub(crate) fn resolve_shell(shell: Option<&str>) -> (String, Option<String>) {
     match shell {
         Some(s) if !s.trim().is_empty() => {
@@ -224,10 +270,35 @@ pub(crate) fn resolve_shell(shell: Option<&str>) -> (String, Option<String>) {
         }
         _ => {
             if cfg!(windows) {
+                // Windows: cmd.exe is always available
                 ("cmd.exe".to_string(), None)
-            } else if let Ok(sh) = std::env::var("SHELL") {
-                (sh, Some("-i".to_string()))
             } else {
+                // Unix: try multiple shells in order of preference
+                if let Ok(sh) = std::env::var("SHELL") {
+                    if !sh.trim().is_empty() {
+                        return (sh, Some("-i".to_string()));
+                    }
+                }
+                
+                // Try common shells in order
+                let shell_candidates = [
+                    "/bin/bash",
+                    "/usr/bin/bash",
+                    "/bin/zsh",
+                    "/usr/bin/zsh",
+                    "/bin/sh",
+                    "/usr/bin/sh",
+                    "/bin/ash",
+                    "/usr/bin/ash",
+                ];
+                
+                for candidate in &shell_candidates {
+                    if std::path::Path::new(candidate).exists() {
+                        return (candidate.to_string(), Some("-i".to_string()));
+                    }
+                }
+                
+                // Last resort: assume /bin/sh exists (POSIX requirement)
                 ("/bin/sh".to_string(), Some("-i".to_string()))
             }
         }

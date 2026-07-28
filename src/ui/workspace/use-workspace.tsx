@@ -25,7 +25,7 @@ import {
   getNodeTypeMeta,
   type EulinxNodeKind,
 } from "./node-graph/node-types"
-import { destroyPty } from "./terminal/use-terminal"
+import { destroyPty, ensurePty, getPty, destroyAllPtys } from "./terminal/use-terminal"
 
 /** Project a persisted GraphNode onto the presentational CanvasNode shape. */
 function toCanvasNode(node: GraphNode, selected: boolean): CanvasNode {
@@ -48,7 +48,11 @@ function toEdgeConn(edge: { id: string; from: string; to: string; kind?: string 
   return { from: edge.from, to: edge.to, kind: edge.kind as EdgeKind | undefined }
 }
 
-type Snapshot = { nodes: GraphNode[]; edges: GraphEdge[] }
+type Snapshot = { 
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+  terminalPtyIds: Set<string> // Track which PTYs existed in this snapshot
+}
 
 interface WorkspaceContextValue {
   readonly nodes: readonly CanvasNode[]
@@ -108,10 +112,25 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const projectsRef = useRef(projects)
   projectsRef.current = projects
   const lastSnapshotTime = useRef(0)
+  const activeProjectIdRef = useRef<string | undefined>(projects.activeProjectId)
 
   // Keep refs in sync with state
   useEffect(() => { undoStackRef.current = undoStack }, [undoStack])
   useEffect(() => { redoStackRef.current = redoStack }, [redoStack])
+
+  // Cleanup PTY registry when switching projects
+  useEffect(() => {
+    const newProjectId = projects.activeProjectId
+    if (activeProjectIdRef.current !== newProjectId && activeProjectIdRef.current !== undefined) {
+      console.log("[WorkspaceProvider] Project switched from", activeProjectIdRef.current, "to", newProjectId)
+      console.log("[WorkspaceProvider] Destroying all PTYs from previous project")
+      destroyAllPtys()
+      // Clear undo/redo stacks on project switch
+      setUndoStack([])
+      setRedoStack([])
+    }
+    activeProjectIdRef.current = newProjectId
+  }, [projects.activeProjectId])
 
   const nodes = useMemo<readonly CanvasNode[]>(() => {
     if (!graph) return []
@@ -139,7 +158,19 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (now - lastSnapshotTime.current < SNAPSHOT_THROTTLE_MS) return
     lastSnapshotTime.current = now
 
-    const snapshot: Snapshot = { nodes: [...g.nodes], edges: [...g.edges] }
+    // Track which PTYs are currently active for terminal nodes
+    const terminalPtyIds = new Set<string>()
+    for (const node of g.nodes) {
+      if (node.kind === 'terminal') {
+        terminalPtyIds.add(node.id)
+      }
+    }
+
+    const snapshot: Snapshot = { 
+      nodes: [...g.nodes], 
+      edges: [...g.edges],
+      terminalPtyIds
+    }
     setUndoStack((prev) => {
       const next = [snapshot, ...prev]
       return next.length > MAX_UNDO ? next.slice(0, MAX_UNDO) : next
@@ -156,11 +187,41 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (!p.graph) return
 
     // Push current state onto redo BEFORE restoring
-    const current: Snapshot = { nodes: [...p.graph.nodes], edges: [...p.graph.edges] }
+    const currentTerminalPtyIds = new Set<string>()
+    for (const node of p.graph.nodes) {
+      if (node.kind === 'terminal') {
+        currentTerminalPtyIds.add(node.id)
+      }
+    }
+    const current: Snapshot = { 
+      nodes: [...p.graph.nodes], 
+      edges: [...p.graph.edges],
+      terminalPtyIds: currentTerminalPtyIds
+    }
     setRedoStack((prev) => [current, ...prev])
     setUndoStack((prev) => prev.slice(1))
+    
+    // Restore graph state
     p.setGraphNodes(snapshot.nodes)
     p.setGraphEdges(snapshot.edges)
+
+    // Handle PTY lifecycle: recreate PTYs that existed in snapshot but not now
+    for (const nodeId of snapshot.terminalPtyIds) {
+      if (!getPty(nodeId)) {
+        // PTY was destroyed but node is being restored - recreate it
+        const node = snapshot.nodes.find(n => n.id === nodeId)
+        if (node) {
+          ensurePty(nodeId, node.shell)
+        }
+      }
+    }
+
+    // Destroy PTYs that exist now but not in snapshot
+    for (const nodeId of currentTerminalPtyIds) {
+      if (!snapshot.terminalPtyIds.has(nodeId)) {
+        destroyPty(nodeId)
+      }
+    }
   }, [])
 
   const redo = useCallback(() => {
@@ -172,11 +233,41 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (!p.graph) return
 
     // Push current state onto undo BEFORE restoring
-    const current: Snapshot = { nodes: [...p.graph.nodes], edges: [...p.graph.edges] }
+    const currentTerminalPtyIds = new Set<string>()
+    for (const node of p.graph.nodes) {
+      if (node.kind === 'terminal') {
+        currentTerminalPtyIds.add(node.id)
+      }
+    }
+    const current: Snapshot = { 
+      nodes: [...p.graph.nodes], 
+      edges: [...p.graph.edges],
+      terminalPtyIds: currentTerminalPtyIds
+    }
     setUndoStack((prev) => [current, ...prev])
     setRedoStack((prev) => prev.slice(1))
+    
+    // Restore graph state
     p.setGraphNodes(snapshot.nodes)
     p.setGraphEdges(snapshot.edges)
+
+    // Handle PTY lifecycle: recreate PTYs that existed in snapshot but not now
+    for (const nodeId of snapshot.terminalPtyIds) {
+      if (!getPty(nodeId)) {
+        // PTY was destroyed but node is being restored - recreate it
+        const node = snapshot.nodes.find(n => n.id === nodeId)
+        if (node) {
+          ensurePty(nodeId, node.shell)
+        }
+      }
+    }
+
+    // Destroy PTYs that exist now but not in snapshot
+    for (const nodeId of currentTerminalPtyIds) {
+      if (!snapshot.terminalPtyIds.has(nodeId)) {
+        destroyPty(nodeId)
+      }
+    }
   }, [])
 
   const moveNode = useCallback(

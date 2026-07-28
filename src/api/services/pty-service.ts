@@ -1,8 +1,8 @@
 import { call } from "../transport"
 
 export const ptyService = {
-  spawn(id: string, shell?: string): Promise<string> {
-    return call<string>("pty_spawn", { id, shell })
+  spawn(id: string, shell?: string, cols?: number, rows?: number): Promise<string> {
+    return call<string>("pty_spawn", { id, shell, cols, rows })
   },
 
   write(id: string, data: string): Promise<void> {

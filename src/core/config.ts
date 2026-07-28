@@ -41,6 +41,7 @@ export interface AppConfig {
     readonly theme: ThemePreference
     readonly sidebarWidth: number
     readonly debounceMs: number
+    readonly terminalScrollback: number
   }
   readonly logging: {
     readonly level: "debug" | "info" | "warn" | "error"
@@ -76,6 +77,7 @@ const DEFAULT_CONFIG: AppConfig = {
     theme: "system",
     sidebarWidth: 280,
     debounceMs: 300,
+    terminalScrollback: 2000,
   },
   logging: {
     level: "info",

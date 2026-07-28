@@ -28,10 +28,16 @@ pub fn pty_spawn(
     _state: tauri::State<'_, AppState>,
     id: String,
     shell: Option<String>,
+    cols: Option<u16>,
+    rows: Option<u16>,
 ) -> Result<String, String> {
     let mgr = app.state::<PtyManagerImpl>();
-    mgr.spawn(&id, shell.as_deref().unwrap_or(""))
+    mgr.spawn(&id, shell.as_deref().unwrap_or(""), cols, rows)
         .map_err(|e| e.to_string())?;
+    
+    // Emit spawn success event so frontend knows shell started
+    let _ = app.emit(&format!("pty://{}/spawned", id), ());
+    
     Ok(id)
 }
 
