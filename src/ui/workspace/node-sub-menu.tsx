@@ -138,17 +138,23 @@ export function NodeSubMenu({ open, onOpen, onClose, onPick, children, constrain
     if (!catEl) return
 
     const catR = catEl.getBoundingClientRect()
-    const SUB_W = 180
-    const MAIN_W = 170
+    
+    // Get the actual width of the main dropdown from the DOM
+    const mainDropdown = menuEl.querySelector<HTMLElement>('[role="menu"]')
+    const MAIN_W = mainDropdown?.getBoundingClientRect().width ?? 170
+    
+    // Use fixed sub-dropdown width that matches the CSS min-width
+    const SUB_W = 170
     const bounds = constraint ?? { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight }
 
-    // Sub-dropdown right edge overlaps main dropdown left border by 1px — no gap
-    let x = mainPos.x - SUB_W + 1
+    // Position sub-dropdown so its right edge is just before the main dropdown's left edge
+    // -1 creates tiny separation so borders touch but don't overlap
+    let x = mainPos.x - SUB_W - 1
     let y = catR.top
 
-    // If no space on left, show on the right side (touching main dropdown right edge)
+    // If no space on left, show on the right side
     if (x < bounds.left) {
-      x = mainPos.x + MAIN_W - 1
+      x = mainPos.x + MAIN_W + 1
     }
 
     const section = NODE_SECTIONS[hoveredCategory]
