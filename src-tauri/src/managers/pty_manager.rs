@@ -34,13 +34,18 @@ impl PtyManagerImpl {
 
         let (program, flag) = resolve_shell(cmd_str.as_deref());
 
+        // Resolve the shell to an absolute path via PATH so validation works
+        // even when the CWD is not in PATH (common on Windows where cmd.exe
+        // lives in System32 but the app CWD is its install directory).
+        let resolved = resolve_program_path(&program);
+
         // Validate shell path exists and is executable
-        let shell_path = std::path::Path::new(&program);
+        let shell_path = std::path::Path::new(&resolved);
         if !shell_path.exists() {
             return Err(ApiError {
                 code: "PTY_SHELL_NOT_FOUND".into(),
                 message: format!("Shell not found: {}. Please check the shell path.", program),
-                context: Some(serde_json::json!(format!("Attempted to spawn: {}", program))),
+                context: Some(serde_json::json!(format!("Attempted to spawn: {}, resolved: {}", program, resolved))),
             });
         }
 
@@ -48,13 +53,13 @@ impl PtyManagerImpl {
         let metadata = std::fs::metadata(shell_path).map_err(|e| ApiError {
             code: "PTY_SHELL_METADATA".into(),
             message: format!("Cannot read shell metadata: {}", e),
-            context: Some(serde_json::json!(program.clone())),
+            context: Some(serde_json::json!(resolved.clone())),
         })?;
 
         if !metadata.is_file() {
             return Err(ApiError {
                 code: "PTY_SHELL_INVALID".into(),
-                message: format!("Shell path is not a file: {}", program),
+                message: format!("Shell path is not a file: {}", resolved),
                 context: None,
             });
         }
@@ -69,7 +74,7 @@ impl PtyManagerImpl {
             if mode & 0o111 == 0 {
                 return Err(ApiError {
                     code: "PTY_SHELL_NOT_EXECUTABLE".into(),
-                    message: format!("Shell is not executable: {}", program),
+                    message: format!("Shell is not executable: {}", resolved),
                     context: Some(serde_json::json!(format!("Mode: {:o}", mode))),
                 });
             }
@@ -94,7 +99,7 @@ impl PtyManagerImpl {
             context: None,
         })?;
 
-        let mut cmd_builder = CommandBuilder::new(&program);
+        let mut cmd_builder = CommandBuilder::new(&resolved);
         if let Some(ref f) = flag {
             cmd_builder.arg(f);
         }
@@ -146,7 +151,7 @@ impl PtyManagerImpl {
             crate::state::PtySessionState {
                 pid,
                 started_at,
-                cmd: program,
+                cmd: resolved,
             },
         );
 
@@ -303,6 +308,27 @@ pub(crate) fn resolve_shell(shell: Option<&str>) -> (String, Option<String>) {
             }
         }
     }
+}
+
+/// Resolve a program name to an absolute path by searching PATH.
+/// If the program already contains a path separator or is an absolute path,
+/// it is returned as-is. Otherwise, each PATH entry is checked.
+fn resolve_program_path(program: &str) -> String {
+    let p = std::path::Path::new(program);
+    if p.is_absolute() || program.contains('/') || (cfg!(windows) && program.contains('\\')) {
+        return program.to_string();
+    }
+    if let Ok(path_env) = std::env::var("PATH") {
+        let separator = if cfg!(windows) { ';' } else { ':' };
+        for dir in path_env.split(separator) {
+            let candidate = std::path::Path::new(dir).join(program);
+            if candidate.exists() {
+                return candidate.to_string_lossy().into_owned();
+            }
+        }
+    }
+    // Return original — validation will fail with a clear error
+    program.to_string()
 }
 
 pub(crate) struct PtyHandle {

@@ -72,18 +72,6 @@ export function createNativePty(shell?: string, initialCols?: number, initialRow
   // First data arrival confirms connection (legacy fallback)
   let hasReceivedData = false
 
-  // Register event listeners BEFORE spawning so we don't miss events.
-  // The Rust backend emits `spawned` synchronously within the IPC command,
-  // so if we register after spawn, the event fires before the listener exists.
-
-  // Listen for spawn success event (emitted when process starts)
-  void listen(`pty://${id}/spawned`, () => {
-    console.log(`[PTY ${id}] Spawn successful, marking as connected`)
-    if (connectionState === "connecting") {
-      dispatchConnectionChange("connected")
-    }
-  }).then((unlisten) => { unlisteners.push(unlisten) })
-
   // Subscribe to PTY data events
   void listen<string>(`pty://${id}/data`, (event) => {
     const chunk = typeof event.payload === "string" ? event.payload : ""
@@ -105,8 +93,15 @@ export function createNativePty(shell?: string, initialCols?: number, initialRow
     dispatchConnectionChange("disconnected")
   }).then((unlisten) => { unlisteners.push(unlisten) })
 
-  // Spawn the process with initial dimensions
-  ptyService.spawn(id, shell, initialCols, initialRows).catch((err) => {
+  // Spawn the process and use the IPC response as the primary connection
+  // confirmation. The `spawned` event was unreliable because the event
+  // channel registration races with the spawn invoke.
+  ptyService.spawn(id, shell, initialCols, initialRows).then(() => {
+    console.log(`[PTY ${id}] Spawn IPC resolved, marking as connected`)
+    if (connectionState === "connecting") {
+      dispatchConnectionChange("connected")
+    }
+  }).catch((err) => {
     dispatchData(`\x1b[31mspawn failed: ${String(err)}\x1b[0m\r\n`)
     dispatchExit(1)
     dispatchConnectionChange("error")
