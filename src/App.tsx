@@ -1,6 +1,6 @@
 import { Component, type ReactNode } from "react"
 import { ThemeProvider } from "@/ui/tokens/theme-provider"
-import { NotificationProvider } from "@/providers/NotificationProvider"
+import { AppProviders } from "@/providers/AppProviders"
 import { WorkspaceApp } from "@/ui/workspace"
 
 class Boundary extends Component<
@@ -12,7 +12,7 @@ class Boundary extends Component<
     return { error: e }
   }
   render() {
-    if (this.state.error) {
+    if (this.state?.error) {
       return (
         <div
           role="alert"
@@ -33,15 +33,15 @@ class Boundary extends Component<
 
 function App() {
   return (
-    <Boundary label="ThemeProvider">
-      <ThemeProvider>
-        <Boundary label="WorkspaceApp">
-          <NotificationProvider>
+    <ThemeProvider>
+      <Boundary label="AppProviders">
+        <AppProviders>
+          <Boundary label="WorkspaceApp">
             <WorkspaceApp />
-          </NotificationProvider>
-        </Boundary>
-      </ThemeProvider>
-    </Boundary>
+          </Boundary>
+        </AppProviders>
+      </Boundary>
+    </ThemeProvider>
   )
 }
 

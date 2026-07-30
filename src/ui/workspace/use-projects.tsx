@@ -463,6 +463,17 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
   return <ProjectsContext.Provider value={value}>{children}</ProjectsContext.Provider>
 }
 
+/**
+ * Wraps project-scoped providers with a key={activeProjectId} so they
+ * fully remount (and reset their state) when the user switches projects.
+ *
+ * Co-located with ProjectsProvider so HMR invalidates both together.
+ */
+export function ProjectScope({ children }: { children: React.ReactNode }) {
+  const { activeProjectId } = useProjects()
+  return <div key={activeProjectId}>{children}</div>
+}
+
 export function useProjects(): ProjectsContextValue {
   const ctx = useContext(ProjectsContext)
   if (!ctx) {

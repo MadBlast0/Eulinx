@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react"
 import "./workspace.css"
 import { cn } from "@/utils/cn"
 import { useWorkspace } from "./use-workspace"
-import { ProjectsProvider, useProjects } from "./use-projects"
+import { ProjectsProvider, ProjectScope } from "./use-projects"
 import { GlobalProviders, ProjectDataProviders, useDeferredProvidersReady } from "./merged-providers"
 import { TopBar } from "./top-bar"
 import { Toolbar } from "./workspace-toolbar"
@@ -448,15 +448,6 @@ function WorkspaceShell() {
       {deferredProvidersReady && <StateBridge />}
     </div>
   )
-}
-
-/**
- * Wraps project-scoped providers with a key={activeProjectId} so they
- * fully remount (and reset their state) when the user switches projects.
- */
-function ProjectScope({ children }: { children: React.ReactNode }) {
-  const { activeProjectId } = useProjects()
-  return <div key={activeProjectId}>{children}</div>
 }
 
 export function WorkspaceApp() {
