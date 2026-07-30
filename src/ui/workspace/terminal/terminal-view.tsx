@@ -268,10 +268,6 @@ function TerminalXterm({
       pty.write(text)
     }
 
-    term.onData((_data) => {
-      // This handles keyboard input, actual paste is handled by onPaste addon
-    })
-
     // Attach paste handler
     term.attachCustomKeyEventHandler((e: KeyboardEvent) => {
       // Handle Ctrl+V / Cmd+V
