@@ -1,4 +1,4 @@
-import { Plus, MoreVertical, Pencil, Trash2, FolderOpen } from "lucide-react"
+import { Plus, MoreVertical, Pencil, Trash2, FolderOpen, ArrowLeft } from "lucide-react"
 import { useState, useCallback, useEffect } from "react"
 import { AppIcon } from "../app-icon"
 import { Button } from "@/components/ui/button"
@@ -24,31 +24,19 @@ const VIEW_META: Record<CanvasViewKind, { label: string; iconName: string; descr
 const QUICK_ADD_KINDS: CanvasViewKind[] = ["node-graph", "artifacts", "terminal"]
 
 export function ProjectOverview() {
-  const { activeProject, selectView, addView, removeProject, renameProject } = useProjects()
+  const { activeProject, selectView, addView, removeProject, renameProject, deselectProject } = useProjects()
   const [projectMenuOpen, setProjectMenuOpen] = useState(false)
   const [menuPosition, setMenuPosition] = useState<{ x: number; y: number } | null>(null)
   const [isRenaming, setIsRenaming] = useState(false)
   const [renamingText, setRenamingText] = useState("")
 
-  if (!activeProject) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-        <p className="text-sm font-medium text-foreground">
-          No project selected
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Select or create a project from the sidebar.
-        </p>
-      </div>
-    )
-  }
-
-  const handleAddView = (kind: CanvasViewKind): void => {
+  const handleAddView = useCallback((kind: CanvasViewKind): void => {
+    if (!activeProject) return
     const meta = VIEW_META[kind]
     const existing = activeProject.views.filter((v) => v.kind === kind)
     const name = existing.length > 0 ? `${meta.label} ${existing.length + 1}` : meta.label
     addView(kind, name)
-  }
+  }, [activeProject, addView])
 
   const handleMenuToggle = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -62,10 +50,11 @@ export function ProjectOverview() {
   }, [projectMenuOpen])
 
   const handleRenameProject = useCallback(() => {
+    if (!activeProject) return
     setRenamingText(activeProject.name)
     setIsRenaming(true)
     setProjectMenuOpen(false)
-  }, [activeProject.name])
+  }, [activeProject])
 
   const handleDeleteProject = useCallback(() => {
     if (activeProject && window.confirm(`Are you sure you want to delete "${activeProject.name}"?`)) {
@@ -76,7 +65,6 @@ export function ProjectOverview() {
 
   const handleOpenFolderLocation = useCallback(() => {
     if (activeProject && activeProject.path && !activeProject.path.startsWith("local:")) {
-      // Call the backend to open folder in file explorer
       void fsService.openFolderLocation(activeProject.path).catch((err) => {
         console.error("Failed to open folder:", err)
       })
@@ -93,14 +81,26 @@ export function ProjectOverview() {
     }
   }, [activeProject, renameProject])
 
-  // Close menu when clicking outside
   useEffect(() => {
     if (!projectMenuOpen) return
-    
+
     const handleClick = () => setProjectMenuOpen(false)
     document.addEventListener("click", handleClick)
     return () => document.removeEventListener("click", handleClick)
   }, [projectMenuOpen])
+
+  if (!activeProject) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
+        <p className="text-sm font-medium text-foreground">
+          No project selected
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Select or create a project from the sidebar.
+        </p>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-1 flex-col overflow-y-auto bg-background">
@@ -108,6 +108,15 @@ export function ProjectOverview() {
       <div className="border-b border-border px-6 py-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 flex-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={deselectProject}
+              className="h-8 w-8 shrink-0 text-[color:var(--Eulinx-color-text-muted)] hover:text-[color:var(--Eulinx-color-text)]"
+              title="Back to projects"
+            >
+              <ArrowLeft className="h-4 w-4" strokeWidth={2} />
+            </Button>
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-card flex-shrink-0">
               <AppIcon name="projects" className="h-5 w-5 text-primary" strokeWidth={2.25} />
             </div>

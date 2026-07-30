@@ -23,7 +23,7 @@ describe("Config", () => {
   })
 
   it("updateConfig merges partial", () => {
-    const result = updateConfig({ ui: { theme: "dark", sidebarWidth: 300, debounceMs: 200 } })
+    const result = updateConfig({ ui: { theme: "dark", sidebarWidth: 300, debounceMs: 200, terminalScrollback: 2000 } })
     expect(result.ok).toBe(true)
   })
 

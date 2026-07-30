@@ -268,7 +268,7 @@ function TerminalXterm({
       pty.write(text)
     }
 
-    const pasteSub = term.onData((data) => {
+    term.onData((_data) => {
       // This handles keyboard input, actual paste is handled by onPaste addon
     })
 

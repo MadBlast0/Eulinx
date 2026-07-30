@@ -5,6 +5,7 @@ import { ContextMenu } from "./context-menu"
 import { NodeContextMenu } from "./node-context-menu"
 import { getCanvasViewMeta } from "./canvas-views/registry"
 import { ProjectOverview } from "./canvas-views/project-overview"
+import { WelcomeScreen } from "./welcome-screen"
 
 export function Canvas() {
   const { activeView, activeProject } = useProjects()
@@ -21,18 +22,7 @@ export function Canvas() {
 
   if (!activeView) {
     if (!activeProject) {
-      return (
-        <div className="flex flex-1 flex-col bg-[color:var(--Eulinx-color-background)]">
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-            <p className="text-sm font-medium text-[color:var(--Eulinx-color-text)]">
-              No project selected
-            </p>
-            <p className="text-xs text-[color:var(--Eulinx-color-text-muted)]">
-              Select or create a project from the sidebar.
-            </p>
-          </div>
-        </div>
-      )
+      return <WelcomeScreen />
     }
     return (
       <div className="flex flex-1 flex-col bg-[color:var(--Eulinx-color-background)]">

@@ -64,6 +64,7 @@ interface ProjectsContextValue {
   readonly graph: NodeGraphDoc | null
 
   selectProject(id: string): void
+  deselectProject(): void
   addProject(path: string, name: string): string
   removeProject(id: string): void
   renameProject(id: string, newName: string): void
@@ -177,7 +178,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
 
   // Add beforeunload handler to ensure saves complete before page unload
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    const handleBeforeUnload = (_e: BeforeUnloadEvent) => {
       // Attempt synchronous save of current state
       const currentState = workspaceRef.current
       console.log("[ProjectsProvider] beforeunload - saving current state with projects:", currentState.projects.length)
@@ -255,6 +256,14 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
     },
     [commit],
   )
+
+  const deselectProject = useCallback((): void => {
+    commit((prev) => ({
+      ...prev,
+      activeProjectId: undefined,
+      projects: prev.projects.map((p) => ({ ...p, activeViewId: undefined })),
+    }))
+  }, [commit])
 
   const addProject = useCallback(
     (path: string, name: string): string => {
@@ -417,6 +426,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       activeView,
       graph,
       selectProject,
+      deselectProject,
       addProject,
       removeProject,
       renameProject,
@@ -435,6 +445,7 @@ export function ProjectsProvider({ children }: { children: ReactNode }) {
       activeView,
       graph,
       selectProject,
+      deselectProject,
       addProject,
       removeProject,
       renameProject,

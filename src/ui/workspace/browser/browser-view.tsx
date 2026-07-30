@@ -17,7 +17,7 @@ interface ConsoleLog {
   line?: number
   column?: number
   timestamp: number
-  args: any[]
+  args: unknown[]
 }
 
 interface JsError {
@@ -88,7 +88,6 @@ const MENU_ITEMS = [
 ] as const
 
 function BrowserViewImpl({
-  nodeId,
   initialUrl = "about:blank",
   className,
 }: BrowserViewProps) {
