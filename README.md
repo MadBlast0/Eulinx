@@ -234,6 +234,5 @@ Pre-alpha. Phase 00 (project init) is complete. 20-phase roadmap ahead.
 
 ---
 
-## License   
-
+## License
 [GNU Affero General Public License v3.0](LICENSE)
